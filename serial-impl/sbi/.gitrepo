@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:rel4team/serial-impl-sbi.git
+	branch = mi_dev
+	commit = 1cd1af47fb1029a1b272ac59f574598bb3dad284
+	parent = 492175ca13ce9f5da17e616ebda0a51f5b6f4d14
+	method = merge
+	cmdver = 0.4.9
