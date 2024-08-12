@@ -1,0 +1,31 @@
+[package]
+name = "rel4_kernel"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rustlib"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+buddy_system_allocator = "0.6"
+riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
+aarch64-cpu = "9.4.0"
+log = "0.4"
+tock-registers = "0.8"
+spin = { version = "0.9", features = ["use_ticket_mutex"] }
+sel4_common = { git = "https://github.com/rel4team/sel4_common.git", branch = "mi_dev" }
+sel4_cspace = { git = "https://github.com/rel4team/sel4_cspace.git", branch = "mi_dev" }
+sel4_vspace = { git = "https://github.com/rel4team/sel4_vspace.git", branch = "mi_dev" }
+sel4_task = { git = "https://github.com/rel4team/sel4_task.git", branch = "mi_dev" }
+sel4_ipc = { git = "https://github.com/rel4team/sel4_ipc.git", branch = "mi_dev" }
+driver-collect = { git = "https://github.com/rel4team/driver-collect.git", branch = "mi_dev" }
+
+[features]
+ENABLE_SMP = ["sel4_common/ENABLE_SMP", "sel4_task/ENABLE_SMP", "sel4_vspace/ENABLE_SMP"]
+
+[profile.release]
+lto = true
