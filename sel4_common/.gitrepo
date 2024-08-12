@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:rel4team/sel4_common.git
+	branch = mi_dev
+	commit = af94a05fe1a2cad0b44055e26917180112b89573
+	parent = a54002c5ed4ca984678cd296ab71a41f853afbb2
+	method = merge
+	cmdver = 0.4.9
