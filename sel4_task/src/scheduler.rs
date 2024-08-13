@@ -552,7 +552,7 @@ pub fn create_idle_thread() {
     use crate::deps::ksIdleThreadTCB;
 
     unsafe {
-        let pptr = &ksIdleThreadTCB.data[0][0] as *const u8 as *mut usize;
+        let pptr = &mut ksIdleThreadTCB.data[0][0] as *mut u8 as *mut usize;
         // let pptr = ksIdleThreadTCB as usize as *mut usize;
         ksIdleThread = pptr.add(TCB_OFFSET) as usize;
         // let tcb = convert_to_mut_type_ref::<tcb_t>(ksIdleThread as usize);
@@ -569,7 +569,7 @@ pub fn create_idle_thread() {
     use log::debug;
     unsafe {
         for i in 0..CONFIG_MAX_NUM_NODES {
-            let pptr = (unsafe { &ksIdleThreadTCB.data[0][0] as *const u8 } as usize
+            let pptr = (unsafe { &mut ksIdleThreadTCB.data[0][0] as *mut u8 } as usize
                 + i * BIT!(seL4_TCBBits)) as *mut usize;
             // let pptr = (ksIdleThreadTCB as usize + i * BIT!(seL4_TCBBits)) as *mut usize;
             ksSMP[i].ksIdleThread = pptr.add(TCB_OFFSET) as usize;

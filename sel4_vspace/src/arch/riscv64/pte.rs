@@ -161,9 +161,9 @@ impl PTE {
     }
 
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
-    pub fn lookup_pt_slot(&self, vptr: vptr_t) -> lookupPTSlot_ret_t {
+    pub fn lookup_pt_slot(&mut self, vptr: vptr_t) -> lookupPTSlot_ret_t {
         let mut level = CONFIG_PT_LEVELS - 1;
-        let mut pt = self as *const PTE as usize as *mut PTE;
+        let mut pt = self as *mut PTE;
         let mut ret = lookupPTSlot_ret_t {
             ptBitsLeft: PT_INDEX_BITS * level + seL4_PageBits,
             ptSlot: unsafe {

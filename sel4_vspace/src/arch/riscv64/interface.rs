@@ -42,8 +42,8 @@ pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
     setVSpaceRoot(pptr_to_paddr(lvl1pt as *mut PTE as usize), asid);
     ret
 }
-pub fn unmap_page_table(asid: asid_t, vptr: vptr_t, pt: &PTE) {
-    let target_pt = pt as *const _ as *mut PTE;
+pub fn unmap_page_table(asid: asid_t, vptr: vptr_t, pt: &mut PTE) {
+    let target_pt = pt as *mut PTE;
     let find_ret = find_vspace_for_asid(asid);
     if find_ret.status != exception_t::EXCEPTION_NONE {
         return;
