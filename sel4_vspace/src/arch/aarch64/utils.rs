@@ -177,6 +177,11 @@ impl_multi!(PGDE, PUDE, PDE, PTE {
         self as *const Self as usize
     }
 
+	#[inline]
+	pub fn get_mut_ptr(&mut self) -> usize {
+		self as *mut Self as usize
+	}
+
     /// Get the next level paddr
     #[inline]
     pub const fn next_level_paddr(&self) -> usize {

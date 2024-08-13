@@ -70,9 +70,9 @@ pub struct tcb_t {
 impl tcb_t {
     #[inline]
     /// Get i th cspace of the TCB, unmutable reference
-    pub fn get_cspace(&self, i: usize) -> &'static cte_t {
+    pub fn get_cspace(&mut self, i: usize) -> &'static cte_t {
         unsafe {
-            let p = ((self.get_ptr()) & !MASK!(seL4_TCBBits)) as *mut cte_t;
+            let p = ((self.get_mut_ptr()) & !MASK!(seL4_TCBBits)) as *mut cte_t;
             &*(p.add(i))
         }
     }
@@ -304,7 +304,7 @@ impl tcb_t {
     }
 
     /// Set the VM root of the TCB
-    pub fn set_vm_root(&self) -> Result<(), lookup_fault_t> {
+    pub fn set_vm_root(&mut self) -> Result<(), lookup_fault_t> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
         let thread_root = self.get_cspace(tcbVTable).cap;
         #[cfg(target_arch = "aarch64")]
@@ -352,13 +352,21 @@ impl tcb_t {
         self as *const tcb_t as usize
     }
 
+	#[inline]
+	/// Get the mut pointer of the TCB
+    /// # Returns
+    /// The raw mut pointer of the TCB
+	pub fn get_mut_ptr(&mut self) -> pptr_t {
+		self as *mut tcb_t as usize
+	}
+
     #[inline]
     /// Look up the slot of the TCB
     /// # Arguments
     /// * `cap_ptr` - The capability pointer to look up
     /// # Returns
     /// The lookup result structure
-    pub fn lookup_slot(&self, cap_ptr: usize) -> lookupSlot_raw_ret_t {
+    pub fn lookup_slot(&mut self, cap_ptr: usize) -> lookupSlot_raw_ret_t {
         let thread_root = self.get_cspace(tcbCTable).cap;
         let res_ret = resolve_address_bits(&thread_root, cap_ptr, wordBits);
         lookupSlot_raw_ret_t {
@@ -439,7 +447,7 @@ impl tcb_t {
     /// * `is_receiver` - If the TCB is receiver
     /// # Returns
     /// The IPC buffer of the TCB
-    pub fn lookup_ipc_buffer(&self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
+    pub fn lookup_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = self.get_cspace(tcbBuffer).cap;
         if unlikely(buffer_cap.get_cap_type() != CapTag::CapFrameCap) {
@@ -471,7 +479,7 @@ impl tcb_t {
     /// # Returns
     /// The result of the lookup represented by seL4_Fault_t
     pub fn lookup_extra_caps(
-        &self,
+        &mut self,
         res: &mut [pptr_t; seL4_MsgMaxExtraCaps],
     ) -> Result<(), seL4_Fault_t> {
         let info =
@@ -502,7 +510,7 @@ impl tcb_t {
     /// # Returns
     /// The result of the lookup represented by seL4_Fault_t
     pub fn lookup_extra_caps_with_buf(
-        &self,
+        &mut self,
         res: &mut [pptr_t; seL4_MsgMaxExtraCaps],
         buf: Option<&seL4_IPCBuffer>,
     ) -> Result<(), seL4_Fault_t> {
@@ -635,7 +643,7 @@ impl tcb_t {
     /// * `length` - The length of the message registers to copy
     /// # Returns
     /// The number of registers(contains ipc buffer) copied
-    pub fn copy_mrs(&self, receiver: &mut tcb_t, length: usize) -> usize {
+    pub fn copy_mrs(&mut self, receiver: &mut tcb_t, length: usize) -> usize {
         let mut i = 0;
         while i < length && i < msgRegisterNum {
             receiver
@@ -687,7 +695,7 @@ impl tcb_t {
     /// * `receiver` - The receiver TCB
     /// * `id` - The fault message id
     /// * `length` - The length of the message registers to copy
-    pub fn copy_fault_mrs_for_reply(&self, receiver: &mut Self, id: usize, length: usize) {
+    pub fn copy_fault_mrs_for_reply(&mut self, receiver: &mut Self, id: usize, length: usize) {
         let len = core::cmp::min(length, msgRegisterNum);
 
         for i in 0..len {
