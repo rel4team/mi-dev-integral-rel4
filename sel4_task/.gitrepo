@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:rel4team/sel4_task.git
 	branch = mi_dev
-	commit = 08b57c47a202f77c5c995e22b4032ef27865c0d4
-	parent = 1cc435e76dd4010c2ac47c815bf2842caef5daca
+	commit = daf1393c0b66c37df2d71ccb0a6b3afbbb99576f
+ 	parent = 477cfb1079496a152b237f6b52cc5fab9f501032
 	method = merge
 	cmdver = 0.4.9
