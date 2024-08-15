@@ -4,6 +4,7 @@ on:
     branches: [mi_dev]
 jobs:
   push:
+    if: ${{ ! contains(github.event.head_commit.message, 'git subrepo')}}
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
@@ -23,13 +24,11 @@ jobs:
           git config user.name "$(git log -n 1 --pretty=format:%an)"
           git config user.email "$(git log -n 1 --pretty=format:%ae)"
       - name: Push To Discrete Repo
-        if: ${{ ! contains(github.event.head_commit.message, 'git subrepo')}}
         run: |
           source /opt/git-subrepo/.rc
           cd mi-dev-integral-rel4
           git subrepo push --all
       - name: Update Current Repo
-        if: ${{ ! contains(github.event.head_commit.message, 'git subrepo')}}
         run: |
           source /opt/git-subrepo/.rc
           cd mi-dev-integral-rel4
