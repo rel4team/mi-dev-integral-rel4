@@ -352,13 +352,13 @@ impl tcb_t {
         self as *const tcb_t as usize
     }
 
-	#[inline]
-	/// Get the mut pointer of the TCB
+    #[inline]
+    /// Get the mut pointer of the TCB
     /// # Returns
     /// The raw mut pointer of the TCB
-	pub fn get_mut_ptr(&mut self) -> pptr_t {
-		self as *mut tcb_t as usize
-	}
+    pub fn get_mut_ptr(&mut self) -> pptr_t {
+        self as *mut tcb_t as usize
+    }
 
     #[inline]
     /// Look up the slot of the TCB
