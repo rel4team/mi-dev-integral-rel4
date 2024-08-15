@@ -1,5 +1,5 @@
 #!/bin/bash
-REPOs=(sel4_common sel4_task sel4_ipc sel4_vspace sel4_cspace kernel driver-collect serial-impl/pl011 serial-impl/sbi serial-frame)
+REPOs=("sel4_common" "sel4_task" "sel4_ipc" "sel4_vspace" "sel4_cspace" "kernel" "driver-collect" serial-impl/pl011 serial-impl/sbi serial-frame)
 PARENT_COMMIT_ID=$(git log -1 --pretty=%H | head -n 1)
 echo $PARENT_COMMIT_ID
 
@@ -20,11 +20,5 @@ echo $PARENT_COMMIT_ID
 # done
 
 for repo in ${REPOs[@]}; do
-    # cd $repo
-    # COMMIT_ID=$(git log -1 --pretty=%H | head -n 1)
-    # echo $COMMIT_ID
-    PWD=$(pwd)
-    cd $repo
-    sed -i "10c\ \tparent = $PARENT_COMMIT_ID" .gitrepo
-    cd $PWD
+    sed -i "10c\ \tparent = $PARENT_COMMIT_ID" $repo/.gitrepo
 done
