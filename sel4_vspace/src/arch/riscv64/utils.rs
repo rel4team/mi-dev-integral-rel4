@@ -70,4 +70,8 @@ impl PTE {
     pub fn get_ptr(&self) -> usize {
         self as *const Self as usize
     }
+	#[inline]
+	pub fn get_mut_ptr(&mut self) -> usize {
+        self as *mut Self as usize
+    }
 }
