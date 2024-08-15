@@ -2,7 +2,6 @@
 REPOs=(sel4_common sel4_task sel4_ipc sel4_vspace sel4_cspace kernel driver-collect serial-impl/pl011 serial-impl/sbi serial-frame)
 PARENT_COMMIT_ID=$(git log -1 --pretty=%H | head -n 1)
 echo $PARENT_COMMIT_ID
-cd ..
 
 # urls=("git@github.com:rel4team/sel4_common.git"
 #     "git@github.com:rel4team/sel4_task.git"
@@ -25,7 +24,7 @@ for repo in ${REPOs[@]}; do
     # COMMIT_ID=$(git log -1 --pretty=%H | head -n 1)
     # echo $COMMIT_ID
     PWD=$(pwd)
-    cd mi-dev-integral-rel4/$repo
+    cd $repo
     sed -i "10c\ \tparent = $PARENT_COMMIT_ID" .gitrepo
     cd $PWD
 done
