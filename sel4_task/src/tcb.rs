@@ -239,7 +239,7 @@ impl tcb_t {
                 convert_to_mut_type_ref::<tcb_t>(self.tcbSchedPrev).tcbSchedNext =
                     self.tcbSchedNext;
             } else {
-                queue.head = self.tcbSchedNext as *mut tcb_t as usize;
+                queue.head = self.tcbSchedNext;
                 if likely(self.tcbSchedNext == 0) {
                     removeFromBitmap(self.get_cpu(), dom, prio);
                 }
@@ -248,7 +248,7 @@ impl tcb_t {
                 convert_to_mut_type_ref::<tcb_t>(self.tcbSchedNext).tcbSchedPrev =
                     self.tcbSchedPrev;
             } else {
-                queue.tail = self.tcbSchedPrev as *mut tcb_t as usize;
+                queue.tail = self.tcbSchedPrev;
             }
             // unsafe { ksReadyQueues[idx] = queue; }
             self.tcbState.set_tcb_queued(0);
