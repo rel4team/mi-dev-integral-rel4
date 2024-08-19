@@ -18,6 +18,11 @@ use sel4_common::sel4_config::{
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
 use sel4_common::{BIT, MASK};
 
+#[cfg(target_arch = "aarch64")]
+use sel4_vspace::{
+    get_arm_global_user_vspace_base, kpptr_to_paddr, setCurrentUserVSpaceRoot, ttbr_new,
+};
+
 use crate::tcb::{set_thread_state, tcb_t};
 use crate::tcb_queue::tcb_queue_t;
 use crate::thread_state::ThreadState;
@@ -397,6 +402,15 @@ fn chooseThread() {
             assert_ne!(thread, 0);
             convert_to_mut_type_ref::<tcb_t>(thread).switch_to_this();
         } else {
+            #[cfg(target_arch = "aarch64")]
+            {
+                setCurrentUserVSpaceRoot(ttbr_new(
+                    0,
+                    kpptr_to_paddr(get_arm_global_user_vspace_base()),
+                ));
+                ksCurThread = ksIdleThread;
+            }
+            #[cfg(target_arch = "riscv64")]
             get_idle_thread().switch_to_this();
         }
     }
