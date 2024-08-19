@@ -57,7 +57,11 @@ pub const asidHighBits: usize = 7;
 pub const asidInvalid: usize = 0;
 pub const nASIDPools: usize = BIT!(asidHighBits);
 pub const ASID_BITS: usize = asidHighBits + asidLowBits;
+pub const seL4_ASIDPoolBits: usize = 12;
 pub const IT_ASID: usize = 1;
+
+// Cache relevant
+pub const L1_CACHE_LINE_SIZE_BITS: usize = 6;
 
 // scheduler relevant
 pub const CONFIG_NUM_DOMAINS: usize = 1;

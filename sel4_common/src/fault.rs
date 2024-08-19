@@ -47,7 +47,7 @@ plus_define_bitfield! {
 //       sel4_c_impl/include/arch/arm/arch/64/mode/object/structures.bf: VMFault
 #[cfg(target_arch = "aarch64")]
 plus_define_bitfield! {
-    seL4_Fault_t, 5, 0, 0, 4 => {
+    seL4_Fault_t, 2, 0, 0, 4 => {
         new_null_fault, seL4_Fault_NullFault => {},
         new_cap_fault, seL4_Fault_CapFault => {
             address, cap_fault_get_address, cap_fault_set_address, 1, 0, 64, 0, false,
