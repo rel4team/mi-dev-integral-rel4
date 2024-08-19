@@ -7,6 +7,6 @@
 	remote = git@github.com:rel4team/sel4_cspace.git
 	branch = mi_dev
 	commit = b21030fb8e8b54881876bd3dc0d4593bd3989cfc
- 	parent = 1f0b4f83eba4c9ddca028ad4a9ea1b035e86e895
+ 	parent = 16d8f49c1ac0843ed16203abbce212074b0887c6
 	method = merge
 	cmdver = 0.4.9

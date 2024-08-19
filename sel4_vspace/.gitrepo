@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:rel4team/sel4_vspace.git
 	branch = mi_dev
-	commit = 1d317b9eb6b16ff5edbe1f63dbb62f62a6b36c7a
- 	parent = 1f0b4f83eba4c9ddca028ad4a9ea1b035e86e895
+	commit = 6ae461aa46f1993aef20596dd1a68c8ced8310af
+ 	parent = 16d8f49c1ac0843ed16203abbce212074b0887c6
 	method = merge
 	cmdver = 0.4.9
