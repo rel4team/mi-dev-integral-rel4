@@ -13,7 +13,7 @@ members = [
     "serial-impl/sbi",
 ]
 [profile.release]
-lto = true
+# lto = true
 
 [patch.'https://github.com/rel4team/driver-collect.git']
 driver-collect = { path = "driver-collect" }
