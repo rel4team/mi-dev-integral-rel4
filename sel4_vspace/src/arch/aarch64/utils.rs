@@ -1,6 +1,7 @@
 use core::intrinsics::unlikely;
 
 use super::machine::mair_types;
+use super::pte::{pde_tag_t, pgde_tag_t, pude_tag_t};
 use super::structures::{
     lookupFrame_ret_t, lookupPDSlot_ret_t, lookupPGDSlot_ret_t, lookupPTSlot_ret_t,
     lookupPUDSlot_ret_t,
@@ -119,13 +120,13 @@ pub fn ap_from_vm_rights(rights: vm_rights_t) -> usize {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PGDE(pub usize);
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PUDE(pub usize);
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PDE(pub usize);
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -134,18 +135,6 @@ pub struct PTE(pub usize);
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct ASID(usize);
-
-#[allow(unused)]
-enum pude_tag_t {
-    pude_invalid = 0,
-    pude_1g = 1,
-    pude_pd = 3,
-}
-
-enum pde_tag_t {
-    pde_large = 1,
-    pde_small = 3,
-}
 
 /// Implemente generic function for given Ident
 #[macro_export]
@@ -235,18 +224,32 @@ impl_multi!(PGDE, PUDE, PDE, PTE {
     pub fn invalidate(&mut self) {
         self.0 = 0;
     }
-
-    #[inline]
-    pub fn new_invalid() -> Self {
-        Self::new_page(0, 0)
-    }
 });
 
 impl PGDE {
-
     #[inline]
     pub const fn invalid_new() -> Self {
         Self(0)
+    }
+
+    // static inline pgde_t CONST
+    // pgde_pgde_pud_new(uint64_t pud_base_address) {
+    //     pgde_t pgde;
+
+    //     /* fail if user has passed bits that we will override */
+    //     assert((pud_base_address & ~0xfffffffff000ull) == ((0 && (pud_base_address & (1ull << 47))) ? 0x0 : 0));
+    //     assert(((uint64_t)pgde_pgde_pud & ~0x3ull) == ((0 && ((uint64_t)pgde_pgde_pud & (1ull << 47))) ? 0x0 : 0));
+
+    //     pgde.words[0] = 0
+    //         | (pud_base_address & 0xfffffffff000ull) >> 0
+    //         | ((uint64_t)pgde_pgde_pud & 0x3ull) << 0;
+
+    //     return pgde;
+    // }
+
+    #[inline]
+    pub const fn pude_new(pud_base_address: usize) -> Self {
+        PGDE(pud_base_address & 0xfffffffff000 | pgde_tag_t::pgde_pud as usize)
     }
 
     #[inline]
@@ -414,7 +417,6 @@ impl PGDE {
 }
 
 impl PUDE {
-
     #[inline]
     pub const fn invalid_new() -> Self {
         Self(0)
@@ -443,6 +445,11 @@ impl PUDE {
     }
 
     #[inline]
+    pub const fn pd_new(pd_base_address: usize) -> Self {
+        Self((pd_base_address & 0xfffffffff000) | (pude_tag_t::pude_pd as usize & 0x3))
+    }
+
+    #[inline]
     pub const fn get_pude_type(&self) -> usize {
         self.0 & 0x3
     }
@@ -466,8 +473,6 @@ impl PUDE {
     pub fn get_pd_base_address(&self) -> usize {
         self.0 & 0xfffffffff000
     }
-
-
 
     #[inline]
     pub fn unmap_page_upper_directory(&self, asid: usize, vptr: vptr_t) {
@@ -523,6 +528,11 @@ impl PDE {
     #[inline]
     pub const fn new_small(pt_base_address: usize) -> Self {
         Self((pt_base_address & 0xfffffffff000) | (pde_tag_t::pde_small as usize & 0x3))
+    }
+
+    #[inline]
+    pub const fn new_invalid() -> Self {
+        Self(0)
     }
 
     #[inline]

@@ -3,7 +3,8 @@ use sel4_common::{
         config::{PADDR_BASE, PADDR_TOP, PPTR_BASE, PPTR_TOP},
         vm_rights_t,
     },
-    sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PT_INDEX_BITS},
+    ffi_call,
+    sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PUD_INDEX_BITS},
     utils::convert_to_mut_type_ref,
     BIT,
 };
@@ -11,10 +12,10 @@ use sel4_cspace::arch::cap_t;
 
 use crate::{
     arch::VAddr, asid_t, get_kernel_page_directory_base_by_index, get_kernel_page_table_base,
-    get_kernel_page_upper_directory_base, kpptr_to_paddr, pptr_t, pptr_to_paddr,
+    get_kernel_page_upper_directory_base, kpptr_to_paddr, mair_types, pptr_t, pptr_to_paddr,
     set_kernel_page_directory_by_index, set_kernel_page_global_directory_by_index,
     set_kernel_page_table_by_index, set_kernel_page_upper_directory_by_index, vm_attributes_t,
-    vptr_t, PTEFlags, GET_KPT_INDEX, GET_PT_INDEX, PDE, PGDE, PTE, PUDE,
+    vptr_t, GET_KPT_INDEX, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, PDE, PGDE, PTE, PUDE,
 };
 
 use super::page_slice;
@@ -26,34 +27,65 @@ enum find_type {
     PTE,
 }
 
-#[allow(unused)]
-/// TODO: Write the comments.
-pub(crate) enum mair_types {
-    DEVICE_nGnRnE = 0,
-    DEVICE_nGnRE = 1,
-    DEVICE_GRE = 2,
-    NORMAL_NC = 3,
-    NORMAL = 4,
-    NORMAL_WT = 5,
-}
-
 pub const RESERVED: usize = 3;
+
+// BOOT_CODE void map_kernel_window(void)
+// {
+
+//     paddr_t paddr;
+//     pptr_t vaddr;
+//     word_t idx;
+
+//     /* place the PUD into the PGD */
+//     armKSGlobalKernelPGD[GET_PGD_INDEX(PPTR_BASE)] = pgde_pgde_pud_new(
+//                                                          addrFromKPPtr(armKSGlobalKernelPUD));
+
+//     /* place all PDs except the last one in PUD */
+//     for (idx = GET_PUD_INDEX(PPTR_BASE); idx < GET_PUD_INDEX(PPTR_TOP); idx++) {
+//         armKSGlobalKernelPUD[idx] = pude_pude_pd_new(
+//                                         addrFromKPPtr(&armKSGlobalKernelPDs[idx][0])
+//                                     );
+//     }
+
+//     /* map the kernel window using large pages */
+//     vaddr = PPTR_BASE;
+//     for (paddr = PADDR_BASE; paddr < PADDR_TOP; paddr += BIT(seL4_LargePageBits)) {
+//         armKSGlobalKernelPDs[GET_PUD_INDEX(vaddr)][GET_PD_INDEX(vaddr)] = pde_pde_large_new(
+//                                                                               1, // UXN
+//                                                                               paddr,
+//                                                                               0,                        /* global */
+//                                                                               1,                        /* access flag */
+//                                                                               SMP_TERNARY(SMP_SHARE, 0),        /* Inner-shareable if SMP enabled, otherwise unshared */
+//                                                                               0,                        /* VMKernelOnly */
+//                                                                               NORMAL
+//                                                                           );
+//         vaddr += BIT(seL4_LargePageBits);
+//     }
+
+//     /* put the PD into the PUD for device window */
+//     armKSGlobalKernelPUD[GET_PUD_INDEX(PPTR_TOP)] = pude_pude_pd_new(
+//                                                         addrFromKPPtr(&armKSGlobalKernelPDs[BIT(PUD_INDEX_BITS) - 1][0])
+//                                                     );
+
+//     /* put the PT into the PD for device window */
+//     armKSGlobalKernelPDs[BIT(PUD_INDEX_BITS) - 1][BIT(PD_INDEX_BITS) - 1] = pde_pde_small_new(
+//                                                                                 addrFromKPPtr(armKSGlobalKernelPT)
+//                                                                             );
+// }
 
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn rust_map_kernel_window() {
     set_kernel_page_global_directory_by_index(
         GET_KPT_INDEX(PPTR_BASE, 0),
-        PTE::pte_next_table(kpptr_to_paddr(get_kernel_page_upper_directory_base()), true),
+        PGDE::pude_new(kpptr_to_paddr(get_kernel_page_upper_directory_base())),
     );
-    let mut idx = GET_KPT_INDEX(PPTR_BASE, 1);
-    while idx < GET_KPT_INDEX(PPTR_TOP, 1) {
+
+    let mut idx = GET_PUD_INDEX(PPTR_BASE);
+    while idx < GET_PUD_INDEX(PPTR_TOP) {
         set_kernel_page_upper_directory_by_index(
             idx,
-            PTE::pte_next_table(
-                kpptr_to_paddr(get_kernel_page_directory_base_by_index(idx)),
-                true,
-            ),
+            PUDE::pd_new(kpptr_to_paddr(get_kernel_page_directory_base_by_index(idx))),
         );
         idx += 1;
     }
@@ -61,31 +93,39 @@ pub fn rust_map_kernel_window() {
     let mut vaddr = PPTR_BASE;
     let mut paddr = PADDR_BASE;
     while paddr < PADDR_TOP {
-        let flag = PTEFlags::UXN | PTEFlags::AF | PTEFlags::NORMAL;
         set_kernel_page_directory_by_index(
-            GET_KPT_INDEX(vaddr, 1),
-            GET_KPT_INDEX(vaddr, 2),
-            PTE::new(paddr, flag),
+            GET_PUD_INDEX(vaddr),
+            GET_PD_INDEX(vaddr),
+            PDE::new_large(true, paddr, 0, 1, 0, 0, mair_types::NORMAL),
         );
 
         vaddr += BIT!(seL4_LargePageBits);
         paddr += BIT!(seL4_LargePageBits)
     }
 
+    //     /* put the PD into the PUD for device window */
+    //     armKSGlobalKernelPUD[GET_PUD_INDEX(PPTR_TOP)] = pude_pude_pd_new(
+    //                                                         addrFromKPPtr(&armKSGlobalKernelPDs[BIT(PUD_INDEX_BITS) - 1][0])
+    //                                                     );
+
+    //     /* put the PT into the PD for device window */
+    //     armKSGlobalKernelPDs[BIT(PUD_INDEX_BITS) - 1][BIT(PD_INDEX_BITS) - 1] = pde_pde_small_new(
+    //                                                                                 addrFromKPPtr(armKSGlobalKernelPT)
+    //
+
     set_kernel_page_upper_directory_by_index(
-        GET_KPT_INDEX(PPTR_TOP, 1),
-        PTE::pte_next_table(
-            kpptr_to_paddr(get_kernel_page_directory_base_by_index(
-                BIT!(PT_INDEX_BITS) - 1,
-            )),
-            true,
-        ),
+        GET_PUD_INDEX(PPTR_TOP),
+        PUDE::pd_new(kpptr_to_paddr(get_kernel_page_directory_base_by_index(
+            BIT!(PUD_INDEX_BITS) - 1,
+        ))),
     );
     set_kernel_page_directory_by_index(
-        BIT!(PT_INDEX_BITS) - 1,
-        BIT!(PT_INDEX_BITS) - 1,
-        PTE::pte_next_table(kpptr_to_paddr(get_kernel_page_table_base()), true),
+        BIT!(PUD_INDEX_BITS) - 1,
+        BIT!(PUD_INDEX_BITS) - 1,
+        PDE::new_small(kpptr_to_paddr(get_kernel_page_table_base())),
     );
+
+    ffi_call!(map_kernel_devices());
 }
 
 #[no_mangle]
