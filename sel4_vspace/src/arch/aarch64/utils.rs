@@ -1,10 +1,14 @@
+use core::intrinsics::unlikely;
+
 use super::machine::mair_types;
 use super::structures::{
     lookupFrame_ret_t, lookupPDSlot_ret_t, lookupPGDSlot_ret_t, lookupPTSlot_ret_t,
     lookupPUDSlot_ret_t,
 };
+use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
 use crate::vptr_t;
+use sel4_common::utils::convert_ref_type_to_usize;
 use sel4_common::{
     arch::{
         config::{KERNEL_ELF_BASE_OFFSET, PPTR_BASE_OFFSET},
@@ -116,10 +120,10 @@ pub fn ap_from_vm_rights(rights: vm_rights_t) -> usize {
 
 #[repr(C)]
 #[derive(Debug, Clone)]
-pub struct PGDE(usize);
+pub struct PGDE(pub usize);
 #[repr(C)]
 #[derive(Debug, Clone)]
-pub struct PUDE(usize);
+pub struct PUDE(pub usize);
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct PDE(pub usize);
@@ -177,10 +181,10 @@ impl_multi!(PGDE, PUDE, PDE, PTE {
         self as *const Self as usize
     }
 
-	#[inline]
-	pub fn get_mut_ptr(&mut self) -> usize {
-		self as *mut Self as usize
-	}
+    #[inline]
+    pub fn get_mut_ptr(&mut self) -> usize {
+        self as *mut Self as usize
+    }
 
     /// Get the next level paddr
     #[inline]
@@ -239,6 +243,12 @@ impl_multi!(PGDE, PUDE, PDE, PTE {
 });
 
 impl PGDE {
+
+    #[inline]
+    pub const fn invalid_new() -> Self {
+        Self(0)
+    }
+
     #[inline]
     pub const fn get_pgde_type(&self) -> usize {
         self.0 & 0x3
@@ -404,6 +414,12 @@ impl PGDE {
 }
 
 impl PUDE {
+
+    #[inline]
+    pub const fn invalid_new() -> Self {
+        Self(0)
+    }
+
     #[inline]
     pub const fn new_1g(
         uxn: bool,
@@ -449,6 +465,35 @@ impl PUDE {
     #[inline]
     pub fn get_pd_base_address(&self) -> usize {
         self.0 & 0xfffffffff000
+    }
+
+
+
+    #[inline]
+    pub fn unmap_page_upper_directory(&self, asid: usize, vptr: vptr_t) {
+        let find_ret = find_vspace_for_asid(asid);
+        if unlikely(find_ret.status != exception_t::EXCEPTION_NONE) {
+            return;
+        }
+
+        let pt = find_ret.vspace_root.unwrap();
+        if pt as usize == 0 {
+            return;
+        }
+
+        // TODO : below code will cause panic in sel4test end, unknown why
+        let lu_ret = unsafe { (*pt).lookup_pgd_slot(vptr) };
+        let pgdSlot = unsafe { &mut *lu_ret.pgdSlot };
+        if lu_ret.pgdSlot as usize != 0 {
+            if pgdSlot.get_present() && pgdSlot.get_pud_base_address() == pptr_to_paddr(self.0) {
+                *pgdSlot = PGDE::invalid_new();
+                clean_by_va_pou(
+                    convert_ref_type_to_usize(pgdSlot),
+                    pptr_to_paddr(convert_ref_type_to_usize(pgdSlot)),
+                );
+                invalidate_tlb_by_asid(asid);
+            }
+        }
     }
 }
 
@@ -505,6 +550,32 @@ impl PDE {
     #[inline]
     pub const fn get_pt_base_address(&self) -> usize {
         self.0 & 0xfffffffff000
+    }
+
+    #[inline]
+    pub fn unmap_page_directory(&self, asid: usize, vaddr: usize) {
+        let find_ret = find_vspace_for_asid(asid);
+        if find_ret.status != exception_t::EXCEPTION_NONE {
+            return;
+        }
+
+        // TODO: below code will cause sel4test end panic
+        let pt = unsafe { &mut *(find_ret.vspace_root.unwrap()) };
+        let lu_ret = pt.lookup_pud_slot(vaddr);
+        if lu_ret.status != exception_t::EXCEPTION_NONE {
+            return;
+        }
+
+        let pud = unsafe { &mut *lu_ret.pudSlot };
+
+        if pud.get_present() && pud.get_pd_base_address() == pptr_to_paddr(self.0) {
+            pud.invalidate();
+            clean_by_va_pou(
+                convert_ref_type_to_usize(pud),
+                pptr_to_paddr(convert_ref_type_to_usize(pud)),
+            );
+            invalidate_tlb_by_asid(asid);
+        }
     }
 }
 

@@ -51,11 +51,13 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
         vspace_root: None,
         lookup_fault: Some(lookup_fault_t::new_root_invalid()),
     };
-
     match find_map_for_asid(asid) {
         Some(asid_map) => {
-            ret.vspace_root = Some(asid_map.get_vspace_root() as *mut PGDE);
-            ret.status = exception_t::EXCEPTION_NONE;
+            // TODO : below code will cause sel4test driver assert failed
+            if asid_map.get_type() == asid_map_asid_map_vspace {
+                ret.vspace_root = Some(asid_map.get_vspace_root() as *mut PGDE);
+                ret.status = exception_t::EXCEPTION_NONE;
+            }
         }
         None => {}
     }
