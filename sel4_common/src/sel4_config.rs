@@ -117,3 +117,6 @@ pub const seL4_IPCBufferSizeBits: usize = 10;
 pub const CONFIG_RESET_CHUNK_BITS: usize = 8;
 
 pub const CONFIG_KERNEL_STACK_BITS: usize = 12;
+
+pub const ID_AA64PFR0_EL1_FP: u32 = 16;
+pub const ID_AA64PFR0_EL1_ASIMD: u32 = 20;

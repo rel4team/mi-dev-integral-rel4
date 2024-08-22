@@ -1,11 +1,11 @@
 use core::intrinsics::unlikely;
 use core::ops::{Deref, DerefMut};
 
-use super::machine::*;
+use super::{kpptr_to_paddr, machine::*};
 use crate::{
-    ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t, pptr_to_paddr, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE
+    ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t,
+    pptr_to_paddr, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
 };
-use sel4_common::arch::config::PPTR_BASE;
 use sel4_common::arch::MessageLabel;
 use sel4_common::sel4_config::{ARM_Large_Page, ARM_Small_Page};
 use sel4_common::structures::exception_t;
@@ -44,7 +44,8 @@ impl<T> DerefMut for PageAligned<T> {
 
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPGD: PageAligned<PTE> = PageAligned::new(PTE(0));
+pub(crate) static mut armKSGlobalKernelPGD: PageAligned<PGDE> =
+    PageAligned::new(PGDE::invalid_new());
 
 #[inline]
 pub fn get_kernel_page_global_directory_base() -> usize {
@@ -52,15 +53,16 @@ pub fn get_kernel_page_global_directory_base() -> usize {
 }
 
 #[inline]
-pub fn set_kernel_page_global_directory_by_index(idx: usize, pte: PTE) {
+pub fn set_kernel_page_global_directory_by_index(idx: usize, pgde: PGDE) {
     unsafe {
-        armKSGlobalKernelPGD[idx] = pte;
+        armKSGlobalKernelPGD[idx] = pgde;
     }
 }
 
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPUD: PageAligned<PTE> = PageAligned::new(PTE(0));
+pub(crate) static mut armKSGlobalKernelPUD: PageAligned<PUDE> =
+    PageAligned::new(PUDE::invalid_new());
 
 #[inline]
 pub fn get_kernel_page_upper_directory_base() -> usize {
@@ -68,9 +70,9 @@ pub fn get_kernel_page_upper_directory_base() -> usize {
 }
 
 #[inline]
-pub fn set_kernel_page_upper_directory_by_index(idx: usize, pte: PTE) {
+pub fn set_kernel_page_upper_directory_by_index(idx: usize, pude: PUDE) {
     unsafe {
-        armKSGlobalKernelPUD[idx] = pte;
+        armKSGlobalKernelPUD[idx] = pude;
     }
 }
 // #[no_mangle]
@@ -79,8 +81,8 @@ pub fn set_kernel_page_upper_directory_by_index(idx: usize, pte: PTE) {
 //     [[PTE(0); BIT!(PT_INDEX_BITS)]; BIT!(PT_INDEX_BITS)];
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPDs: PageAligned<PageAligned<PTE>> =
-    PageAligned::new(PageAligned::new(PTE(0)));
+pub(crate) static mut armKSGlobalKernelPDs: PageAligned<PageAligned<PDE>> =
+    PageAligned::new(PageAligned::new(PDE::new_invalid()));
 
 #[inline]
 pub fn get_kernel_page_directory_base_by_index(idx: usize) -> usize {
@@ -88,9 +90,9 @@ pub fn get_kernel_page_directory_base_by_index(idx: usize) -> usize {
 }
 
 #[inline]
-pub fn set_kernel_page_directory_by_index(idx1: usize, idx2: usize, pte: PTE) {
+pub fn set_kernel_page_directory_by_index(idx1: usize, idx2: usize, pde: PDE) {
     unsafe {
-        armKSGlobalKernelPDs[idx1][idx2] = pte;
+        armKSGlobalKernelPDs[idx1][idx2] = pde;
     }
 }
 
@@ -126,19 +128,18 @@ pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
     Ok(())
 }
 
-pub fn activate_kernel_window() {
-    todo!()
-}
-
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn activate_kernel_vspace() {
     clean_invalidate_l1_caches();
     setCurrentKernelVSpaceRoot(ttbr_new(
         0,
-        get_kernel_page_global_directory_base() - PPTR_BASE,
+        kpptr_to_paddr(get_kernel_page_global_directory_base()),
     ));
-    setCurrentUserVSpaceRoot(ttbr_new(0, get_arm_global_user_vspace_base() - PPTR_BASE));
+    setCurrentUserVSpaceRoot(ttbr_new(
+        0,
+        kpptr_to_paddr(get_arm_global_user_vspace_base()),
+    ));
     invalidate_local_tlb();
     /* A53 hardware does not support TLB locking */
 }
