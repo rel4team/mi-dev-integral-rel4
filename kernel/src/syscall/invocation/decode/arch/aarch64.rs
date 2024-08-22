@@ -5,6 +5,7 @@ use crate::syscall::invocation::decode::current_syscall_error;
 use crate::syscall::ThreadState;
 use crate::syscall::{current_lookup_fault, get_syscall_arg, set_thread_state, unlikely};
 use crate::syscall::{ensure_empty_slot, get_currenct_thread, lookup_slot_for_cnode_op};
+use crate::utils::clear_memory_pt;
 use log::debug;
 use sel4_common::arch::maskVMRights;
 use sel4_common::cap_rights::seL4_CapRights_t;
@@ -19,7 +20,8 @@ use sel4_common::sel4_config::{
     PD_INDEX_OFFSET,
 };
 use sel4_common::utils::{
-    convert_to_mut_type_ref, global_ops, pageBitsForSize, ptr_to_mut, ptr_to_ref, MAX_FREE_INDEX,
+    convert_ref_type_to_usize, convert_to_mut_type_ref, global_ops, pageBitsForSize, ptr_to_mut,
+    ptr_to_ref, MAX_FREE_INDEX,
 };
 use sel4_common::{
     arch::MessageLabel,
@@ -30,9 +32,9 @@ use sel4_common::{BIT, IS_ALIGNED};
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t, CapTag};
 
 use sel4_vspace::{
-    asid_map_t, asid_pool_t, asid_t, find_vspace_for_asid, get_asid_pool_by_index,
-    makeUser3rdLevel, make_user_1st_level, make_user_2nd_level, paddr_t, pptr_to_paddr,
-    set_asid_pool_by_index, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
+    asid_map_t, asid_pool_t, asid_t, clean_by_va_pou, doFlush, find_vspace_for_asid,
+    get_asid_pool_by_index, makeUser3rdLevel, make_user_1st_level, make_user_2nd_level,
+    pptr_to_paddr, set_asid_pool_by_index, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
 };
 
 use crate::syscall::invocation::invoke_mmu_op::{
@@ -90,9 +92,14 @@ fn decode_page_table_invocation(
     */
 
     if label == MessageLabel::ARMPageTableUnmap {
-        log::warn!("Need to check is FinalCapability here");
+        if unlikely(!cte.is_final_cap()) {
+            global_ops!(current_syscall_error._type = seL4_RevokeFirst);
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
+        // log::warn!("Need to check is FinalCapability here");
         get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
-        unimplemented!("performPageTableInvocationUnmap");
+        // unimplemented!("performPageTableInvocationUnmap");
+        return decode_page_table_unmap(cte);
     }
 
     if unlikely(label != MessageLabel::ARMPageTableMap) {
@@ -162,7 +169,11 @@ fn decode_page_table_invocation(
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
 
     *ptr_to_mut(pd_slot.pdSlot) = pde;
-    log::warn!("Need to clean D-Cache using cleanByVA_PoU");
+    // log::warn!("Need to clean D-Cache using cleanByVA_PoU");
+    clean_by_va_pou(
+        convert_ref_type_to_usize(ptr_to_mut(pd_slot.pdSlot)),
+        pptr_to_paddr(convert_ref_type_to_usize(ptr_to_mut(pd_slot.pdSlot))),
+    );
     exception_t::EXCEPTION_NONE
 }
 
@@ -212,15 +223,17 @@ fn decode_page_clean_invocation(
         global_ops!(current_syscall_error.invalidArgumentNumber = 0);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let _pstart = pptr_to_paddr(cte.cap.get_frame_base_ptr() + start);
+    let pstart = pptr_to_paddr(cte.cap.get_frame_base_ptr() + start);
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
 
     if start < end {
         let root_switched = set_vm_root_for_flush(find_ret.vspace_root.unwrap() as _, asid);
-        log::warn!(
-            "need to flush cache for decode_page_clean_invocation label: {:?}",
-            label
-        );
+        // log::warn!(
+        //     "need to flush cache for decode_page_clean_invocation label: {:?}",
+        //     label
+        // );
+
+        doFlush(label, start, end, pstart);
         if root_switched {
             get_currenct_thread()
                 .set_vm_root()
@@ -686,43 +699,33 @@ fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
     return invoke_page_table_unmap(cap);
 }
 
-// FIXED check pgd_is_mapped
-// vtable_root is pgd, not pd,
-// fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(PTE, usize)> {
-//     if lvl1pt_cap.get_cap_type() != CapTag::CapPageGlobalDirectoryCap
-//         || lvl1pt_cap.get_pgd_is_mapped() == asidInvalid
-//     {
-//         debug!("ARMMMUInvocation: Invalid top-level PageTable.");
-//         unsafe {
-//             current_syscall_error._type = seL4_InvalidCapability;
-//             current_syscall_error.invalidCapNumber = 1;
-//         }
-//         return None;
-//     }
+fn decode_upper_page_directory_unmap(ctSlot: &mut cte_t) -> exception_t {
+    let cap = &mut ctSlot.cap;
+    if cap.get_pud_is_mapped() != 0 {
+        let pud = &mut PUDE(cap.get_pud_base_ptr());
+        // TODO:: llh implement unmap_page_upper_directory as PUDE's method , but below two lines code both will cause sel4test end panic
+        pud.unmap_page_upper_directory(cap.get_pud_mapped_asid(), cap.get_pud_mapped_address());
+        // unmap_page_upper_directory(cap.get_pud_mapped_asid(), cap.get_pud_mapped_address(), pud);
+        clear_memory_pt(pud.self_addr() as *mut u8, cap.get_cap_size_bits());
+    }
+    cap.set_pud_is_mapped(0);
+    exception_t::EXCEPTION_NONE
+}
 
-//     let lvl1pt = lvl1pt_cap.get_pgd_base_ptr();
-//     let asid = lvl1pt_cap.get_pgd_mapped_asid();
-//     let find_ret = find_vspace_for_asid(asid);
-//     if find_ret.status != exception_t::EXCEPTION_NONE {
-//         debug!("ARMMMUInvocation: ASID lookup failed1");
-//         unsafe {
-//             current_lookup_fault = find_ret.lookup_fault.unwrap();
-//             current_syscall_error._type = seL4_FailedLookup;
-//             current_syscall_error.failedLookupWasSource = 0;
-//         }
-//         return None;
-//     }
 
-//     if find_ret.vspace_root.unwrap() as usize != lvl1pt {
-//         debug!("ARMMMUInvocation: ASID lookup failed");
-//         unsafe {
-//             current_syscall_error._type = seL4_InvalidCapability;
-//             current_syscall_error.invalidCapNumber = 1;
-//         }
-//         return None;
-//     }
-//     Some((PTE(lvl1pt), asid))
-// }
+fn decode_page_directory_unmap(ctSlot: &mut cte_t) -> exception_t {
+    let cap = &mut ctSlot.cap;
+    if cap.get_pd_is_mapped() != 0 {
+        let pd = &mut PDE(cap.get_pud_base_ptr());
+        // clear_memory(ptr, bits);
+        // TODO:: llh implement unmap_page_upper_directory as PUDE's method , but below two lines code both will cause sel4test end panic
+        pd.unmap_page_directory(cap.get_pd_mapped_asid(), cap.get_pd_mapped_address());
+        // unmap_page_directory(cap.get_pd_mapped_asid(), cap.get_pd_mapped_address(), pd);
+        clear_memory_pt(pd.self_addr() as *mut u8, cap.get_cap_size_bits());
+    }
+    cap.set_pud_is_mapped(0);
+    exception_t::EXCEPTION_NONE
+}
 
 fn decode_vspace_root_invocation(
     label: MessageLabel,
@@ -808,7 +811,7 @@ fn decode_vspace_root_invocation(
                 asid,
                 start,
                 end,
-                paddr_t::from(pstart),
+                pstart,
             );
         }
         _ => {
@@ -824,18 +827,19 @@ fn decode_vspace_flush_invocation(
     asid: asid_t,
     start: vptr_t,
     end: vptr_t,
-    _pstart: paddr_t,
+    pstart: usize,
 ) -> exception_t {
     if start < end {
-        let _root_switched = set_vm_root_for_flush(vspace, asid);
-        log::warn!(
-            "need to flush cache for decode_page_clean_invocation label: {:?}",
-            label
-        );
-        todo!();
-        // if root_switched {
-        // 	set_vm_root(vspace);
-        // }
+        let root_switched = set_vm_root_for_flush(vspace, asid);
+        // log::warn!(
+        //     "need to flush cache for decode_page_clean_invocation label: {:?}",
+        //     label
+        // );
+        doFlush(label, start, end, pstart);
+        // todo!();
+        if root_switched {
+            let _ = get_currenct_thread().set_vm_root();
+        }
     }
     exception_t::EXCEPTION_NONE
 }
@@ -859,9 +863,14 @@ fn decode_page_upper_directory_invocation(
         }
     */
     if label == MessageLabel::ARMPageUpperDirectoryUnmap {
-        log::warn!("Need to check is FinalCapability here");
+        // log::warn!("Need to check is FinalCapability here");
+        if unlikely(!cte.is_final_cap()) {
+            global_ops!(current_syscall_error._type = seL4_RevokeFirst);
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
         get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
-        unimplemented!("performUpperPageDirectoryInvocationUnmap");
+        // unimplemented!("performUpperPageDirectoryInvocationUnmap");
+        return decode_upper_page_directory_unmap(cte);
     }
 
     // Return SYSCALL_ERROR if message is not ARMPageUpperDirectoryUnmap
@@ -927,7 +936,10 @@ fn decode_page_upper_directory_invocation(
 
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
     *ptr_to_mut(pgd_slot.pgdSlot) = pgde;
-    log::warn!("Need to clean D-Cache using cleanByVA_PoU");
+    clean_by_va_pou(
+        convert_ref_type_to_usize(ptr_to_mut(pgd_slot.pgdSlot)),
+        pptr_to_paddr(convert_ref_type_to_usize(ptr_to_mut(pgd_slot.pgdSlot))),
+    );
     exception_t::EXCEPTION_NONE
 }
 fn decode_page_directory_invocation(
@@ -948,10 +960,16 @@ fn decode_page_directory_invocation(
     */
     // Call performPageDirectoryInvocationUnmap if message is unmap
     if label == MessageLabel::ARMPageDirectoryUnmap {
-        log::warn!("Need to check is FinalCapability here");
+        // log::warn!("Need to check is FinalCapability here");
+        if unlikely(!cte.is_final_cap()) {
+            global_ops!(current_syscall_error._type = seL4_RevokeFirst);
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
         get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
-        unimplemented!("performPageDirectoryInvocationUnmap");
+        // unimplemented!("performPageDirectoryInvocationUnmap");
+        return decode_page_directory_unmap(cte);
     }
+
     // Return SYSCALL_ERROR if message is not ARMPageDirectoryUnmap
     if unlikely(label != MessageLabel::ARMPageDirectoryMap) {
         global_ops!(current_syscall_error._type = seL4_IllegalOperation);
@@ -1019,7 +1037,11 @@ fn decode_page_directory_invocation(
     cte.cap.set_pd_mapped_address(vaddr);
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
     *ptr_to_mut(pud_slot.pudSlot) = pude;
-    log::warn!("Need to clean D-Cache using cleanByVA_PoU");
+    // log::warn!("Need to clean D-Cache using cleanByVA_PoU");
+    clean_by_va_pou(
+        convert_ref_type_to_usize(ptr_to_mut(pud_slot.pudSlot)),
+        pptr_to_paddr(convert_ref_type_to_usize(ptr_to_mut(pud_slot.pudSlot))),
+    );
     exception_t::EXCEPTION_NONE
 }
 
