@@ -243,7 +243,6 @@ impl_multi!(PGDE, PUDE, PDE, PTE {
 });
 
 impl PGDE {
-
     #[inline]
     pub const fn invalid_new() -> Self {
         Self(0)
@@ -414,7 +413,6 @@ impl PGDE {
 }
 
 impl PUDE {
-
     #[inline]
     pub const fn invalid_new() -> Self {
         Self(0)
@@ -466,8 +464,6 @@ impl PUDE {
     pub fn get_pd_base_address(&self) -> usize {
         self.0 & 0xfffffffff000
     }
-
-
 
     #[inline]
     pub fn unmap_page_upper_directory(&self, asid: usize, vptr: vptr_t) {

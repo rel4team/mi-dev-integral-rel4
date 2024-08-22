@@ -3,7 +3,8 @@ use core::ops::{Deref, DerefMut};
 
 use super::machine::*;
 use crate::{
-    ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t, pptr_to_paddr, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE
+    ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t,
+    pptr_to_paddr, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
 };
 use sel4_common::arch::config::PPTR_BASE;
 use sel4_common::arch::MessageLabel;
