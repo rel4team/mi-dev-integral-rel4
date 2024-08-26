@@ -29,7 +29,13 @@ impl VMPageSize {
 }
 
 #[allow(unused)]
-enum pte_tag_t {
+pub enum pgde_tag_t {
+    pgde_invalid = 0,
+    pgde_pud = 3,
+}
+
+#[allow(unused)]
+pub enum pte_tag_t {
     pte_table = 3,
     pte_page = 1,
     pte_4k_page = 7,
@@ -37,14 +43,14 @@ enum pte_tag_t {
 }
 
 #[allow(unused)]
-enum pude_tag_t {
+pub enum pude_tag_t {
     pude_invalid = 0,
     pude_1g = 1,
     pude_pd = 3,
 }
 
 #[allow(unused)]
-enum pde_tag_t {
+pub enum pde_tag_t {
     pde_large = 1,
     pde_small = 3,
 }

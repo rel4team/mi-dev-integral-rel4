@@ -25,6 +25,5 @@ Cargo.lock
 #/target
 /Cargo.lock
 
-docs/
 
 *.log
