@@ -3,9 +3,6 @@ use crate::{
     config::seL4_MsgLengthBits,
     syscall::{slowpath, SysCall, SysReplyRecv},
 };
-// #[cfg(target_arch="riscv64")]
-// use crate::ffi::fastpath_restore;
-use core::arch::asm;
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
 use sel4_common::{
@@ -136,7 +133,8 @@ pub fn fastpath_copy_mrs(length: usize, src: &mut tcb_t, dest: &mut tcb_t) {
 #[inline]
 #[no_mangle]
 #[cfg(target_arch = "aarch64")]
-pub fn fastpath_restore(badge: usize, msgInfo: usize, cur_thread: *mut tcb_t) {
+pub fn fastpath_restore(_badge: usize, _msgInfo: usize, cur_thread: *mut tcb_t) {
+	use core::arch::asm;
     unsafe {
         (*cur_thread).tcbArch.load_thread_local();
         asm!(
@@ -179,15 +177,14 @@ pub fn fastpath_restore(badge: usize, msgInfo: usize, cur_thread: *mut tcb_t) {
 #[inline]
 #[no_mangle]
 #[cfg(target_arch = "riscv64")]
-pub fn fastpath_restore(badge: usize, msgInfo: usize, cur_thread: *mut tcb_t) {
+pub fn fastpath_restore(_badge: usize, _msgInfo: usize, cur_thread: *mut tcb_t) {
     #[cfg(feature = "ENABLE_SMP")]
     {}
 	extern "C" {
 		pub fn __fastpath_restore(badge: usize, msgInfo: usize, cur_thread_reg: usize);
 	}
-	include_str!("./fastpath_restore.S");
 	unsafe {
-		__fastpath_restore(badge,msgInfo,(*cur_thread).tcbArch.raw_ptr());
+		__fastpath_restore(_badge,_msgInfo,(*cur_thread).tcbArch.raw_ptr());
 	}
 	panic!("unreachable")
 }
@@ -265,9 +262,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     info.set_caps_unwrapped(0);
     let msgInfo1 = info.to_word();
     let badge = ep_cap.get_ep_badge();
-    unsafe {
-        fastpath_restore(badge, msgInfo1, get_currenct_thread());
-    }
+	fastpath_restore(badge, msgInfo1, get_currenct_thread());
 }
 
 #[inline]
@@ -348,7 +343,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         EPState_Recv,
     );
 
-    unsafe {
+    // unsafe {
         let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_prev());
         mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
         caller_slot.cap = cap_t::new_null_cap();
@@ -362,5 +357,5 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         info.set_caps_unwrapped(0);
         let msg_info1 = info.to_word();
         fastpath_restore(0, msg_info1, get_currenct_thread() as *mut tcb_t);
-    }
+    // }
 }
