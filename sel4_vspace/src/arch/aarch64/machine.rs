@@ -66,7 +66,6 @@ pub fn invalidate_local_tlb_va_asid(mva_plus_asid: usize) {
     isb();
 }
 
-
 #[inline(always)]
 pub fn clean_by_va_pou(vaddr: usize, _paddr: usize) {
     unsafe {
@@ -150,7 +149,6 @@ pub fn clean_cache_range_poc(start: usize, end: usize, pstart: usize) {
         clean_by_va(line, pstart + line - start);
     }
 }
-
 
 #[inline]
 pub fn clean_cache_range_pou(start: usize, end: usize, pstart: usize) {
