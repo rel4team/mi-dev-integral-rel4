@@ -1,5 +1,3 @@
-use sel4_task::tcb_t;
-
 extern "C" {
     // #[cfg(target_arch = "aarch64")]
     // pub fn kernel_stack_alloc();
