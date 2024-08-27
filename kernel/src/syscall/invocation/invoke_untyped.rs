@@ -48,7 +48,7 @@ fn create_object(
             tcb.init();
             tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
             tcb.domain = get_current_domain();
-			// #[cfg(feature="DEBUG_BUILD")]
+            // #[cfg(feature="DEBUG_BUILD")]
             // unsafe {
             //     tcbDebugAppend(tcb as *mut tcb_t);
             // }
@@ -90,7 +90,7 @@ fn create_object(
             tcb.init();
             tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
             tcb.domain = get_current_domain();
-			// #[cfg(feature="DEBUG_BUILD")]
+            // #[cfg(feature="DEBUG_BUILD")]
             // unsafe {
             //     tcbDebugAppend(tcb as *mut tcb_t);
             // }

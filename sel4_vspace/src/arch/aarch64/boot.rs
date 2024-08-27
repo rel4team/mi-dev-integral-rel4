@@ -3,7 +3,6 @@ use sel4_common::{
         config::{PADDR_BASE, PADDR_TOP, PPTR_BASE, PPTR_TOP},
         vm_rights_t,
     },
-    ffi_call,
     sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PUD_INDEX_BITS},
     utils::convert_to_mut_type_ref,
     BIT,
@@ -124,7 +123,7 @@ pub fn rust_map_kernel_window() {
         BIT!(PUD_INDEX_BITS) - 1,
         PDE::new_small(kpptr_to_paddr(get_kernel_page_table_base())),
     );
-	map_kernel_devices();
+    map_kernel_devices();
     // ffi_call!(map_kernel_devices());
 }
 
