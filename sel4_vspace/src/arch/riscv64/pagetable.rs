@@ -14,7 +14,7 @@ use sel4_common::{
 };
 
 use super::{
-    kpptr_to_paddr, setVSpaceRoot,
+    kpptr_to_paddr, map_kernel_devices, setVSpaceRoot,
     utils::{RISCV_GET_LVL_PGSIZE_BITS, RISCV_GET_PT_INDEX},
     RISCV_GET_LVL_PGSIZE,
 };
@@ -127,6 +127,7 @@ pub fn rust_map_kernel_window() {
         paddr += RISCV_GET_LVL_PGSIZE(1);
         index += 1;
     }
+    map_kernel_devices();
 }
 
 /// 激活内核页表，将`satp`的值设置为内核页表根页表地址
