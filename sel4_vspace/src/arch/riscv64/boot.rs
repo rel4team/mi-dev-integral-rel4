@@ -1,11 +1,29 @@
+use super::{device::KDEV_BASE, utils::RISCV_GET_LVL_PGSIZE_BITS};
+use crate::arch::riscv64::pagetable::{KERNEL_LEVEL2_PAGE_TABLE, KERNEL_ROOT_PAGE_TABLE};
+use crate::{pptr_t, pptr_to_paddr, sfence, PTEFlags, PTE, RISCV_GET_PT_INDEX};
 use sel4_common::{
     arch::vm_rights_t,
     sel4_config::{seL4_PageBits, RISCVMegaPageBits, RISCVPageBits},
     utils::convert_to_mut_type_ref,
+    ROUND_DOWN,
 };
 use sel4_cspace::arch::cap_t;
 
-use crate::{pptr_t, pptr_to_paddr, sfence, PTEFlags, PTE};
+#[no_mangle]
+#[link_section = ".boot.text"]
+pub fn map_kernel_frame(paddr: usize, vaddr: usize, _vm_rights: vm_rights_t) {
+    if vaddr >= KDEV_BASE {
+        let paddr = ROUND_DOWN!(paddr, RISCV_GET_LVL_PGSIZE_BITS(1));
+        unsafe {
+            KERNEL_LEVEL2_PAGE_TABLE.map_next_table(RISCV_GET_PT_INDEX(vaddr, 0), paddr, true);
+        }
+    } else {
+        let paddr = ROUND_DOWN!(paddr, RISCV_GET_LVL_PGSIZE_BITS(0));
+        unsafe {
+            KERNEL_ROOT_PAGE_TABLE.map_next_table(RISCV_GET_PT_INDEX(vaddr, 0), paddr, true);
+        }
+    }
+}
 
 #[no_mangle]
 #[link_section = ".boot.text"]

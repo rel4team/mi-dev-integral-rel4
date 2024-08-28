@@ -1,5 +1,6 @@
 mod asid;
 mod boot;
+mod device;
 mod interface;
 mod machine;
 mod pagetable;
@@ -8,6 +9,7 @@ mod structures;
 mod utils;
 pub use asid::*;
 pub use boot::*;
+pub use device::*;
 pub use interface::*;
 pub use machine::*;
 pub use pagetable::create_it_pud_cap;
