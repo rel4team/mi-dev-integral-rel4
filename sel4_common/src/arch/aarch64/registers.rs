@@ -1,7 +1,7 @@
 use crate::arch::ArchReg;
 
 //     X0                          = 0,    /* 0x00 */
-pub(super) const capRegister: usize = 0;
+pub const capRegister: usize = 0;
 pub(super) const badgeRegister: usize = 0;
 //     X1                          = 1,    /* 0x08 */
 pub(super) const msgInfoRegister: usize = 1;

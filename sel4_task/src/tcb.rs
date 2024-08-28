@@ -784,6 +784,8 @@ impl tcb_t {
         self.tcbState.set_ts_type(state as usize);
         schedule_tcb(self);
     }
+    pub fn DebugAppend(&mut self) {}
+    pub fn DebugRemove(&mut self) {}
 }
 
 #[inline]
