@@ -15,8 +15,8 @@ use aarch64_cpu::registers::Readable;
 use aarch64_cpu::registers::TTBR0_EL1;
 use log::debug;
 use sel4_common::arch::ArchReg::*;
+use sel4_common::print;
 use sel4_common::fault::seL4_Fault_t;
-use sel4_common::println;
 use sel4_common::sel4_config::seL4_MsgMaxLength;
 use sel4_common::structures::exception_t;
 use sel4_common::utils::global_read;
@@ -27,25 +27,28 @@ use super::instruction::*;
 
 #[no_mangle]
 pub fn handleUnknownSyscall(w: isize) -> exception_t {
+	let thread = get_currenct_thread();
     if w == SysDebugPutChar {
-        // println!("debug put char");
+		print!("{}",thread.tcbArch.get_register(Cap) as u8 as char);
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugDumpScheduler {
-        println!("debug dump scheduler");
+		// unimplement debug
+        // println!("debug dump scheduler");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugHalt {
-        println!("debug halt");
+		// unimplement debug
+        // println!("debug halt");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugSnapshot {
-        println!("debug snapshot");
+		// unimplement debug
+        // println!("debug snapshot");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugCapIdentify {
         // println!("debug cap identify");
-        let thread = get_currenct_thread();
         let cptr = thread.tcbArch.get_register(Cap);
         let lu_ret = lookupCapAndSlot(thread, cptr);
         let cap_type = lu_ret.cap.get_cap_type();
@@ -53,9 +56,7 @@ pub fn handleUnknownSyscall(w: isize) -> exception_t {
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugNameThread {
-        println!("debug name thread");
-
-        let thread = get_currenct_thread();
+        // println!("debug name thread");
         let cptr = thread.tcbArch.get_register(Cap);
         let lu_ret = lookupCapAndSlot(thread, cptr);
         let cap_type = lu_ret.cap.get_cap_type();
@@ -76,8 +77,7 @@ pub fn handleUnknownSyscall(w: isize) -> exception_t {
             halt();
         }
 
-        //         setThreadName(TCB_PTR(cap_thread_cap_get_capTCBPtr(lu_ret.cap)), name);
-        //         // printf("hello SysDebugNameThread, name: %s\n", name);
+        // setThreadName(TCB_PTR(cap_thread_cap_get_capTCBPtr(lu_ret.cap)), name);
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysGetClock {

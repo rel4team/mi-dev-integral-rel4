@@ -13,31 +13,35 @@ use crate::syscall::{
 use log::debug;
 use sel4_common::arch::ArchReg::*;
 use sel4_common::fault::seL4_Fault_t;
-use sel4_common::println;
 use sel4_common::sel4_config::seL4_MsgMaxLength;
 use sel4_common::structures::exception_t;
 use sel4_cspace::arch::CapTag;
+use sel4_common::print;
 use sel4_task::{activateThread, get_currenct_thread, schedule};
 
 #[no_mangle]
 pub fn handleUnknownSyscall(w: isize) -> exception_t {
+	let thread = get_currenct_thread();
     if w == SysDebugPutChar {
+		print!("{}",thread.tcbArch.get_register(Cap) as u8 as char);
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugDumpScheduler {
-        println!("debug dump scheduler");
+		// unimplement debug
+        // println!("debug dump scheduler");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugHalt {
-        println!("debug halt");
+		// unimplement debug
+        // println!("debug halt");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugSnapshot {
-        println!("debug snap shot");
+		// unimplement debug
+        // println!("debug snap shot");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugCapIdentify {
-        let thread = get_currenct_thread();
         let cptr = thread.tcbArch.get_register(Cap);
         let lu_ret = lookupCapAndSlot(thread, cptr);
         let cap_type = lu_ret.cap.get_cap_type();
@@ -45,33 +49,31 @@ pub fn handleUnknownSyscall(w: isize) -> exception_t {
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugNameThread {
-        println!("debug name thread");
-        let thread = get_currenct_thread();
         let cptr = thread.tcbArch.get_register(Cap);
         let lu_ret = lookupCapAndSlot(thread, cptr);
         let cap_type = lu_ret.cap.get_cap_type();
 
         if cap_type != CapTag::CapThreadCap {
-            println!("SysDebugNameThread: cap is not a TCB, halting");
+            debug!("SysDebugNameThread: cap is not a TCB, halting");
             halt();
         }
         let name = lookupIPCBuffer(true, thread) + 1;
         if name == 0 {
-            println!("SysDebugNameThread: Failed to lookup IPC buffer, halting");
+            debug!("SysDebugNameThread: Failed to lookup IPC buffer, halting");
             halt();
         }
 
         let len = strnlen(name as *const u8, seL4_MsgMaxLength * 8);
         if len == seL4_MsgMaxLength * 8 {
-            println!("SysDebugNameThread: Name too long, halting");
+            debug!("SysDebugNameThread: Name too long, halting");
             halt();
         }
-
+		
+        // setThreadName(TCB_PTR(cap_thread_cap_get_capTCBPtr(lu_ret.cap)), name);
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysGetClock {
         let current = read_time();
-        let thread = get_currenct_thread();
         thread.tcbArch.set_register(Cap, current);
         return exception_t::EXCEPTION_NONE;
     }
