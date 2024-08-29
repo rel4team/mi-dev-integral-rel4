@@ -7,7 +7,7 @@ use sel4_common::{
 };
 use sel4_cspace::arch::cap_t;
 
-use crate::{asid_map_t, asid_pool_t, asid_t, findVSpaceForASID_ret, set_vm_root, PGDE, PTE};
+use crate::{asid_map_t, asid_pool_t, asid_t, findVSpaceForASID_ret, set_vm_root, PGDE};
 
 use super::asid_pool_from_addr;
 use super::machine::invalidate_local_tlb_asid;
@@ -53,7 +53,6 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
     };
     match find_map_for_asid(asid) {
         Some(asid_map) => {
-            // TODO : below code will cause sel4test driver assert failed
             if asid_map.get_type() == asid_map_asid_map_vspace {
                 ret.vspace_root = Some(asid_map.get_vspace_root() as *mut PGDE);
                 ret.status = exception_t::EXCEPTION_NONE;
@@ -65,7 +64,7 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
 }
 
 #[no_mangle]
-pub fn delete_asid(asid: usize, vspace: *mut PTE, cap: &cap_t) -> Result<(), lookup_fault_t> {
+pub fn delete_asid(asid: usize, vspace: *mut PGDE, cap: &cap_t) -> Result<(), lookup_fault_t> {
     let ptr = convert_to_option_mut_type_ref::<asid_pool_t>(get_asid_table()[asid >> asidLowBits]);
     if let Some(pool) = ptr {
         let asid_map: asid_map_t = pool[asid & MASK!(asidLowBits)];

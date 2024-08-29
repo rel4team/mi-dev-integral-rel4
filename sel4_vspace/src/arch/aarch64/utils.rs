@@ -290,7 +290,7 @@ impl PGDE {
             }
         }
         let ptIndex = GET_PT_INDEX(vptr);
-        let pt = unsafe { paddr_to_pptr((*pdSlot.pdSlot).get_pt_base_address()) as *mut PTE };
+        let pt = unsafe { paddr_to_pptr((*pdSlot.pdSlot).get_base_address()) as *mut PTE };
 
         let ret = lookupPTSlot_ret_t {
             status: exception_t::EXCEPTION_NONE,
@@ -387,9 +387,6 @@ impl PGDE {
                     return ret;
                 }
                 pude_tag_t::pude_pd => {
-                    // TODO: check if below code from sel4 is work
-                    //         pde_t *pd = paddr_to_pptr(pude_pude_pd_ptr_get_pd_base_address(pudSlot.pudSlot));
-                    //         pde_t *pdSlot = pd + GET_PD_INDEX(vptr);
                     let pdSlot: &PDE = pudSlot.next_level_slice()[GET_PD_INDEX(vptr)];
 
                     if pdSlot.get_type() == pde_tag_t::pde_large as usize {
@@ -486,7 +483,6 @@ impl PUDE {
             return;
         }
 
-        // TODO : below code will cause panic in sel4test end, unknown why
         let lu_ret = unsafe { (*pt).lookup_pgd_slot(vptr) };
         let pgdSlot = unsafe { &mut *lu_ret.pgdSlot };
         if lu_ret.pgdSlot as usize != 0 {
@@ -556,9 +552,8 @@ impl PDE {
         self.0 & 0xffffffe00000
     }
 
-    // TODO: Rename get_pt_base_address to get_base_address
     #[inline]
-    pub const fn get_pt_base_address(&self) -> usize {
+    pub const fn get_base_address(&self) -> usize {
         self.0 & 0xfffffffff000
     }
 
@@ -569,7 +564,6 @@ impl PDE {
             return;
         }
 
-        // TODO: below code will cause sel4test end panic
         let pt = unsafe { &mut *(find_ret.vspace_root.unwrap()) };
         let lu_ret = pt.lookup_pud_slot(vaddr);
         if lu_ret.status != exception_t::EXCEPTION_NONE {
@@ -595,9 +589,8 @@ impl PTE {
         self.0 & 0x3
     }
 
-    // TODO: Rename to is_present()
     #[inline]
-    pub const fn pte_ptr_get_present(&self) -> bool {
+    pub const fn is_present(&self) -> bool {
         self.get_reserved() == 0x3
     }
 

@@ -262,7 +262,7 @@ pub fn page_table_mapped(asid: asid_t, vaddr: vptr_t, pt: &PTE) -> Option<*mut P
 
             let slot = unsafe { &mut (*lookup_ret.pdSlot) };
 
-            if !slot.get_present() || slot.get_pt_base_address() != pptr_to_paddr(pt.0) {
+            if !slot.get_present() || slot.get_base_address() != pptr_to_paddr(pt.0) {
                 return None;
             }
 
@@ -339,7 +339,7 @@ pub fn unmapPage(
                 return Ok(());
             }
             let pte = ptr_to_mut(lu_ret.ptSlot);
-            if pte.pte_ptr_get_present() && pte.pte_ptr_get_page_base_address() == addr {
+            if pte.is_present() && pte.pte_ptr_get_page_base_address() == addr {
                 *pte = PTE(0);
                 // TODO: Use Clean By VA instead of this line.
                 unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
@@ -359,8 +359,7 @@ pub fn unmapPage(
                 return Ok(());
             }
             let pde = ptr_to_mut(lu_ret.pdSlot);
-            // TODO: Rename get_pt_base_address to get_base_address
-            if pde.get_present() && pde.get_pt_base_address() == addr {
+            if pde.get_present() && pde.get_base_address() == addr {
                 *pde = PDE(0);
                 // TODO: Use Clean By VA instead of this line.
                 unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };

@@ -154,7 +154,6 @@ pub fn clean_cache_range_poc(start: usize, end: usize, pstart: usize) {
 pub fn clean_cache_range_pou(start: usize, end: usize, pstart: usize) {
     for idx in LINE_INDEX(start)..LINE_INDEX(end) + 1 {
         let line = idx << L1_CACHE_LINE_SIZE_BITS;
-        // TODO: below code will cause assert fail in sel4test-drivers
         clean_by_va_pou(line, pstart + line - start);
     }
 }

@@ -85,25 +85,10 @@ fn psci_call(func: u32, arg0: usize, arg1: usize, arg2: usize) -> Result<(), Psc
     }
 }
 
-pub fn set_timer(timer: usize) {
-    todo!("set_timer")
-}
-
-pub fn clear_ipi() {
-    todo!("clear_ipi")
-}
 pub fn shutdown() -> ! {
     log::info!("Shutting down...");
     psci_call(PSCI_0_2_FN_SYSTEM_OFF, 0, 0, 0).ok();
     panic!("It should shutdown!");
-}
-
-pub fn sys_write(fd: usize, buffer: &[u8]) {
-    todo!("sys_write");
-}
-
-pub fn remote_sfence_vma(hart_mask: usize, start: usize, size: usize) {
-    todo!("remote_sfence_vma");
 }
 
 pub fn get_time() -> usize {
