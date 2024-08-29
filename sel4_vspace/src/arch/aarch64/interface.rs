@@ -341,9 +341,7 @@ pub fn unmapPage(
             let pte = ptr_to_mut(lu_ret.ptSlot);
             if pte.is_present() && pte.pte_ptr_get_page_base_address() == addr {
                 *pte = PTE(0);
-                // TODO: Use Clean By VA instead of this line.
                 unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
-                // log::warn!("Need to clean D-Cache using cleanByVA_PoU");
                 clean_by_va_pou(
                     convert_ref_type_to_usize(pte),
                     paddr_to_pptr(convert_ref_type_to_usize(pte)),
@@ -361,9 +359,7 @@ pub fn unmapPage(
             let pde = ptr_to_mut(lu_ret.pdSlot);
             if pde.get_present() && pde.get_base_address() == addr {
                 *pde = PDE(0);
-                // TODO: Use Clean By VA instead of this line.
                 unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
-                // log::warn!("Need to clean D-Cache using cleanByVA_PoU");
                 clean_by_va_pou(
                     convert_ref_type_to_usize(pde),
                     paddr_to_pptr(convert_ref_type_to_usize(pde)),
