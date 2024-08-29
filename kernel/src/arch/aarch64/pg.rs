@@ -32,21 +32,21 @@ struct lookupPUDSlot_ret_t {
 extern "C" fn lookupPGDSlot(_vspace: *mut PTE, _vptr: vptr_t) -> lookupPGDSlot_ret_t {
     // which is realized under sel4_vspace/src/arch/aarch64/pte.rs as a member function of PTE in this commit
     // ZhiyuanSue
-    todo!("lookupPGDSlot")
+    unimplemented!("lookupPGDSlot")
 }
 
 #[no_mangle]
 extern "C" fn lookupPDSlot(_vspace: *mut PTE, _vptr: vptr_t) -> lookupPDSlot_ret_t {
     // which is realized under sel4_vspace/src/arch/aarch64/pte.rs as a member function of PTE in this commit
     // ZhiyuanSue
-    todo!("lookupPDSlot")
+    unimplemented!("lookupPDSlot")
 }
 
 #[no_mangle]
 extern "C" fn lookupPUDSlot(_vspace: *mut PTE, _vptr: vptr_t) -> lookupPUDSlot_ret_t {
     // which is realized under sel4_vspace/src/arch/aarch64/pte.rs as a member function of PTE in this commit
     // ZhiyuanSue
-    todo!("lookupPUDSlot")
+    unimplemented!("lookupPUDSlot")
 }
 
 #[no_mangle]
@@ -58,7 +58,7 @@ extern "C" fn decodeARMMMUInvocation(
     cte: &mut cte_t,
     _cap: cap_t,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     decode_mmu_invocation(invLabel, length, cte, call, buffer)
 }

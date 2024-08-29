@@ -62,7 +62,6 @@ pub macro ffi_call {
             }
         }
     },
-    // TODO: Add for multi argument functions
     ($fname:ident($( $aname:ident:$t:ty=>$v:expr ),*)) => {
         {
             extern "C" {

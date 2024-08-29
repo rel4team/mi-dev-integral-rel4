@@ -4,6 +4,7 @@ pub mod invoke_irq;
 mod invoke_mmu_op;
 mod invoke_tcb;
 mod invoke_untyped;
+pub(crate) mod arch;
 
 use core::intrinsics::unlikely;
 
@@ -59,7 +60,7 @@ pub fn handleInvocation(isCall: bool, isBlocking: bool) -> exception_t {
         cptr,
         isBlocking,
         isCall,
-        buffer,
+        buffer.unwrap(),
     );
     if status == exception_t::EXCEPTION_PREEMTED {
         return status;
