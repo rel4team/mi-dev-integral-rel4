@@ -1,6 +1,0 @@
-site_name: 组件化微内核文档
-nav:
-  - 组件化微内核介绍: 组件化微内核文档.md
-  - 大小仓库开发方案: 使用Subrepo大小仓库同步开发reL4指南.md
-theme:
-  name: material
