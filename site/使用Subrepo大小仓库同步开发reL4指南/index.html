@@ -1,0 +1,478 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BE%AE%E5%86%85%E6%A0%B8%E6%96%87%E6%A1%A3/">
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.34">
+    
+    
+      
+        <title>大小仓库开发方案 - 组件化微内核文档</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.35f28582.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#subreporel4" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="组件化微内核文档" class="md-header__button md-logo" aria-label="组件化微内核文档" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            组件化微内核文档
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              大小仓库开发方案
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="组件化微内核文档" class="md-nav__button md-logo" aria-label="组件化微内核文档" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    组件化微内核文档
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BE%AE%E5%86%85%E6%A0%B8%E6%96%87%E6%A1%A3/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    组件化微内核介绍
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    大小仓库开发方案
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    大小仓库开发方案
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码提交到大仓库的方法举例说明
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码提交到小仓库的方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      注意事项
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      从仓库中分离文件夹作为单独仓库的方法
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码提交到大仓库的方法举例说明
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码提交到小仓库的方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      注意事项
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      从仓库中分离文件夹作为单独仓库的方法
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="subreporel4">使用Subrepo大小仓库同步开发reL4指南</h1>
+<p>大小仓库的开发须知请看：
+<a href="https://github.com/kern-crates/.github/blob/main/profile/rel4%E5%A4%9A%E4%BB%93%E5%BC%80%E5%8F%91%E6%8F%90%E6%A1%88.md">.github/profile/rel4多仓开发提案.md at main · kern-crates/.github</a>
+当前大仓库位于:<a href="https://github.com/rel4team/mi-dev-integral-rel4">https://github.com/rel4team/mi-dev-integral-rel4</a> 包含了众多的小仓库信息
+包含的小仓库有：</p>
+<pre><code>urls=(&quot;git@github.com:rel4team/sel4_common.git&quot;
+    &quot;git@github.com:rel4team/sel4_task.git&quot;
+    &quot;git@github.com:rel4team/sel4_ipc.git &quot;
+    &quot;git@github.com:rel4team/sel4_vspace.git&quot;
+    &quot;git@github.com:rel4team/sel4_cspace.git&quot;
+    &quot;git@github.com:rel4team/rel4_kernel.git&quot;
+    &quot;git@github.com:rel4team/driver-collect.git&quot;
+    &quot;git@github.com:rel4team/serial-impl-pl011.git&quot;
+    &quot;git@github.com:rel4team/serial-impl-sbi.git&quot;
+    &quot;git@github.com:rel4team/serial-frame.git&quot;
+)
+</code></pre>
+<p>大仓库中的全部更新，会通过CI自动将相关的commit信息更新到小仓库当中，反过来，小仓库中的任何更新也会在大仓库中进行同步。
+接下来分别介绍从大仓库 和 小仓库端的更新方法</p>
+<h3 id="_1">代码提交到大仓库的方法举例说明</h3>
+<p>依次执行以下指令：</p>
+<ul>
+<li><code>git pull #因为大小仓库任意一端都有可能更新，每次开发前需要保证大仓库中的内容是最新的</code></li>
+<li>完成修改后，使用<code>git add . &amp;&amp; git commit -m "COMMIT_MESSAGE" &amp;&amp; git push</code>将修改push 到远端分支。</li>
+<li>此时在History中应该能看到类似的两条commit信息，第一条commit信息是我们自己的包含COMMIT_MESSAGE的信息，是我们自己的修改，会进行五项CI测试，包含aarch riscv平台的kernel build 、sel4test运行以及大小仓库的同步CI，第二条COMMIT信息则是git subrepo +COMMIT_MESSAGE，是大仓库记录和小仓库对应commit版本的对应信息，只更新.gitsubrepo中的commit（小仓库中最新的commit id）和parent（大仓库中COMMIT_MESSAGE对应的commit id）两项内容。<img alt="image.png" src="https://cdn.nlark.com/yuque/0/2024/png/2964023/1724037308030-325d7e3d-bb35-43cb-9fa5-c30d7311bcee.png#averageHue=%23fefefe&amp;clientId=uab018d93-c46d-4&amp;from=paste&amp;height=175&amp;id=u45e7f70a&amp;originHeight=350&amp;originWidth=3193&amp;originalType=binary&amp;ratio=2&amp;rotation=0&amp;showTitle=false&amp;size=86143&amp;status=done&amp;style=none&amp;taskId=u8957cc5c-38c6-4535-b1cf-5050627c0c4&amp;title=&amp;width=1596.5" /></li>
+<li>最后需要<code>git pull</code>将第二次commit修改pull下拉，从而完成一次修改。</li>
+</ul>
+<p>相较于普通的git使用来说，仅增加了最后的 git pull 一个步骤。</p>
+<h3 id="_2">代码提交到小仓库的方法</h3>
+<p>正常使用git即可，没有什么特别。</p>
+<h3 id="_3">注意事项</h3>
+<ol>
+<li>大仓库每次push之后必须要跟一次pull，否则commit记录会乱掉</li>
+<li>小仓库每次push的最新commit信息应该保证不与大仓库最新commit信息存在真子集的关系（谁是谁的真子集均不被允许），如一方是“Hello World”，一方是“Hello”。</li>
+<li>大仓库commit信息应该不包含"git subrepo"这一子字符串，CI会检测此字符串来选择是否进行push到小仓库中。</li>
+</ol>
+<h2 id="_4">从仓库中分离文件夹作为单独仓库的方法</h2>
+<p>当从大仓库分离文件夹进入子仓库时，希望修改对应的文件夹的log可以保留，可以使用如下方法：
+以polyhal的example文件夹为例，polyhal的commit log信息如下：
+<img alt="image.png" src="https://cdn.nlark.com/yuque/0/2024/png/2964023/1724905895524-55eca1fa-689d-48d5-8e31-fba97285f3fb.png#averageHue=%23fefefe&amp;clientId=u50755ceb-5e8e-4&amp;from=paste&amp;height=767&amp;id=u91778817&amp;originHeight=1533&amp;originWidth=2157&amp;originalType=binary&amp;ratio=2&amp;rotation=0&amp;showTitle=false&amp;size=216425&amp;status=done&amp;style=none&amp;taskId=uaffc7ea9-09a9-4292-8052-d4e1cb321c3&amp;title=&amp;width=1078.5" />
+其中与example文件夹相关的是8.5号的feat:release 0.1.3 version commit记录：
+<img alt="image.png" src="https://cdn.nlark.com/yuque/0/2024/png/2964023/1724905954966-f92081fa-6ba6-4b67-8555-3c1140b0f740.png#averageHue=%23dabd9e&amp;clientId=u50755ceb-5e8e-4&amp;from=paste&amp;height=364&amp;id=ue630f5c4&amp;originHeight=728&amp;originWidth=2587&amp;originalType=binary&amp;ratio=2&amp;rotation=0&amp;showTitle=false&amp;size=91011&amp;status=done&amp;style=none&amp;taskId=u7c62a80d-19c8-4b0f-b655-74b406ea76c&amp;title=&amp;width=1293.5" />
+使用如下命令：</p>
+<pre><code class="language-bash">git subtree split -P example -b example  # -P path -b branch
+</code></pre>
+<p>就会创建一个新的分支example，其中的文件即为example中的文件，commit记录也为example文件夹的修改记录：
+<img alt="image.png" src="https://cdn.nlark.com/yuque/0/2024/png/2964023/1724906091780-03af445b-ac10-4686-8b5c-a9882f607f7f.png#averageHue=%23300a24&amp;clientId=u50755ceb-5e8e-4&amp;from=paste&amp;height=460&amp;id=u24fab75d&amp;originHeight=919&amp;originWidth=1998&amp;originalType=binary&amp;ratio=2&amp;rotation=0&amp;showTitle=false&amp;size=285767&amp;status=done&amp;style=none&amp;taskId=u5fc9ba79-1afa-4bce-9441-02d98e1439c&amp;title=&amp;width=999" /></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.07f07601.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.56dfad97.min.js"></script>
+      
+    
+  </body>
+</html>
