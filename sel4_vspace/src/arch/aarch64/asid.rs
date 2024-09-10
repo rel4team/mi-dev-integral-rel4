@@ -105,7 +105,7 @@ pub fn delete_asid_pool(
 #[inline]
 pub fn write_it_asid_pool(it_ap_cap: &cap_t, it_vspace_cap: &cap_t) {
     let ap = asid_pool_from_addr(it_ap_cap.get_cap_ptr());
-    let asid_map = asid_map_t::new_vspace(it_vspace_cap.get_pgd_base_ptr());
+    let asid_map = asid_map_t::new_vspace(it_vspace_cap.get_vs_base_ptr());
     ap[IT_ASID] = asid_map;
     set_asid_pool_by_index(IT_ASID >> asidLowBits, ap as *const _ as usize);
 }

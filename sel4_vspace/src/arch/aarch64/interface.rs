@@ -124,7 +124,7 @@ pub fn set_kernel_page_table_by_index(idx: usize, pte: PTE) {
 ///
 /// Use page table in vspace_root to set the satp register.
 pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
-    setCurrentUserVSpaceRoot(pptr_to_paddr(vspace_root.get_pgd_base_ptr()));
+    setCurrentUserVSpaceRoot(pptr_to_paddr(vspace_root.get_vs_base_ptr()));
     Ok(())
 }
 
@@ -195,9 +195,9 @@ pub fn set_vm_root_for_flush_with_thread_root(
     asid: asid_t,
     thread_root: &cap_t,
 ) -> bool {
-    if thread_root.get_cap_type() == CapTag::CapPageGlobalDirectoryCap
-        && thread_root.get_pgd_is_mapped() != 0
-        && thread_root.get_pgd_base_ptr() == vspace as usize
+    if thread_root.get_cap_type() == CapTag::CapVspaceCap
+        && thread_root.get_vs_is_mapped() != 0
+        && thread_root.get_vs_base_ptr() == vspace as usize
     {
         return false;
     }

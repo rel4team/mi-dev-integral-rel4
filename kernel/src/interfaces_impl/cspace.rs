@@ -259,7 +259,6 @@ pub fn preemptionPoint() -> exception_t {
     }
 }
 
-
 #[no_mangle]
 #[cfg(target_arch = "riscv64")]
 pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
@@ -287,7 +286,6 @@ pub fn deleteASID(asid: asid_t, vspace: *mut PGDE) {
         }
     }
 }
-
 
 #[no_mangle]
 pub fn deleteASIDPool(asid_base: asid_t, pool: *mut asid_pool_t) {

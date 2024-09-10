@@ -14,7 +14,8 @@ use crate::{
     get_kernel_page_upper_directory_base, kpptr_to_paddr, mair_types, pptr_t, pptr_to_paddr,
     set_kernel_page_directory_by_index, set_kernel_page_global_directory_by_index,
     set_kernel_page_table_by_index, set_kernel_page_upper_directory_by_index, vm_attributes_t,
-    vptr_t, GET_KPT_INDEX, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, PDE, PGDE, PTE, PUDE,
+    vptr_t, GET_KPT_INDEX, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, GET_UPT_INDEX, PDE, PGDE,
+    PTE, PUDE,
 };
 
 use super::{map_kernel_devices, page_slice};
@@ -232,7 +233,7 @@ fn find_pt(vspace_root: usize, vptr: VAddr, ftype: find_type) -> usize {
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn create_it_pd_cap(vspace_cap: &cap_t, pptr: usize, vptr: usize, asid: usize) -> cap_t {
-    let cap = cap_t::new_page_directory_cap(asid, pptr, 1, vptr);
+    let cap = cap_t::new_page_table_cap(asid, pptr, 1, vptr);
     map_it_pd_cap(vspace_cap, &cap);
     return cap;
 }

@@ -10,6 +10,7 @@ use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
 use crate::vptr_t;
 use sel4_common::utils::convert_ref_type_to_usize;
+use sel4_common::BIT;
 use sel4_common::{
     arch::{
         config::{KERNEL_ELF_BASE_OFFSET, PPTR_BASE_OFFSET},
@@ -24,8 +25,18 @@ use sel4_common::{
 };
 
 pub const KPT_LEVELS: usize = 4;
+pub const UPT_LEVELS: usize = 4;
 pub const seL4_VSpaceIndexBits: usize = 9;
 pub(self) const PAGE_ADDR_MASK: usize = MASK!(48) & !0xfff;
+#[inline]
+pub fn ULVL_FRM_ARM_PT_LVL(n: usize) -> usize {
+    n
+}
+#[inline]
+pub fn KLVL_FRM_ARM_PT_LVL(n: usize) -> usize {
+    n
+}
+
 #[inline]
 pub fn GET_PT_INDEX(addr: usize) -> usize {
     (addr >> PT_INDEX_OFFSET) & MASK!(PT_INDEX_BITS)
@@ -46,17 +57,30 @@ pub fn GET_PUD_INDEX(addr: usize) -> usize {
 pub fn GET_PGD_INDEX(addr: usize) -> usize {
     (addr >> PGD_INDEX_OFFSET) & MASK!(PGD_INDEX_BITS)
 }
-
+#[inline]
+pub fn KPT_LEVEL_SHIFT(n: usize) -> usize {
+    ((PT_INDEX_BITS) * (((KPT_LEVELS) - 1) - (n))) + seL4_PageBits
+}
+#[inline]
+pub fn UPT_LEVEL_SHIFT(n: usize) -> usize {
+    ((PT_INDEX_BITS) * (((UPT_LEVELS) - 1) - (n))) + seL4_PageBits
+}
+#[inline]
+pub fn GET_ULVL_PGSIZE_BITS(n: usize) -> usize {
+    UPT_LEVEL_SHIFT(n)
+}
+#[inline]
+pub fn GET_ULVL_PGSIZE(n: usize) -> usize {
+    BIT!(UPT_LEVEL_SHIFT(n))
+}
 #[inline]
 pub fn GET_KPT_INDEX(addr: usize, n: usize) -> usize {
-    ((addr) >> (((PT_INDEX_BITS) * (((KPT_LEVELS) - 1) - (n))) + seL4_PageBits))
-        & MASK!(PT_INDEX_BITS)
+    ((addr) >> (KPT_LEVEL_SHIFT(n))) & MASK!(PT_INDEX_BITS)
 }
 
 #[inline]
 pub fn GET_UPT_INDEX(addr: usize, n: usize) -> usize {
-    ((addr) >> (((PT_INDEX_BITS) * (((KPT_LEVELS) - 1) - (n))) + seL4_PageBits))
-        & MASK!(PT_INDEX_BITS)
+    ((addr) >> (UPT_LEVEL_SHIFT(n))) & MASK!(PT_INDEX_BITS)
 }
 
 #[inline]

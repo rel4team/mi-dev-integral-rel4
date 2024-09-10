@@ -1,4 +1,7 @@
-use sel4_common::{arch::{vm_rights_t, ObjectType}, sel4_config::{asidInvalid, ARM_Large_Page, ARM_Small_Page}};
+use sel4_common::{
+    arch::{vm_rights_t, ObjectType},
+    sel4_config::{asidInvalid, ARM_Large_Page, ARM_Small_Page},
+};
 use sel4_cspace::arch::cap_t;
 use sel4_vspace::pptr_t;
 
