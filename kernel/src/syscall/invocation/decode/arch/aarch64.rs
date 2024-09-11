@@ -55,14 +55,8 @@ pub fn decode_mmu_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match slot.cap.get_cap_type() {
-        CapTag::CapPageGlobalDirectoryCap => {
+        CapTag::CapVspaceCap => {
             decode_vspace_root_invocation(label, length, slot, buffer)
-        }
-        CapTag::CapPageUpperDirectoryCap => {
-            decode_page_upper_directory_invocation(label, length, slot, buffer)
-        }
-        CapTag::CapPageDirectoryCap => {
-            decode_page_directory_invocation(label, length, slot, buffer)
         }
         CapTag::CapPageTableCap => decode_page_table_invocation(label, length, slot, buffer),
         CapTag::CapFrameCap => decode_frame_invocation(label, length, slot, call, buffer),

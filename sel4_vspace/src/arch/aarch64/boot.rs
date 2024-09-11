@@ -178,9 +178,9 @@ pub fn map_it_pt_cap(vspace_cap: &cap_t, pt_cap: &cap_t) {
 #[link_section = ".boot.text"]
 pub fn map_it_pd_cap(vspace_cap: &cap_t, pd_cap: &cap_t) {
     let pgd = page_slice::<PGDE>(vspace_cap.get_cap_ptr());
-    let pd_addr = pd_cap.get_pd_base_ptr();
-    let vptr: VAddr = pd_cap.get_pd_mapped_address().into();
-    assert_eq!(pd_cap.get_pd_is_mapped(), 1);
+    let pd_addr = pd_cap.get_pt_base_ptr();
+    let vptr: VAddr = pd_cap.get_pt_mapped_address().into();
+    assert_eq!(pd_cap.get_pt_is_mapped(), 1);
     // TODO: move 0x3 into a proper position.
     assert_eq!(pgd[vptr.pgd_index()].attr(), 0x3);
     let pud = pgd[vptr.pgd_index()].next_level_slice::<PUDE>();
@@ -190,9 +190,9 @@ pub fn map_it_pd_cap(vspace_cap: &cap_t, pd_cap: &cap_t) {
 /// TODO: Write the comments.
 pub fn map_it_pud_cap(vspace_cap: &cap_t, pud_cap: &cap_t) {
     let pgd = page_slice::<PGDE>(vspace_cap.get_cap_ptr());
-    let pud_addr = pud_cap.get_pud_base_ptr();
-    let vptr: VAddr = pud_cap.get_pud_mapped_address().into();
-    assert_eq!(pud_cap.get_pud_is_mapped(), 1);
+    let pud_addr = pud_cap.get_pt_base_ptr();
+    let vptr: VAddr = pud_cap.get_pt_mapped_address().into();
+    assert_eq!(pud_cap.get_pt_is_mapped(), 1);
 
     // TODO: move 0x3 into a proper position.
     pgd[vptr.pgd_index()] = PGDE::new_page(pptr_to_paddr(pud_addr), 0x3);
