@@ -1,6 +1,7 @@
 use crate::sel4_config::{
-    seL4_PGDBits, seL4_PUDBits, seL4_PageDirBits, seL4_PageTableBits, ARMHugePageBits,
-    ARMLargePageBits, ARMSmallPageBits, ARM_Huge_Page, ARM_Large_Page, ARM_Small_Page, seL4_VSpaceBits
+    seL4_PGDBits, seL4_PUDBits, seL4_PageDirBits, seL4_PageTableBits, seL4_VSpaceBits,
+    ARMHugePageBits, ARMLargePageBits, ARMSmallPageBits, ARM_Huge_Page, ARM_Large_Page,
+    ARM_Small_Page,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]

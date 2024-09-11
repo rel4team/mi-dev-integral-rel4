@@ -7,7 +7,7 @@ use sel4_common::{
 };
 use sel4_cspace::arch::cap_t;
 
-use crate::{asid_map_t, asid_pool_t, asid_t, findVSpaceForASID_ret, set_vm_root, PGDE};
+use crate::{asid_map_t, asid_pool_t, asid_t, findVSpaceForASID_ret, set_vm_root};
 
 use super::asid_pool_from_addr;
 use super::machine::invalidate_local_tlb_asid;

@@ -1,4 +1,4 @@
-use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PDE, PGDE, PTE, PUDE};
+use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
 use sel4_common::{

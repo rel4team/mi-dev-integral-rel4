@@ -5,9 +5,6 @@ use core::{
 
 use sel4_common::{arch::config::PPTR_BASE, fault::lookup_fault_t, structures::exception_t};
 
-#[cfg(target_arch = "aarch64")]
-use crate::PGDE;
-#[cfg(target_arch = "riscv64")]
 use crate::PTE;
 
 /// 在`PSpace`段的虚拟地址空间中的指针
@@ -35,7 +32,7 @@ pub struct findVSpaceForASID_ret {
 #[derive(Copy, Clone)]
 pub struct findVSpaceForASID_ret {
     pub status: exception_t,
-    pub vspace_root: Option<*mut PGDE>,
+    pub vspace_root: Option<*mut PTE>,
     pub lookup_fault: Option<lookup_fault_t>,
 }
 

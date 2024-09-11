@@ -14,18 +14,10 @@ use crate::{
     get_kernel_page_upper_directory_base, kpptr_to_paddr, mair_types, pptr_t, pptr_to_paddr,
     set_kernel_page_directory_by_index, set_kernel_page_global_directory_by_index,
     set_kernel_page_table_by_index, set_kernel_page_upper_directory_by_index, vm_attributes_t,
-    vptr_t, GET_KPT_INDEX, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, GET_UPT_INDEX, PDE, PGDE,
-    PTE, PUDE,
+    vptr_t, GET_KPT_INDEX, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, GET_UPT_INDEX, PTE,
 };
 
 use super::{map_kernel_devices, page_slice};
-
-#[derive(PartialEq, Eq, Debug)]
-enum find_type {
-    PDE,
-    PUDE,
-    PTE,
-}
 
 pub const RESERVED: usize = 3;
 

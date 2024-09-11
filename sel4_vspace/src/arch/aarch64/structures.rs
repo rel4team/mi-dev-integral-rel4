@@ -1,6 +1,6 @@
 use core::ops::{Deref, DerefMut};
 
-use crate::{vm_attributes_t, PDE, PGDE, PTE, PUDE};
+use crate::{vm_attributes_t, PTE};
 use sel4_common::{
     plus_define_bitfield, sel4_config::asidLowBits, structures::exception_t,
     utils::convert_to_mut_type_ref, BIT,
@@ -44,23 +44,23 @@ pub struct lookupPTSlot_ret_t {
     pub ptSlot: *mut PTE,
 }
 
-#[repr(C)]
-pub struct lookupPGDSlot_ret_t {
-    pub status: exception_t,
-    pub pgdSlot: *mut PGDE, // *mut pgde_t
-}
+// #[repr(C)]
+// pub struct lookupPGDSlot_ret_t {
+//     pub status: exception_t,
+//     pub pgdSlot: *mut PGDE, // *mut pgde_t
+// }
 
-#[repr(C)]
-pub struct lookupPDSlot_ret_t {
-    pub status: exception_t,
-    pub pdSlot: *mut PDE, // *mut pde_t
-}
+// #[repr(C)]
+// pub struct lookupPDSlot_ret_t {
+//     pub status: exception_t,
+//     pub pdSlot: *mut PDE, // *mut pde_t
+// }
 
-#[repr(C)]
-pub struct lookupPUDSlot_ret_t {
-    pub status: exception_t,
-    pub pudSlot: *mut PUDE, // *mut pude_t
-}
+// #[repr(C)]
+// pub struct lookupPUDSlot_ret_t {
+//     pub status: exception_t,
+//     pub pudSlot: *mut PUDE, // *mut pude_t
+// }
 
 #[repr(C)]
 pub struct lookupFrame_ret_t {

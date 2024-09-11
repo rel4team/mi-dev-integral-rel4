@@ -55,9 +55,7 @@ pub fn decode_mmu_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match slot.cap.get_cap_type() {
-        CapTag::CapVspaceCap => {
-            decode_vspace_root_invocation(label, length, slot, buffer)
-        }
+        CapTag::CapVspaceCap => decode_vspace_root_invocation(label, length, slot, buffer),
         CapTag::CapPageTableCap => decode_page_table_invocation(label, length, slot, buffer),
         CapTag::CapFrameCap => decode_frame_invocation(label, length, slot, call, buffer),
         CapTag::CapASIDControlCap => decode_asid_control(label, length, buffer),
