@@ -1,6 +1,7 @@
 use core::intrinsics::unlikely;
 use core::ops::{Deref, DerefMut};
 
+use super::pte::pte_tag_t;
 use super::{kpptr_to_paddr, machine::*};
 use crate::{
     ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t,
@@ -9,7 +10,7 @@ use crate::{
 use sel4_common::arch::MessageLabel;
 use sel4_common::sel4_config::{ARM_Large_Page, ARM_Small_Page};
 use sel4_common::structures::exception_t;
-use sel4_common::utils::{convert_ref_type_to_usize, ptr_to_mut};
+use sel4_common::utils::{convert_ref_type_to_usize, pageBitsForSize, ptr_to_mut};
 use sel4_common::{
     arch::vm_rights_t,
     fault::lookup_fault_t,
@@ -44,7 +45,7 @@ impl<T> DerefMut for PageAligned<T> {
 
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPGD: PageAligned<PTE> = PageAligned::new(PTE::invalid_new());
+pub(crate) static mut armKSGlobalKernelPGD: PageAligned<PTE> = PageAligned::new(PTE(0));
 
 #[inline]
 pub fn get_kernel_page_global_directory_base() -> usize {
@@ -60,7 +61,7 @@ pub fn set_kernel_page_global_directory_by_index(idx: usize, pgde: PTE) {
 
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPUD: PageAligned<PTE> = PageAligned::new(PTE::invalid_new());
+pub(crate) static mut armKSGlobalKernelPUD: PageAligned<PTE> = PageAligned::new(PTE(0));
 
 #[inline]
 pub fn get_kernel_page_upper_directory_base() -> usize {
@@ -80,7 +81,7 @@ pub fn set_kernel_page_upper_directory_by_index(idx: usize, pude: PTE) {
 #[no_mangle]
 #[link_section = ".page_table"]
 pub(crate) static mut armKSGlobalKernelPDs: PageAligned<PageAligned<PTE>> =
-    PageAligned::new(PageAligned::new(PTE::new_invalid()));
+    PageAligned::new(PageAligned::new(PTE(0)));
 
 #[inline]
 pub fn get_kernel_page_directory_base_by_index(idx: usize) -> usize {
@@ -174,18 +175,18 @@ pub fn activate_kernel_vspace() {
 //     )
 // }
 
-pub fn makeUser3rdLevel(paddr: pptr_t, vm_rights: vm_rights_t, attributes: vm_attributes_t) -> PTE {
-    PTE::pte_new(
-        attributes.get_armExecuteNever() as usize,
-        paddr,
-        1,
-        1,
-        0,
-        ap_from_vm_rights(vm_rights),
-        attributes.get_attr_index() as usize,
-        3, // RESERVED
-    )
-}
+// pub fn makeUser3rdLevel(paddr: pptr_t, vm_rights: vm_rights_t, attributes: vm_attributes_t) -> PTE {
+//     PTE::pte_new(
+//         attributes.get_armExecuteNever() as usize,
+//         paddr,
+//         1,
+//         1,
+//         0,
+//         ap_from_vm_rights(vm_rights),
+//         attributes.get_attr_index() as usize,
+//         3, // RESERVED
+//     )
+// }
 
 #[no_mangle]
 pub fn set_vm_root_for_flush_with_thread_root(
@@ -330,44 +331,65 @@ pub fn unmapPage(
     if unlikely(find_ret.status != exception_t::EXCEPTION_NONE) {
         return Ok(());
     }
-    match page_size {
-        ARM_Small_Page => {
-            let lu_ret =
-                PGDE::new_from_pte(find_ret.vspace_root.unwrap() as usize).lookup_pt_slot(vptr);
-            if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
-                return Ok(());
-            }
-            let pte = ptr_to_mut(lu_ret.ptSlot);
-            if pte.is_present() && pte.pte_ptr_get_page_base_address() == addr {
-                *pte = PTE(0);
-                unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
-                clean_by_va_pou(
-                    convert_ref_type_to_usize(pte),
-                    paddr_to_pptr(convert_ref_type_to_usize(pte)),
-                );
-            }
-            Ok(())
-        }
-        ARM_Large_Page => {
-            log::info!("unmap large page: {:#x?}", vptr);
-            let lu_ret =
-                PGDE::new_from_pte(find_ret.vspace_root.unwrap() as usize).lookup_pd_slot(vptr);
-            if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
-                return Ok(());
-            }
-            let pde = ptr_to_mut(lu_ret.pdSlot);
-            if pde.get_present() && pde.get_base_address() == addr {
-                *pde = PDE(0);
-                unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
-                clean_by_va_pou(
-                    convert_ref_type_to_usize(pde),
-                    paddr_to_pptr(convert_ref_type_to_usize(pde)),
-                );
-            }
-            Ok(())
-        }
-        _ => unimplemented!("unMapPage: {page_size}"),
+    let lu_ret = PTE::new_from_pte(find_ret.vspace_root.unwrap() as usize).lookup_pt_slot(vptr);
+    if unlikely(lu_ret.ptBitsLeft != pageBitsForSize(page_size)) {
+        return Ok(());
     }
+
+    let pte = ptr_to_mut(lu_ret.ptSlot);
+    if pte.get_type() == (pte_tag_t::pte_4k_page) as usize
+        || pte.get_type() == (pte_tag_t::pte_page) as usize
+    {
+        return Ok(());
+    }
+    if pte.get_page_base_address() != addr {
+        return Ok(());
+    }
+    unsafe {
+        *(lu_ret.ptSlot) = PTE(0);
+        pte.update(*(lu_ret.ptSlot));
+    }
+    invalidate_tlb_by_asid(asid);
+    Ok(())
+
+    // match page_size {
+    //     ARM_Small_Page => {
+    //         let lu_ret =
+    //             PGDE::new_from_pte(find_ret.vspace_root.unwrap() as usize).lookup_pt_slot(vptr);
+    //         if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
+    //             return Ok(());
+    //         }
+    //         let pte = ptr_to_mut(lu_ret.ptSlot);
+    //         if pte.is_present() && pte.pte_ptr_get_page_base_address() == addr {
+    //             *pte = PTE(0);
+    //             unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
+    //             clean_by_va_pou(
+    //                 convert_ref_type_to_usize(pte),
+    //                 paddr_to_pptr(convert_ref_type_to_usize(pte)),
+    //             );
+    //         }
+    //         Ok(())
+    //     }
+    //     ARM_Large_Page => {
+    //         log::info!("unmap large page: {:#x?}", vptr);
+    //         let lu_ret =
+    //             PGDE::new_from_pte(find_ret.vspace_root.unwrap() as usize).lookup_pd_slot(vptr);
+    //         if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
+    //             return Ok(());
+    //         }
+    //         let pde = ptr_to_mut(lu_ret.pdSlot);
+    //         if pde.get_present() && pde.get_base_address() == addr {
+    //             *pde = PDE(0);
+    //             unsafe { core::arch::asm!("tlbi vmalle1; dsb sy; isb") };
+    //             clean_by_va_pou(
+    //                 convert_ref_type_to_usize(pde),
+    //                 paddr_to_pptr(convert_ref_type_to_usize(pde)),
+    //             );
+    //         }
+    //         Ok(())
+    //     }
+    //     _ => unimplemented!("unMapPage: {page_size}"),
+    // }
     /*
         switch (page_size) {
         case ARMLargePage: {

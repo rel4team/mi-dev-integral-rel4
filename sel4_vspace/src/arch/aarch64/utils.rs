@@ -230,7 +230,7 @@ impl_multi!( PTE {
     /// Get the page's type info
     #[inline]
     pub const fn get_type(&self) -> usize {
-        self.0 & 0x3
+        self.0 & 0x3 | ((self.0 &(1<<58) )>>56)
     }
 
     #[inline]

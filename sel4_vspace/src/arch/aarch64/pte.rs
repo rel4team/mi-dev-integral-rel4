@@ -32,11 +32,11 @@ impl VMPageSize {
     }
 }
 
-#[allow(unused)]
-pub enum pgde_tag_t {
-    pgde_invalid = 0,
-    pgde_pud = 3,
-}
+// #[allow(unused)]
+// pub enum pgde_tag_t {
+//     pgde_invalid = 0,
+//     pgde_pud = 3,
+// }
 
 #[allow(unused)]
 pub enum pte_tag_t {
@@ -46,18 +46,18 @@ pub enum pte_tag_t {
     pte_invalid = 0,
 }
 
-#[allow(unused)]
-pub enum pude_tag_t {
-    pude_invalid = 0,
-    pude_1g = 1,
-    pude_pd = 3,
-}
+// #[allow(unused)]
+// pub enum pude_tag_t {
+//     pude_invalid = 0,
+//     pude_1g = 1,
+//     pude_pd = 3,
+// }
 
-#[allow(unused)]
-pub enum pde_tag_t {
-    pde_large = 1,
-    pde_small = 3,
-}
+// #[allow(unused)]
+// pub enum pde_tag_t {
+//     pde_large = 1,
+//     pde_small = 3,
+// }
 
 bitflags::bitflags! {
     /// Possible flags for a page table entry.
@@ -122,6 +122,10 @@ impl PTE {
         Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
     }
 
+    pub fn get_page_base_address(&self) -> usize {
+        self.0 & 0xfffffffff000
+    }
+
     pub fn get_pte_from_ppn_mut(&self) -> &mut PTE {
         convert_to_mut_type_ref::<PTE>(paddr_to_pptr(self.get_ppn() << seL4_PageTableBits))
     }
@@ -142,6 +146,11 @@ impl PTE {
     //     PDE::new_from_pte(self.0)
     // }
 
+    #[inline]
+    pub const fn pte_is_page_type(&self) -> bool {
+        self.get_type() == (pte_tag_t::pte_4k_page) as usize
+            || self.get_type() == (pte_tag_t::pte_page) as usize
+    }
     pub fn is_pte_table(&self) -> bool {
         self.get_type() != pte_tag_t::pte_table as usize
     }
@@ -192,8 +201,13 @@ impl PTE {
             PTE::new(paddr, flags)
         }
     }
+    #[inline]
+    pub const fn pte_new_table(pt_base_address: usize) -> PTE {
+        let val = 0 | (pt_base_address & 0xfffffffff000) | (0x3);
+        PTE(val)
+    }
 
-    pub fn pte_new(
+    pub fn pte_new_page(
         UXN: usize,
         page_base_address: usize,
         nG: usize,
@@ -201,7 +215,6 @@ impl PTE {
         SH: usize,
         AP: usize,
         AttrIndx: usize,
-        reserved: usize,
     ) -> PTE {
         let val = 0
             | (UXN & 0x1) << 54
@@ -210,8 +223,7 @@ impl PTE {
             | (AF & 0x1) << 10
             | (SH & 0x3) << 8
             | (AP & 0x3) << 6
-            | (AttrIndx & 0x7) << 2
-            | (reserved & 0x3) << 0;
+            | (AttrIndx & 0x7) << 2;
 
         PTE(val)
     }

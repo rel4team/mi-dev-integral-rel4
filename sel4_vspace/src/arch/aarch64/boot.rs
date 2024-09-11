@@ -14,7 +14,7 @@ use crate::{
     get_kernel_page_upper_directory_base, kpptr_to_paddr, mair_types, pptr_t, pptr_to_paddr,
     set_kernel_page_directory_by_index, set_kernel_page_global_directory_by_index,
     set_kernel_page_table_by_index, set_kernel_page_upper_directory_by_index, vm_attributes_t,
-    vptr_t, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, PTE,
+    vptr_t, PTE,
 };
 
 use super::{map_kernel_devices, page_slice};
@@ -77,14 +77,14 @@ pub const RESERVED: usize = 3;
 pub fn rust_map_kernel_window() {
     set_kernel_page_global_directory_by_index(
         (VAddr(PPTR_BASE)).GET_KPT_INDEX(0),
-        PTE::pude_new(kpptr_to_paddr(get_kernel_page_upper_directory_base())),
+        PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_upper_directory_base())),
     );
 
-    let mut idx = GET_PUD_INDEX(PPTR_BASE);
-    while idx < GET_PUD_INDEX(PPTR_TOP) {
+    let mut idx = VAddr(PPTR_BASE).GET_KPT_INDEX(1);
+    while idx < VAddr(PPTR_TOP).GET_KPT_INDEX(1) {
         set_kernel_page_upper_directory_by_index(
             idx,
-            PTE::pd_new(kpptr_to_paddr(get_kernel_page_directory_base_by_index(idx))),
+            PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_directory_base_by_index(idx))),
         );
         idx += 1;
     }
@@ -93,9 +93,9 @@ pub fn rust_map_kernel_window() {
     let mut paddr = PADDR_BASE;
     while paddr < PADDR_TOP {
         set_kernel_page_directory_by_index(
-            GET_PUD_INDEX(vaddr),
-            GET_PD_INDEX(vaddr),
-            PTE::new_large(true, paddr, 0, 1, 0, 0, mair_types::NORMAL),
+            VAddr(vaddr).GET_KPT_INDEX(1),
+            VAddr(vaddr).GET_KPT_INDEX(2),
+            PTE::pte_new_page(1, paddr, 0, 1, 0, 0, mair_types::NORMAL as usize),
         );
 
         vaddr += BIT!(seL4_LargePageBits);
@@ -113,15 +113,15 @@ pub fn rust_map_kernel_window() {
     //
 
     set_kernel_page_upper_directory_by_index(
-        GET_PUD_INDEX(PPTR_TOP),
-        PTE::pd_new(kpptr_to_paddr(get_kernel_page_directory_base_by_index(
+        VAddr(PPTR_TOP).GET_KPT_INDEX(1),
+        PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_directory_base_by_index(
             BIT!(PUD_INDEX_BITS) - 1,
         ))),
     );
     set_kernel_page_directory_by_index(
         BIT!(PUD_INDEX_BITS) - 1,
         BIT!(PUD_INDEX_BITS) - 1,
-        PTE::new_small(kpptr_to_paddr(get_kernel_page_table_base())),
+        PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_table_base())),
     );
     map_kernel_devices();
     // ffi_call!(map_kernel_devices());
@@ -145,8 +145,8 @@ pub fn map_kernel_frame(
         shareable = 0;
     }
     set_kernel_page_table_by_index(
-        GET_PT_INDEX(vaddr),
-        PTE::pte_new(
+        VAddr(vaddr).GET_KPT_INDEX(3),
+        PTE::pte_new_page(
             uxn,
             paddr,
             0,
@@ -154,7 +154,6 @@ pub fn map_kernel_frame(
             shareable,
             PTE::ap_from_vm_rights_t(vm_rights).bits() >> 6,
             attr_index,
-            RESERVED,
         ),
     );
 }
@@ -208,7 +207,7 @@ pub fn map_it_frame_cap(vspace_cap: &cap_t, frame_cap: &cap_t, exec: bool) {
     ));
     // TODO: Make set_attr usage more efficient.
     // TIPS: exec true will be cast to 1 and false to 0.
-    pte.set_attr(PTE::pte_new((!exec) as usize, 0, 1, 1, 0, 1, 0, 3).0);
+    pte.set_attr(PTE::pte_new_page((!exec) as usize, 0, 1, 1, 0, 1, 0).0);
     pte.set_next_level_paddr(pptr_to_paddr(frame_cap.get_frame_base_ptr()));
 }
 
