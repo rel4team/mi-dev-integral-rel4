@@ -1,6 +1,7 @@
 use crate::sel4_config::{
-    seL4_PGDBits, seL4_PUDBits, seL4_PageDirBits, seL4_PageTableBits, ARMHugePageBits,
-    ARMLargePageBits, ARMSmallPageBits, ARM_Huge_Page, ARM_Large_Page, ARM_Small_Page,
+    seL4_PGDBits, seL4_PUDBits, seL4_PageDirBits, seL4_PageTableBits, seL4_VSpaceBits,
+    ARMHugePageBits, ARMLargePageBits, ARMSmallPageBits, ARM_Huge_Page, ARM_Large_Page,
+    ARM_Small_Page,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -12,12 +13,10 @@ pub enum ObjectType {
     NotificationObject = 3,
     CapTableObject = 4,
     seL4_ARM_HugePageObject = 5,
-    seL4_ARM_PageUpperDirectoryObject = 6,
-    seL4_ARM_PageGlobalDirectoryObject = 7,
-    seL4_ARM_SmallPageObject = 8,
-    seL4_ARM_LargePageObject = 9,
-    seL4_ARM_PageTableObject = 10,
-    seL4_ARM_PageDirectoryObject = 11,
+    seL4_ARM_VSpaceObject = 6,
+    seL4_ARM_SmallPageObject = 7,
+    seL4_ARM_LargePageObject = 8,
+    seL4_ARM_PageTableObject = 9,
 }
 
 impl ObjectType {
@@ -27,9 +26,7 @@ impl ObjectType {
             Self::seL4_ARM_LargePageObject => ARMLargePageBits,
             Self::seL4_ARM_HugePageObject => ARMHugePageBits,
             Self::seL4_ARM_PageTableObject => seL4_PageTableBits,
-            Self::seL4_ARM_PageUpperDirectoryObject => seL4_PUDBits,
-            Self::seL4_ARM_PageDirectoryObject => seL4_PageDirBits,
-            Self::seL4_ARM_PageGlobalDirectoryObject => seL4_PGDBits,
+            Self::seL4_ARM_VSpaceObject => seL4_VSpaceBits,
             _ => panic!("unsupported object type:{}", *self as usize),
         }
     }
@@ -58,12 +55,10 @@ impl ObjectType {
         matches!(
             self,
             Self::seL4_ARM_HugePageObject
-                | Self::seL4_ARM_PageUpperDirectoryObject
-                | Self::seL4_ARM_PageGlobalDirectoryObject
                 | Self::seL4_ARM_SmallPageObject
                 | Self::seL4_ARM_LargePageObject
                 | Self::seL4_ARM_PageTableObject
-                | Self::seL4_ARM_PageDirectoryObject
+                | Self::seL4_ARM_VSpaceObject
         )
     }
 }

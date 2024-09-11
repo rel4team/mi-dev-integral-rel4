@@ -9,7 +9,7 @@ use crate::utils::clear_memory_pt;
 use log::debug;
 use sel4_common::arch::maskVMRights;
 use sel4_common::cap_rights::seL4_CapRights_t;
-use sel4_common::fault::lookup_fault_t;
+use sel4_common::fault::{lookup_fault_missing_capability, lookup_fault_t};
 use sel4_common::sel4_config::{
     asidInvalid, asidLowBits, nASIDPools, seL4_AlignmentError, seL4_FailedLookup, seL4_RangeError,
     ARM_Huge_Page, ARM_Large_Page, ARM_Small_Page, PAGE_BITS, PGD_INDEX_OFFSET, PUD_INDEX_OFFSET,
@@ -55,15 +55,7 @@ pub fn decode_mmu_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match slot.cap.get_cap_type() {
-        CapTag::CapPageGlobalDirectoryCap => {
-            decode_vspace_root_invocation(label, length, slot, buffer)
-        }
-        CapTag::CapPageUpperDirectoryCap => {
-            decode_page_upper_directory_invocation(label, length, slot, buffer)
-        }
-        CapTag::CapPageDirectoryCap => {
-            decode_page_directory_invocation(label, length, slot, buffer)
-        }
+        CapTag::CapVspaceCap => decode_vspace_root_invocation(label, length, slot, buffer),
         CapTag::CapPageTableCap => decode_page_table_invocation(label, length, slot, buffer),
         CapTag::CapFrameCap => decode_frame_invocation(label, length, slot, call, buffer),
         CapTag::CapASIDControlCap => decode_asid_control(label, length, buffer),
@@ -296,11 +288,7 @@ fn decode_frame_invocation(
     }
 }
 
-fn decode_asid_control(
-    label: MessageLabel,
-    length: usize,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if unlikely(label != MessageLabel::ARMASIDControlMakePool) {
         global_ops!(current_syscall_error._type = seL4_IllegalOperation);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -436,11 +424,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     exception_t::EXCEPTION_NONE
 }
 
-fn decode_frame_map(
-    length: usize,
-    frame_slot: &mut cte_t,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 3 || get_extra_cap_by_index(0).is_none() {
         debug!("ARMPageMap: Truncated message.");
         global_ops!(current_syscall_error._type = seL4_TruncatedMessage);
@@ -503,68 +487,80 @@ fn decode_frame_map(
     // frame_slot.cap.set_frame_mapped_asid(asid);
     // frame_slot.cap.set_frame_mapped_address(vaddr);
 
-    let vspace_root = PGDE::new_from_pte(vspace_root);
+    let vspace_root = PTE::new_from_pte(vspace_root);
     let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
-    match frame_size {
-        ARM_Small_Page => {
-            let lu_ret = vspace_root.lookup_pt_slot(vaddr);
-            if lu_ret.status != exception_t::EXCEPTION_NONE {
-                unsafe {
-                    current_syscall_error._type = seL4_FailedLookup;
-                    current_syscall_error.failedLookupWasSource = 0;
-                }
-                return exception_t::EXCEPTION_SYSCALL_ERROR;
-            }
-            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            let ptSlot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
-            invoke_small_page_map(
-                vaddr,
-                asid,
-                frame_slot,
-                makeUser3rdLevel(base, vm_rights, attr),
-                ptSlot,
-            )
+    let lu_ret = vspace_root.lookup_pt_slot(vaddr);
+    if lu_ret.ptBitsLeft != pageBitsForSize(frame_size) {
+        unsafe {
+            current_lookup_fault = lookup_fault_missing_capability;
+            current_syscall_error._type = seL4_FailedLookup;
+            current_syscall_error.failedLookupWasSource = 0;
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
-        ARM_Large_Page => {
-            let lu_ret = vspace_root.lookup_pd_slot(vaddr);
-            if lu_ret.status != exception_t::EXCEPTION_NONE {
-                unsafe {
-                    current_syscall_error._type = seL4_FailedLookup;
-                    current_syscall_error.failedLookupWasSource = 0;
-                }
-                return exception_t::EXCEPTION_SYSCALL_ERROR;
-            }
-            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            let pdSlot = convert_to_mut_type_ref::<PDE>(lu_ret.pdSlot as usize);
-            invoke_large_page_map(
-                vaddr,
-                asid,
-                frame_slot,
-                make_user_2nd_level(base, vm_rights, attr),
-                pdSlot,
-            )
-        }
-        ARM_Huge_Page => {
-            let lu_ret = vspace_root.lookup_pud_slot(vaddr);
-            if lu_ret.status != exception_t::EXCEPTION_NONE {
-                unsafe {
-                    current_syscall_error._type = seL4_FailedLookup;
-                    current_syscall_error.failedLookupWasSource = 0;
-                }
-                return exception_t::EXCEPTION_SYSCALL_ERROR;
-            }
-            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            let pudSlot = convert_to_mut_type_ref::<PUDE>(lu_ret.pudSlot as usize);
-            invoke_huge_page_map(
-                vaddr,
-                asid,
-                frame_slot,
-                make_user_1st_level(base, vm_rights, attr),
-                pudSlot,
-            )
-        }
-        _ => exception_t::EXCEPTION_SYSCALL_ERROR,
+        set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+        // TODO: unimplement
+        return invoke_page_map();
     }
+    // match frame_size {
+    //     ARM_Small_Page => {
+    //         let lu_ret = vspace_root.lookup_pt_slot(vaddr);
+    //         if lu_ret.status != exception_t::EXCEPTION_NONE {
+    //             unsafe {
+    //                 current_syscall_error._type = seL4_FailedLookup;
+    //                 current_syscall_error.failedLookupWasSource = 0;
+    //             }
+    //             return exception_t::EXCEPTION_SYSCALL_ERROR;
+    //         }
+    //         set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+    //         let ptSlot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
+    //         invoke_small_page_map(
+    //             vaddr,
+    //             asid,
+    //             frame_slot,
+    //             makeUser3rdLevel(base, vm_rights, attr),
+    //             ptSlot,
+    //         )
+    //     }
+    //     ARM_Large_Page => {
+    //         let lu_ret = vspace_root.lookup_pd_slot(vaddr);
+    //         if lu_ret.status != exception_t::EXCEPTION_NONE {
+    //             unsafe {
+    //                 current_syscall_error._type = seL4_FailedLookup;
+    //                 current_syscall_error.failedLookupWasSource = 0;
+    //             }
+    //             return exception_t::EXCEPTION_SYSCALL_ERROR;
+    //         }
+    //         set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+    //         let pdSlot = convert_to_mut_type_ref::<PDE>(lu_ret.pdSlot as usize);
+    //         invoke_large_page_map(
+    //             vaddr,
+    //             asid,
+    //             frame_slot,
+    //             make_user_2nd_level(base, vm_rights, attr),
+    //             pdSlot,
+    //         )
+    //     }
+    //     ARM_Huge_Page => {
+    //         let lu_ret = vspace_root.lookup_pud_slot(vaddr);
+    //         if lu_ret.status != exception_t::EXCEPTION_NONE {
+    //             unsafe {
+    //                 current_syscall_error._type = seL4_FailedLookup;
+    //                 current_syscall_error.failedLookupWasSource = 0;
+    //             }
+    //             return exception_t::EXCEPTION_SYSCALL_ERROR;
+    //         }
+    //         set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+    //         let pudSlot = convert_to_mut_type_ref::<PUDE>(lu_ret.pudSlot as usize);
+    //         invoke_huge_page_map(
+    //             vaddr,
+    //             asid,
+    //             frame_slot,
+    //             make_user_1st_level(base, vm_rights, attr),
+    //             pudSlot,
+    //         )
+    //     }
+    // _ => exception_t::EXCEPTION_SYSCALL_ERROR,
+    // }
     // if length < 3 || get_extra_cap_by_index(0).is_none() {
     //     debug!("ARMPageMap: Truncated message.");
     //     unsafe {

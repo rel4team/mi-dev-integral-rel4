@@ -45,6 +45,9 @@ pub const seL4_PGDBits: usize = 12;
 pub const seL4_HugePageBits: usize = 30;
 pub const seL4_LargePageBits: usize = 21;
 
+pub const seL4_PML4Bits: usize = 12;
+pub const seL4_VSpaceBits: usize = seL4_PML4Bits;
+
 pub const PT_INDEX_OFFSET: usize = seL4_PageBits;
 pub const PD_INDEX_OFFSET: usize = PT_INDEX_OFFSET + PT_INDEX_BITS;
 pub const PUD_INDEX_OFFSET: usize = PD_INDEX_OFFSET + PD_INDEX_BITS;

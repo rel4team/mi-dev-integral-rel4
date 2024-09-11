@@ -4,7 +4,7 @@ use core::ops::{Deref, DerefMut};
 use super::{kpptr_to_paddr, machine::*};
 use crate::{
     ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t,
-    pptr_to_paddr, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
+    pptr_to_paddr, vm_attributes_t, vptr_t, PTE,
 };
 use sel4_common::arch::MessageLabel;
 use sel4_common::sel4_config::{ARM_Large_Page, ARM_Small_Page};
@@ -44,8 +44,7 @@ impl<T> DerefMut for PageAligned<T> {
 
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPGD: PageAligned<PGDE> =
-    PageAligned::new(PGDE::invalid_new());
+pub(crate) static mut armKSGlobalKernelPGD: PageAligned<PTE> = PageAligned::new(PTE::invalid_new());
 
 #[inline]
 pub fn get_kernel_page_global_directory_base() -> usize {
@@ -53,7 +52,7 @@ pub fn get_kernel_page_global_directory_base() -> usize {
 }
 
 #[inline]
-pub fn set_kernel_page_global_directory_by_index(idx: usize, pgde: PGDE) {
+pub fn set_kernel_page_global_directory_by_index(idx: usize, pgde: PTE) {
     unsafe {
         armKSGlobalKernelPGD[idx] = pgde;
     }
@@ -61,8 +60,7 @@ pub fn set_kernel_page_global_directory_by_index(idx: usize, pgde: PGDE) {
 
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPUD: PageAligned<PUDE> =
-    PageAligned::new(PUDE::invalid_new());
+pub(crate) static mut armKSGlobalKernelPUD: PageAligned<PTE> = PageAligned::new(PTE::invalid_new());
 
 #[inline]
 pub fn get_kernel_page_upper_directory_base() -> usize {
@@ -70,7 +68,7 @@ pub fn get_kernel_page_upper_directory_base() -> usize {
 }
 
 #[inline]
-pub fn set_kernel_page_upper_directory_by_index(idx: usize, pude: PUDE) {
+pub fn set_kernel_page_upper_directory_by_index(idx: usize, pude: PTE) {
     unsafe {
         armKSGlobalKernelPUD[idx] = pude;
     }
@@ -81,8 +79,8 @@ pub fn set_kernel_page_upper_directory_by_index(idx: usize, pude: PUDE) {
 //     [[PTE(0); BIT!(PT_INDEX_BITS)]; BIT!(PT_INDEX_BITS)];
 #[no_mangle]
 #[link_section = ".page_table"]
-pub(crate) static mut armKSGlobalKernelPDs: PageAligned<PageAligned<PDE>> =
-    PageAligned::new(PageAligned::new(PDE::new_invalid()));
+pub(crate) static mut armKSGlobalKernelPDs: PageAligned<PageAligned<PTE>> =
+    PageAligned::new(PageAligned::new(PTE::new_invalid()));
 
 #[inline]
 pub fn get_kernel_page_directory_base_by_index(idx: usize) -> usize {
@@ -90,7 +88,7 @@ pub fn get_kernel_page_directory_base_by_index(idx: usize) -> usize {
 }
 
 #[inline]
-pub fn set_kernel_page_directory_by_index(idx1: usize, idx2: usize, pde: PDE) {
+pub fn set_kernel_page_directory_by_index(idx1: usize, idx2: usize, pde: PTE) {
     unsafe {
         armKSGlobalKernelPDs[idx1][idx2] = pde;
     }
@@ -124,7 +122,7 @@ pub fn set_kernel_page_table_by_index(idx: usize, pte: PTE) {
 ///
 /// Use page table in vspace_root to set the satp register.
 pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
-    setCurrentUserVSpaceRoot(pptr_to_paddr(vspace_root.get_pgd_base_ptr()));
+    setCurrentUserVSpaceRoot(pptr_to_paddr(vspace_root.get_vs_base_ptr()));
     Ok(())
 }
 
@@ -144,37 +142,37 @@ pub fn activate_kernel_vspace() {
     /* A53 hardware does not support TLB locking */
 }
 
-pub fn make_user_1st_level(
-    paddr: pptr_t,
-    vm_rights: vm_rights_t,
-    attributes: vm_attributes_t,
-) -> PUDE {
-    PUDE::new_1g(
-        attributes.get_armExecuteNever(),
-        paddr,
-        1,
-        1,
-        0,
-        ap_from_vm_rights(vm_rights),
-        attributes.get_attr_index(),
-    )
-}
+// pub fn make_user_1st_level(
+//     paddr: pptr_t,
+//     vm_rights: vm_rights_t,
+//     attributes: vm_attributes_t,
+// ) -> PUDE {
+//     PUDE::new_1g(
+//         attributes.get_armExecuteNever(),
+//         paddr,
+//         1,
+//         1,
+//         0,
+//         ap_from_vm_rights(vm_rights),
+//         attributes.get_attr_index(),
+//     )
+// }
 
-pub fn make_user_2nd_level(
-    paddr: pptr_t,
-    vm_rights: vm_rights_t,
-    attributes: vm_attributes_t,
-) -> PDE {
-    PDE::new_large(
-        attributes.get_armExecuteNever(),
-        paddr,
-        1,
-        1,
-        0,
-        ap_from_vm_rights(vm_rights),
-        attributes.get_attr_index(),
-    )
-}
+// pub fn make_user_2nd_level(
+//     paddr: pptr_t,
+//     vm_rights: vm_rights_t,
+//     attributes: vm_attributes_t,
+// ) -> PDE {
+//     PDE::new_large(
+//         attributes.get_armExecuteNever(),
+//         paddr,
+//         1,
+//         1,
+//         0,
+//         ap_from_vm_rights(vm_rights),
+//         attributes.get_attr_index(),
+//     )
+// }
 
 pub fn makeUser3rdLevel(paddr: pptr_t, vm_rights: vm_rights_t, attributes: vm_attributes_t) -> PTE {
     PTE::pte_new(
@@ -195,9 +193,9 @@ pub fn set_vm_root_for_flush_with_thread_root(
     asid: asid_t,
     thread_root: &cap_t,
 ) -> bool {
-    if thread_root.get_cap_type() == CapTag::CapPageGlobalDirectoryCap
-        && thread_root.get_pgd_is_mapped() != 0
-        && thread_root.get_pgd_base_ptr() == vspace as usize
+    if thread_root.get_cap_type() == CapTag::CapVspaceCap
+        && thread_root.get_vs_is_mapped() != 0
+        && thread_root.get_vs_base_ptr() == vspace as usize
     {
         return false;
     }
@@ -207,49 +205,49 @@ pub fn set_vm_root_for_flush_with_thread_root(
     true
 }
 
-pub fn page_upper_directory_mapped(asid: asid_t, vaddr: vptr_t, pud: &PUDE) -> Option<*mut PGDE> {
-    match find_map_for_asid(asid) {
-        Some(asid_map) => {
-            let lookup_ret = PGDE::new_from_pte(asid_map.get_vspace_root()).lookup_pgd_slot(vaddr);
-            if lookup_ret.status != exception_t::EXCEPTION_NONE {
-                return None;
-            }
+// pub fn page_upper_directory_mapped(asid: asid_t, vaddr: vptr_t, pud: &PUDE) -> Option<*mut PGDE> {
+//     match find_map_for_asid(asid) {
+//         Some(asid_map) => {
+//             let lookup_ret = PGDE::new_from_pte(asid_map.get_vspace_root()).lookup_pgd_slot(vaddr);
+//             if lookup_ret.status != exception_t::EXCEPTION_NONE {
+//                 return None;
+//             }
 
-            let slot = unsafe { &mut (*lookup_ret.pgdSlot) };
+//             let slot = unsafe { &mut (*lookup_ret.pgdSlot) };
 
-            if !slot.get_present()
-                || slot.get_pud_base_address() != pptr_to_paddr(pud as *const _ as _)
-            {
-                return None;
-            }
+//             if !slot.get_present()
+//                 || slot.get_pud_base_address() != pptr_to_paddr(pud as *const _ as _)
+//             {
+//                 return None;
+//             }
 
-            return Some(slot);
-        }
-        None => None,
-    }
-}
+//             return Some(slot);
+//         }
+//         None => None,
+//     }
+// }
 
-pub fn page_directory_mapped(asid: asid_t, vaddr: vptr_t, pd: &PDE) -> Option<*mut PUDE> {
-    match find_map_for_asid(asid) {
-        Some(asid_map) => {
-            let lookup_ret = PGDE::new_from_pte(asid_map.get_vspace_root()).lookup_pud_slot(vaddr);
-            if lookup_ret.status != exception_t::EXCEPTION_NONE {
-                return None;
-            }
+// pub fn page_directory_mapped(asid: asid_t, vaddr: vptr_t, pd: &PDE) -> Option<*mut PUDE> {
+//     match find_map_for_asid(asid) {
+//         Some(asid_map) => {
+//             let lookup_ret = PGDE::new_from_pte(asid_map.get_vspace_root()).lookup_pud_slot(vaddr);
+//             if lookup_ret.status != exception_t::EXCEPTION_NONE {
+//                 return None;
+//             }
 
-            let slot = unsafe { &mut (*lookup_ret.pudSlot) };
+//             let slot = unsafe { &mut (*lookup_ret.pudSlot) };
 
-            if !slot.get_present()
-                || slot.get_pd_base_address() != pptr_to_paddr(pd as *const _ as _)
-            {
-                return None;
-            }
+//             if !slot.get_present()
+//                 || slot.get_pd_base_address() != pptr_to_paddr(pd as *const _ as _)
+//             {
+//                 return None;
+//             }
 
-            return Some(slot);
-        }
-        None => None,
-    }
-}
+//             return Some(slot);
+//         }
+//         None => None,
+//     }
+// }
 
 /// TODO: Make pt as usize of
 pub fn page_table_mapped(asid: asid_t, vaddr: vptr_t, pt: &PTE) -> Option<*mut PDE> {
@@ -282,31 +280,32 @@ pub fn invalidate_tlb_by_asid_va(asid: asid_t, vaddr: vptr_t) {
     invalidate_local_tlb_va_asid((asid << 48) | vaddr >> seL4_PageBits);
 }
 
-pub fn unmap_page_upper_directory(asid: asid_t, vaddr: vptr_t, pud: &PUDE) {
-    match page_upper_directory_mapped(asid, vaddr, pud) {
-        Some(slot) => {
-            let slot = unsafe { &mut (*slot) };
-            slot.invalidate();
-            clean_by_va_pou(slot.get_ptr(), pptr_to_paddr(slot.get_ptr()));
-            invalidate_tlb_by_asid(asid);
-        }
-        None => {}
-    }
-}
+// pub fn unmap_page_upper_directory(asid: asid_t, vaddr: vptr_t, pud: &PUDE) {
+//     match page_upper_directory_mapped(asid, vaddr, pud) {
+//         Some(slot) => {
+//             let slot = unsafe { &mut (*slot) };
+//             slot.invalidate();
+//             clean_by_va_pou(slot.get_ptr(), pptr_to_paddr(slot.get_ptr()));
+//             invalidate_tlb_by_asid(asid);
+//         }
+//         None => {}
+//     }
+// }
 
-pub fn unmap_page_directory(asid: asid_t, vaddr: vptr_t, pd: &PDE) {
-    match page_directory_mapped(asid, vaddr, pd) {
-        Some(slot) => {
-            let slot = unsafe { &mut (*slot) };
-            slot.invalidate();
-            clean_by_va_pou(slot.get_ptr(), pptr_to_paddr(slot.get_ptr()));
-            invalidate_tlb_by_asid(asid);
-        }
-        None => {}
-    }
-}
+// pub fn unmap_page_directory(asid: asid_t, vaddr: vptr_t, pd: &PDE) {
+//     match page_directory_mapped(asid, vaddr, pd) {
+//         Some(slot) => {
+//             let slot = unsafe { &mut (*slot) };
+//             slot.invalidate();
+//             clean_by_va_pou(slot.get_ptr(), pptr_to_paddr(slot.get_ptr()));
+//             invalidate_tlb_by_asid(asid);
+//         }
+//         None => {}
+//     }
+// }
 
 pub fn unmap_page_table(asid: asid_t, vaddr: vptr_t, pt: &PTE) {
+    //TODO:unimplement
     match page_table_mapped(asid, vaddr, pt) {
         Some(slot) => {
             let slot = unsafe { &mut (*slot) };
