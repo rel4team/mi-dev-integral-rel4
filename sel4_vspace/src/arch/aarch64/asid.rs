@@ -1,3 +1,4 @@
+use crate::PTE;
 use sel4_common::{
     fault::lookup_fault_t,
     sel4_config::{asidHighBits, asidLowBits, IT_ASID},
@@ -54,7 +55,7 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
     match find_map_for_asid(asid) {
         Some(asid_map) => {
             if asid_map.get_type() == asid_map_asid_map_vspace {
-                ret.vspace_root = Some(asid_map.get_vspace_root() as *mut PGDE);
+                ret.vspace_root = Some(asid_map.get_vspace_root() as *mut PTE);
                 ret.status = exception_t::EXCEPTION_NONE;
             }
         }
@@ -64,7 +65,7 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
 }
 
 #[no_mangle]
-pub fn delete_asid(asid: usize, vspace: *mut PGDE, cap: &cap_t) -> Result<(), lookup_fault_t> {
+pub fn delete_asid(asid: usize, vspace: *mut PTE, cap: &cap_t) -> Result<(), lookup_fault_t> {
     let ptr = convert_to_option_mut_type_ref::<asid_pool_t>(get_asid_table()[asid >> asidLowBits]);
     if let Some(pool) = ptr {
         let asid_map: asid_map_t = pool[asid & MASK!(asidLowBits)];

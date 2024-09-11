@@ -1,9 +1,13 @@
 use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
+use crate::arch::aarch64::get_current_lookup_fault;
+use crate::{lookupPTSlot_ret_t, vptr_t, GET_PT_INDEX};
 use sel4_common::{
     arch::vm_rights_t,
-    sel4_config::seL4_PageTableBits,
+    fault::lookup_fault_t,
+    sel4_config::{seL4_PageBits, seL4_PageTableBits, PT_INDEX_BITS},
+    structures::exception_t,
     utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
     BIT,
 };
@@ -126,17 +130,17 @@ impl PTE {
         (self.0 & 0xfffffffff000) >> 10
     }
 
-    pub fn as_pgde(&self) -> PGDE {
-        PGDE::new_from_pte(self.0)
-    }
+    // pub fn as_pgde(&self) -> PGDE {
+    //     PGDE::new_from_pte(self.0)
+    // }
 
-    pub fn as_pude(&self) -> PUDE {
-        PUDE::new_from_pte(self.0)
-    }
+    // pub fn as_pude(&self) -> PUDE {
+    //     PUDE::new_from_pte(self.0)
+    // }
 
-    pub fn as_pde(&self) -> PDE {
-        PDE::new_from_pte(self.0)
-    }
+    // pub fn as_pde(&self) -> PDE {
+    //     PDE::new_from_pte(self.0)
+    // }
 
     pub fn is_pte_table(&self) -> bool {
         self.get_type() != pte_tag_t::pte_table as usize
@@ -210,5 +214,37 @@ impl PTE {
             | (reserved & 0x3) << 0;
 
         PTE(val)
+    }
+    ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
+    pub fn lookup_pt_slot(&self, vptr: vptr_t) -> lookupPTSlot_ret_t {
+        // TODO:unimplement
+        let pdSlot = self.lookup_pd_slot(vptr);
+        if pdSlot.status != exception_t::EXCEPTION_NONE {
+            let ret = lookupPTSlot_ret_t {
+                status: pdSlot.status,
+                ptSlot: 0 as *mut PTE,
+            };
+            return ret;
+        }
+        unsafe {
+            if (*pdSlot.pdSlot).get_present() == false {
+                *get_current_lookup_fault() =
+                    lookup_fault_t::new_missing_cap(seL4_PageBits + PT_INDEX_BITS);
+
+                let ret = lookupPTSlot_ret_t {
+                    status: exception_t::EXCEPTION_LOOKUP_FAULT,
+                    ptSlot: 0 as *mut PTE,
+                };
+                return ret;
+            }
+        }
+        let ptIndex = GET_PT_INDEX(vptr);
+        let pt = unsafe { paddr_to_pptr((*pdSlot.pdSlot).get_base_address()) as *mut PTE };
+
+        let ret = lookupPTSlot_ret_t {
+            status: exception_t::EXCEPTION_NONE,
+            ptSlot: unsafe { pt.add(ptIndex) },
+        };
+        ret
     }
 }

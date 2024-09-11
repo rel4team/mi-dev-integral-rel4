@@ -1,7 +1,6 @@
 use core::intrinsics::unlikely;
 
 use super::machine::mair_types;
-use super::pte::{pde_tag_t, pgde_tag_t, pude_tag_t};
 use super::structures::{lookupFrame_ret_t, lookupPTSlot_ret_t};
 use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
@@ -70,15 +69,6 @@ pub fn GET_ULVL_PGSIZE_BITS(n: usize) -> usize {
 pub fn GET_ULVL_PGSIZE(n: usize) -> usize {
     BIT!(UPT_LEVEL_SHIFT(n))
 }
-#[inline]
-pub fn GET_KPT_INDEX(addr: usize, n: usize) -> usize {
-    ((addr) >> (KPT_LEVEL_SHIFT(n))) & MASK!(PT_INDEX_BITS)
-}
-
-#[inline]
-pub fn GET_UPT_INDEX(addr: usize, n: usize) -> usize {
-    ((addr) >> (UPT_LEVEL_SHIFT(n))) & MASK!(PT_INDEX_BITS)
-}
 
 #[inline]
 pub fn kpptr_to_paddr(x: usize) -> usize {
@@ -98,6 +88,13 @@ pub fn paddr_to_pptr(x: usize) -> usize {
 }
 
 impl VAddr {
+    pub(super) fn GET_KPT_INDEX(&self, n: usize) -> usize {
+        ((self.0) >> (KPT_LEVEL_SHIFT(n))) & MASK!(PT_INDEX_BITS)
+    }
+    pub(super) fn GET_UPT_INDEX(&self, n: usize) -> usize {
+        ((self.0) >> (UPT_LEVEL_SHIFT(n))) & MASK!(PT_INDEX_BITS)
+    }
+
     /// Get the index of the pt(last level, bit 12..20)
     pub(super) const fn pt_index(&self) -> usize {
         (self.0 >> 12) & 0x1ff
@@ -244,6 +241,11 @@ impl_multi!( PTE {
     #[inline]
     pub fn invalidate(&mut self) {
         self.0 = 0;
+    }
+
+    #[inline]
+    pub fn next_level_slice<T>(&self) -> &'static mut [T] {
+        page_slice(paddr_to_pptr(self.next_level_paddr()))
     }
 });
 

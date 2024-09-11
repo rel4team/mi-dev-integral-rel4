@@ -40,8 +40,8 @@ impl vm_attributes_t {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct lookupPTSlot_ret_t {
-    pub status: exception_t,
     pub ptSlot: *mut PTE,
+    pub ptBitsLeft: usize,
 }
 
 // #[repr(C)]
