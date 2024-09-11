@@ -33,13 +33,11 @@ use sel4_cspace::interface::{cap_t, cte_insert, cte_t, CapTag};
 
 use sel4_vspace::{
     asid_map_t, asid_pool_t, asid_t, clean_by_va_pou, doFlush, find_vspace_for_asid,
-    get_asid_pool_by_index, makeUser3rdLevel, make_user_1st_level, make_user_2nd_level,
-    pptr_to_paddr, set_asid_pool_by_index, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
+    get_asid_pool_by_index, pptr_to_paddr, set_asid_pool_by_index, vm_attributes_t, vptr_t, PTE,
 };
 
 use crate::syscall::invocation::invoke_mmu_op::{
-    invoke_huge_page_map, invoke_large_page_map, invoke_page_get_address, invoke_page_table_unmap,
-    invoke_page_unmap, invoke_small_page_map,
+    invoke_page_get_address, invoke_page_map, invoke_page_table_unmap, invoke_page_unmap,
 };
 use crate::{
     config::maxIRQ,
@@ -118,8 +116,8 @@ fn decode_page_table_invocation(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let vspace_root = vspace_root_cap.get_pgd_base_ptr();
-    let asid = vspace_root_cap.get_pgd_mapped_asid();
+    let vspace_root = vspace_root_cap.get_vs_base_ptr();
+    let asid = vspace_root_cap.get_vs_mapped_asid();
 
     if unlikely(vaddr > USER_TOP) {
         global_ops!(current_syscall_error._type = seL4_InvalidArgument);
@@ -374,7 +372,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     let vspace_cap_slot = global_ops!(current_extra_caps.excaprefs[0]);
     let vspace_cap = convert_to_mut_type_ref::<cap_t>(vspace_cap_slot);
 
-    if unlikely(!vspace_cap.is_vtable_root() || vspace_cap.get_pgd_is_mapped() == 1) {
+    if unlikely(!vspace_cap.is_vtable_root() || vspace_cap.get_vs_is_mapped() == 1) {
         log::debug!("is not a valid vtable root");
         global_ops!(current_syscall_error._type = seL4_InvalidCapability);
         global_ops!(current_syscall_error.invalidArgumentNumber = 1);
@@ -418,7 +416,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
 
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
     vspace_cap.set_pgd_mapped_asid(asid);
-    vspace_cap.set_pgd_is_mapped(1);
+    vspace_cap.set_vs_is_mapped(1);
     let asid_map = asid_map_t::new_vspace(vspace_cap.get_pgd_base_ptr());
     pool[asid & MASK!(asidLowBits)] = asid_map;
     exception_t::EXCEPTION_NONE
@@ -444,8 +442,8 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
         global_ops!(current_syscall_error.invalidCapNumber = 1);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let vspace_root = vspace_root_cap.get_pgd_base_ptr();
-    let asid = vspace_root_cap.get_pgd_mapped_asid();
+    let vspace_root = vspace_root_cap.get_vs_base_ptr();
+    let asid = vspace_root_cap.get_vs_mapped_asid();
     let find_ret = find_vspace_for_asid(asid);
     if unlikely(find_ret.status != exception_t::EXCEPTION_NONE) {
         global_ops!(current_syscall_error._type = seL4_FailedLookup);
@@ -498,9 +496,10 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
         set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-        // TODO: unimplement
+        // TODO:unimplement
         return invoke_page_map();
     }
+    exception_t::EXCEPTION_SYSCALL_ERROR
     // match frame_size {
     //     ARM_Small_Page => {
     //         let lu_ret = vspace_root.lookup_pt_slot(vaddr);

@@ -138,14 +138,14 @@ pub fn invoke_page_map(
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_page_map(
-    _frame_cap: &mut cap_t,
+pub fn invoke_page_map(// _frame_cap: &mut cap_t,
 
-    asid: usize,
-    pt_slot: &mut PTE,
-    frame_slot: &mut cte_t,
-) {
+    // asid: usize,
+    // pt_slot: &mut PTE,
+    // frame_slot: &mut cte_t,
+) -> exception_t {
     // TODO:unimplement
+    exception_t::EXCEPTION_NONE
 }
 // #[cfg(target_arch = "aarch64")]
 // pub fn invoke_huge_page_map(

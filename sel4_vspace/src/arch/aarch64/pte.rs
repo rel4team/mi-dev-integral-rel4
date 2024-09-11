@@ -1,8 +1,11 @@
 use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
+use super::{seL4_VSpaceIndexBits, UPT_LEVELS};
 use crate::arch::aarch64::get_current_lookup_fault;
 use crate::{lookupPTSlot_ret_t, vptr_t, GET_PT_INDEX};
+use sel4_common::utils::ptr_to_mut;
+use sel4_common::MASK;
 use sel4_common::{
     arch::vm_rights_t,
     fault::lookup_fault_t,
@@ -228,35 +231,23 @@ impl PTE {
         PTE(val)
     }
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
-    pub fn lookup_pt_slot(&self, vptr: vptr_t) -> lookupPTSlot_ret_t {
-        // TODO:unimplement
-        let pdSlot = self.lookup_pd_slot(vptr);
-        if pdSlot.status != exception_t::EXCEPTION_NONE {
-            let ret = lookupPTSlot_ret_t {
-                status: pdSlot.status,
-                ptSlot: 0 as *mut PTE,
-            };
-            return ret;
-        }
-        unsafe {
-            if (*pdSlot.pdSlot).get_present() == false {
-                *get_current_lookup_fault() =
-                    lookup_fault_t::new_missing_cap(seL4_PageBits + PT_INDEX_BITS);
-
-                let ret = lookupPTSlot_ret_t {
-                    status: exception_t::EXCEPTION_LOOKUP_FAULT,
-                    ptSlot: 0 as *mut PTE,
-                };
-                return ret;
-            }
-        }
-        let ptIndex = GET_PT_INDEX(vptr);
-        let pt = unsafe { paddr_to_pptr((*pdSlot.pdSlot).get_base_address()) as *mut PTE };
-
-        let ret = lookupPTSlot_ret_t {
-            status: exception_t::EXCEPTION_NONE,
-            ptSlot: unsafe { pt.add(ptIndex) },
+    pub fn lookup_pt_slot(&mut self, vptr: vptr_t) -> lookupPTSlot_ret_t {
+        let mut pt = self as *mut PTE;
+        let mut level: usize = UPT_LEVELS - 1;
+        let ptBitsLeft = PT_INDEX_BITS * level + seL4_PageBits;
+        let mut ret = lookupPTSlot_ret_t {
+            ptSlot: unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(seL4_VSpaceIndexBits)) },
+            ptBitsLeft: ptBitsLeft,
         };
+
+        while ptr_to_mut(ret.ptSlot).get_type() == (pte_tag_t::pte_table) as usize && level > 0 {
+            level = level - 1;
+            ret.ptBitsLeft = ret.ptBitsLeft - PT_INDEX_BITS;
+            let paddr = ptr_to_mut(ret.ptSlot).next_level_paddr();
+            pt = paddr_to_pptr(paddr) as *mut PTE;
+            ret.ptSlot = unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(PT_INDEX_BITS)) };
+        }
+
         ret
     }
 }

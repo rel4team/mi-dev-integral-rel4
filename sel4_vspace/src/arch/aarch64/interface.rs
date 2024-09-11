@@ -2,7 +2,8 @@ use core::intrinsics::unlikely;
 use core::ops::{Deref, DerefMut};
 
 use super::pte::pte_tag_t;
-use super::{kpptr_to_paddr, machine::*};
+use super::{kpptr_to_paddr, machine::*, UPT_LEVELS};
+use crate::arch::VAddr;
 use crate::{
     ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t,
     pptr_to_paddr, vm_attributes_t, vptr_t, PTE,
@@ -251,25 +252,25 @@ pub fn set_vm_root_for_flush_with_thread_root(
 // }
 
 /// TODO: Make pt as usize of
-pub fn page_table_mapped(asid: asid_t, vaddr: vptr_t, pt: &PTE) -> Option<*mut PDE> {
-    match find_map_for_asid(asid) {
-        Some(asid_map) => {
-            let lookup_ret = PGDE::new_from_pte(asid_map.get_vspace_root()).lookup_pd_slot(vaddr);
-            if lookup_ret.status != exception_t::EXCEPTION_NONE {
-                return None;
-            }
+// pub fn page_table_mapped(asid: asid_t, vaddr: vptr_t, pt: &PTE) -> Option<*mut PDE> {
+//     match find_map_for_asid(asid) {
+//         Some(asid_map) => {
+//             let lookup_ret = PGDE::new_from_pte(asid_map.get_vspace_root()).lookup_pd_slot(vaddr);
+//             if lookup_ret.status != exception_t::EXCEPTION_NONE {
+//                 return None;
+//             }
 
-            let slot = unsafe { &mut (*lookup_ret.pdSlot) };
+//             let slot = unsafe { &mut (*lookup_ret.pdSlot) };
 
-            if !slot.get_present() || slot.get_base_address() != pptr_to_paddr(pt.0) {
-                return None;
-            }
+//             if !slot.get_present() || slot.get_base_address() != pptr_to_paddr(pt.0) {
+//                 return None;
+//             }
 
-            return Some(slot);
-        }
-        None => None,
-    }
-}
+//             return Some(slot);
+//         }
+//         None => None,
+//     }
+// }
 
 #[inline]
 pub fn invalidate_tlb_by_asid(asid: asid_t) {
@@ -306,16 +307,30 @@ pub fn invalidate_tlb_by_asid_va(asid: asid_t, vaddr: vptr_t) {
 // }
 
 pub fn unmap_page_table(asid: asid_t, vaddr: vptr_t, pt: &PTE) {
-    //TODO:unimplement
-    match page_table_mapped(asid, vaddr, pt) {
-        Some(slot) => {
-            let slot = unsafe { &mut (*slot) };
-            slot.invalidate();
-            clean_by_va_pou(slot.get_ptr(), pptr_to_paddr(slot.get_ptr()));
-            invalidate_tlb_by_asid(asid);
-        }
-        None => {}
+    let find_ret = find_vspace_for_asid(asid);
+    if find_ret.status != exception_t::EXCEPTION_NONE {
+        return;
     }
+    let mut ptSlot: *mut PTE = core::ptr::null_mut::<PTE>();
+    let mut pte = find_ret.vspace_root.unwrap();
+    let mut level: usize = 0;
+    while level < UPT_LEVELS - 1 && pte as usize != pt as *const PTE as usize {
+        level = level + 1;
+        ptSlot = unsafe { pte.add(VAddr(vaddr).GET_UPT_INDEX(level)) };
+        if ptr_to_mut(ptSlot).get_type() != (pte_tag_t::pte_table) as usize {
+            return;
+        }
+        pte = paddr_to_pptr(ptr_to_mut(ptSlot).next_level_paddr()) as *mut PTE;
+    }
+    if pte as usize != pt as *const PTE as usize {
+        return;
+    }
+    assert!(ptSlot.is_null());
+    unsafe {
+        *(ptSlot) = PTE(0);
+        ptr_to_mut(pte).update(*(ptSlot));
+    }
+    invalidate_tlb_by_asid(asid);
 }
 
 /// Unmap a page table
