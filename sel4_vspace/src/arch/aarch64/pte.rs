@@ -204,8 +204,8 @@ impl PTE {
             PTE::new(paddr, flags)
         }
     }
-    #[inline]
-    pub const fn pte_new_table(pt_base_address: usize) -> PTE {
+
+    pub fn pte_new_table(pt_base_address: usize) -> PTE {
         let val = 0 | (pt_base_address & 0xfffffffff000) | (0x3);
         PTE(val)
     }

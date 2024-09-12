@@ -13,6 +13,6 @@ pub use device::*;
 pub use interface::*;
 pub use machine::*;
 pub use pagetable::create_it_pud_cap;
-pub use pte::PTEFlags;
+pub use pte::{pte_tag_t, PTEFlags};
 pub use structures::*;
 pub use utils::*;
