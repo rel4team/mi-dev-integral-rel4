@@ -18,13 +18,13 @@ use sel4_common::{
 use sel4_cspace::interface::cte_insert;
 use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
+#[cfg(target_arch = "aarch64")]
+use sel4_vspace::invalidate_tlb_by_asid_va;
 #[cfg(target_arch = "riscv64")]
 use sel4_vspace::{
     asid_pool_t, copyGlobalMappings, pptr_t, set_asid_pool_by_index, sfence, vm_attributes_t,
     PTEFlags,
 };
-#[cfg(target_arch = "aarch64")]
-use sel4_vspace::{invalidate_tlb_by_asid_va, PDE, PUDE};
 use sel4_vspace::{pptr_to_paddr, unmapPage, unmap_page_table, PTE};
 
 use crate::{kernel::boot::current_lookup_fault, utils::clear_memory};
@@ -54,29 +54,29 @@ pub fn invoke_page_table_map(
     sfence();
     exception_t::EXCEPTION_NONE
 }
-#[allow(unused)]
-#[cfg(target_arch = "aarch64")]
-pub fn invoke_page_table_map(
-    pt_cap: &mut cap_t,
-    pd_slot: &mut PDE,
-    asid: usize,
-    vaddr: usize,
-) -> exception_t {
-    let paddr = pptr_to_paddr(pt_cap.get_pt_base_ptr());
-    let pde = PDE::new_small(paddr >> seL4_PageBits);
-    *pd_slot = pde;
-    pt_cap.set_pt_is_mapped(1);
-    pt_cap.set_pt_mapped_asid(asid);
-    pt_cap.set_pt_mapped_address(vaddr);
-    unsafe {
-        asm!(
-            "dc cvau, {}",
-            "dmb sy",
-            in(reg) pd_slot,
-        );
-    }
-    exception_t::EXCEPTION_NONE
-}
+// #[allow(unused)]
+// #[cfg(target_arch = "aarch64")]
+// pub fn invoke_page_table_map(
+//     pt_cap: &mut cap_t,
+//     pd_slot: &mut PDE,
+//     asid: usize,
+//     vaddr: usize,
+// ) -> exception_t {
+//     let paddr = pptr_to_paddr(pt_cap.get_pt_base_ptr());
+//     let pde = PDE::new_small(paddr >> seL4_PageBits);
+//     *pd_slot = pde;
+//     pt_cap.set_pt_is_mapped(1);
+//     pt_cap.set_pt_mapped_asid(asid);
+//     pt_cap.set_pt_mapped_address(vaddr);
+//     unsafe {
+//         asm!(
+//             "dc cvau, {}",
+//             "dmb sy",
+//             in(reg) pd_slot,
+//         );
+//     }
+//     exception_t::EXCEPTION_NONE
+// }
 
 pub fn invoke_page_get_address(vbase_ptr: usize, call: bool) -> exception_t {
     let thread = get_currenct_thread();
@@ -138,14 +138,14 @@ pub fn invoke_page_map(
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_page_map(
-    _frame_cap: &mut cap_t,
+pub fn invoke_page_map(// _frame_cap: &mut cap_t,
 
-    asid: usize,
-    pt_slot: &mut PTE,
-    frame_slot: &mut cte_t,
-) {
+    // asid: usize,
+    // pt_slot: &mut PTE,
+    // frame_slot: &mut cte_t,
+) -> exception_t {
     // TODO:unimplement
+    exception_t::EXCEPTION_NONE
 }
 // #[cfg(target_arch = "aarch64")]
 // pub fn invoke_huge_page_map(

@@ -1,8 +1,11 @@
 use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
+use super::{seL4_VSpaceIndexBits, UPT_LEVELS};
 use crate::arch::aarch64::get_current_lookup_fault;
 use crate::{lookupPTSlot_ret_t, vptr_t, GET_PT_INDEX};
+use sel4_common::utils::ptr_to_mut;
+use sel4_common::MASK;
 use sel4_common::{
     arch::vm_rights_t,
     fault::lookup_fault_t,
@@ -32,11 +35,11 @@ impl VMPageSize {
     }
 }
 
-#[allow(unused)]
-pub enum pgde_tag_t {
-    pgde_invalid = 0,
-    pgde_pud = 3,
-}
+// #[allow(unused)]
+// pub enum pgde_tag_t {
+//     pgde_invalid = 0,
+//     pgde_pud = 3,
+// }
 
 #[allow(unused)]
 pub enum pte_tag_t {
@@ -46,18 +49,18 @@ pub enum pte_tag_t {
     pte_invalid = 0,
 }
 
-#[allow(unused)]
-pub enum pude_tag_t {
-    pude_invalid = 0,
-    pude_1g = 1,
-    pude_pd = 3,
-}
+// #[allow(unused)]
+// pub enum pude_tag_t {
+//     pude_invalid = 0,
+//     pude_1g = 1,
+//     pude_pd = 3,
+// }
 
-#[allow(unused)]
-pub enum pde_tag_t {
-    pde_large = 1,
-    pde_small = 3,
-}
+// #[allow(unused)]
+// pub enum pde_tag_t {
+//     pde_large = 1,
+//     pde_small = 3,
+// }
 
 bitflags::bitflags! {
     /// Possible flags for a page table entry.
@@ -122,6 +125,10 @@ impl PTE {
         Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
     }
 
+    pub fn get_page_base_address(&self) -> usize {
+        self.0 & 0xfffffffff000
+    }
+
     pub fn get_pte_from_ppn_mut(&self) -> &mut PTE {
         convert_to_mut_type_ref::<PTE>(paddr_to_pptr(self.get_ppn() << seL4_PageTableBits))
     }
@@ -142,6 +149,11 @@ impl PTE {
     //     PDE::new_from_pte(self.0)
     // }
 
+    #[inline]
+    pub const fn pte_is_page_type(&self) -> bool {
+        self.get_type() == (pte_tag_t::pte_4k_page) as usize
+            || self.get_type() == (pte_tag_t::pte_page) as usize
+    }
     pub fn is_pte_table(&self) -> bool {
         self.get_type() != pte_tag_t::pte_table as usize
     }
@@ -193,7 +205,12 @@ impl PTE {
         }
     }
 
-    pub fn pte_new(
+    pub fn pte_new_table(pt_base_address: usize) -> PTE {
+        let val = 0 | (pt_base_address & 0xfffffffff000) | (0x3);
+        PTE(val)
+    }
+
+    pub fn pte_new_page(
         UXN: usize,
         page_base_address: usize,
         nG: usize,
@@ -201,7 +218,6 @@ impl PTE {
         SH: usize,
         AP: usize,
         AttrIndx: usize,
-        reserved: usize,
     ) -> PTE {
         let val = 0
             | (UXN & 0x1) << 54
@@ -210,41 +226,28 @@ impl PTE {
             | (AF & 0x1) << 10
             | (SH & 0x3) << 8
             | (AP & 0x3) << 6
-            | (AttrIndx & 0x7) << 2
-            | (reserved & 0x3) << 0;
+            | (AttrIndx & 0x7) << 2;
 
         PTE(val)
     }
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
-    pub fn lookup_pt_slot(&self, vptr: vptr_t) -> lookupPTSlot_ret_t {
-        // TODO:unimplement
-        let pdSlot = self.lookup_pd_slot(vptr);
-        if pdSlot.status != exception_t::EXCEPTION_NONE {
-            let ret = lookupPTSlot_ret_t {
-                status: pdSlot.status,
-                ptSlot: 0 as *mut PTE,
-            };
-            return ret;
-        }
-        unsafe {
-            if (*pdSlot.pdSlot).get_present() == false {
-                *get_current_lookup_fault() =
-                    lookup_fault_t::new_missing_cap(seL4_PageBits + PT_INDEX_BITS);
-
-                let ret = lookupPTSlot_ret_t {
-                    status: exception_t::EXCEPTION_LOOKUP_FAULT,
-                    ptSlot: 0 as *mut PTE,
-                };
-                return ret;
-            }
-        }
-        let ptIndex = GET_PT_INDEX(vptr);
-        let pt = unsafe { paddr_to_pptr((*pdSlot.pdSlot).get_base_address()) as *mut PTE };
-
-        let ret = lookupPTSlot_ret_t {
-            status: exception_t::EXCEPTION_NONE,
-            ptSlot: unsafe { pt.add(ptIndex) },
+    pub fn lookup_pt_slot(&mut self, vptr: vptr_t) -> lookupPTSlot_ret_t {
+        let mut pt = self as *mut PTE;
+        let mut level: usize = UPT_LEVELS - 1;
+        let ptBitsLeft = PT_INDEX_BITS * level + seL4_PageBits;
+        let mut ret = lookupPTSlot_ret_t {
+            ptSlot: unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(seL4_VSpaceIndexBits)) },
+            ptBitsLeft: ptBitsLeft,
         };
+
+        while ptr_to_mut(ret.ptSlot).get_type() == (pte_tag_t::pte_table) as usize && level > 0 {
+            level = level - 1;
+            ret.ptBitsLeft = ret.ptBitsLeft - PT_INDEX_BITS;
+            let paddr = ptr_to_mut(ret.ptSlot).next_level_paddr();
+            pt = paddr_to_pptr(paddr) as *mut PTE;
+            ret.ptSlot = unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(PT_INDEX_BITS)) };
+        }
+
         ret
     }
 }

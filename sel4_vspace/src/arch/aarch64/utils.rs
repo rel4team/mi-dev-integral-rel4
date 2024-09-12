@@ -1,7 +1,7 @@
 use core::intrinsics::unlikely;
 
 use super::machine::mair_types;
-use super::structures::{lookupFrame_ret_t, lookupPTSlot_ret_t};
+use super::structures::lookupPTSlot_ret_t;
 use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
 use crate::vptr_t;
@@ -230,7 +230,7 @@ impl_multi!( PTE {
     /// Get the page's type info
     #[inline]
     pub const fn get_type(&self) -> usize {
-        self.0 & 0x3
+        self.0 & 0x3 | ((self.0 &(1<<58) )>>56)
     }
 
     #[inline]
