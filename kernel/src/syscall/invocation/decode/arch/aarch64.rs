@@ -725,7 +725,7 @@ fn decode_vspace_root_invocation(
     cte: &mut cte_t,
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
-	// TODO:unimplement
+    // TODO:unimplement
     match label {
         MessageLabel::ARMVSpaceClean_Data
         | MessageLabel::ARMVSpaceInvalidate_Data
@@ -760,7 +760,7 @@ fn decode_vspace_root_invocation(
                 };
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
-            let vspace_root = PGDE::new_from_pte(cte.cap.get_pgd_base_ptr());
+            let vspace_root = cte.cap.get_vs_base_ptr() as *mut PTE;
             let asid = cte.cap.get_asid_base();
             let find_ret = find_vspace_for_asid(asid);
             if find_ret.status != exception_t::EXCEPTION_NONE {
@@ -771,7 +771,7 @@ fn decode_vspace_root_invocation(
                     return exception_t::EXCEPTION_SYSCALL_ERROR;
                 }
             }
-            if find_ret.vspace_root.unwrap() as usize != vspace_root.get_ptr() {
+            if find_ret.vspace_root.unwrap() as usize != ptr_to_ref(vspace_root).get_ptr() {
                 debug!("VSpaceRoot Flush: Invalid VSpace Cap");
                 unsafe {
                     current_syscall_error._type = seL4_InvalidCapability;
@@ -779,24 +779,25 @@ fn decode_vspace_root_invocation(
                 }
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
-            let resolve_ret = vspace_root.lookup_frame(start);
-            if !resolve_ret.valid {
+            let resolve_ret = ptr_to_mut(vspace_root).lookup_pt_slot(start);
+			let pte = resolve_ret.ptSlot;
+            if ptr_to_ref(pte).get_type() != (pte_tag_t::pte_page) as usize {
                 get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
                 return exception_t::EXCEPTION_NONE;
             }
-            let page_base_start = start & !MASK!(pageBitsForSize(resolve_ret.frameSize));
-            let page_base_end = (end - 1) & !MASK!(pageBitsForSize(resolve_ret.frameSize));
+            let page_base_start = start & !MASK!(pageBitsForSize(resolve_ret.ptBitsLeft));
+            let page_base_end = (end - 1) & !MASK!(pageBitsForSize(resolve_ret.ptBitsLeft));
             if page_base_start != page_base_end {
                 unsafe {
                     current_syscall_error._type = seL4_RangeError;
                     current_syscall_error.rangeErrorMin = start;
                     current_syscall_error.rangeErrorMax =
-                        page_base_start + MASK!(pageBitsForSize(resolve_ret.frameSize));
+                        page_base_start + MASK!(pageBitsForSize(resolve_ret.ptBitsLeft));
                 }
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
             let pstart =
-                resolve_ret.frameBase + start & MASK!(pageBitsForSize(resolve_ret.frameSize));
+                ptr_to_ref(pte).get_page_base_address() + start & MASK!(pageBitsForSize(resolve_ret.ptBitsLeft));
             get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
             return decode_vspace_flush_invocation(
                 label,

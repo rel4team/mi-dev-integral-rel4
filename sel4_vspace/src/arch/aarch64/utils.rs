@@ -1,7 +1,7 @@
 use core::intrinsics::unlikely;
 
 use super::machine::mair_types;
-use super::structures::{lookupFrame_ret_t, lookupPTSlot_ret_t};
+use super::structures::lookupPTSlot_ret_t;
 use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
 use crate::vptr_t;
