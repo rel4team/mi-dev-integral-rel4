@@ -1,11 +1,7 @@
 use core::intrinsics::unlikely;
 
 use super::machine::mair_types;
-use super::structures::lookupPTSlot_ret_t;
-use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
-use crate::vptr_t;
-use sel4_common::utils::convert_ref_type_to_usize;
 use sel4_common::BIT;
 use sel4_common::{
     arch::{
@@ -15,8 +11,7 @@ use sel4_common::{
     fault::lookup_fault_t,
     ffi_addr,
     sel4_config::*,
-    structures::exception_t,
-    utils::{convert_to_mut_slice, convert_to_type_ref},
+    utils::convert_to_mut_slice,
     MASK,
 };
 

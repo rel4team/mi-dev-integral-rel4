@@ -2,15 +2,12 @@ use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
 use super::{seL4_VSpaceIndexBits, UPT_LEVELS};
-use crate::arch::aarch64::get_current_lookup_fault;
-use crate::{lookupPTSlot_ret_t, vptr_t, GET_PT_INDEX};
+use crate::{lookupPTSlot_ret_t, vptr_t};
 use sel4_common::utils::ptr_to_mut;
 use sel4_common::MASK;
 use sel4_common::{
     arch::vm_rights_t,
-    fault::lookup_fault_t,
     sel4_config::{seL4_PageBits, seL4_PageTableBits, PT_INDEX_BITS},
-    structures::exception_t,
     utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
     BIT,
 };

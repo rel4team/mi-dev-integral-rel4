@@ -75,6 +75,7 @@ pub const RESERVED: usize = 3;
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn rust_map_kernel_window() {
+    // println!("go into rusta map kernel window");
     set_kernel_page_global_directory_by_index(
         (VAddr(PPTR_BASE)).GET_KPT_INDEX(0),
         PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_upper_directory_base())),

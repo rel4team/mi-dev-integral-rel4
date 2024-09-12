@@ -5,15 +5,15 @@ use super::pte::pte_tag_t;
 use super::{kpptr_to_paddr, machine::*, UPT_LEVELS};
 use crate::arch::VAddr;
 use crate::{
-    ap_from_vm_rights, asid_t, find_map_for_asid, find_vspace_for_asid, paddr_to_pptr, pptr_t,
-    pptr_to_paddr, vm_attributes_t, vptr_t, PTE,
+    asid_t, find_vspace_for_asid, paddr_t, paddr_to_pptr, pptr_t, pptr_to_paddr, vm_attributes_t,
+    vptr_t, PTE,
 };
-use sel4_common::arch::MessageLabel;
-use sel4_common::sel4_config::{ARM_Large_Page, ARM_Small_Page};
+use sel4_common::arch::{vm_rights_t, MessageLabel};
+use sel4_common::sel4_config::ARM_Small_Page;
 use sel4_common::structures::exception_t;
-use sel4_common::utils::{convert_ref_type_to_usize, pageBitsForSize, ptr_to_mut};
+use sel4_common::utils::{pageBitsForSize, ptr_to_mut};
+use sel4_common::vm_rights;
 use sel4_common::{
-    arch::vm_rights_t,
     fault::lookup_fault_t,
     sel4_config::{seL4_PageBits, PT_INDEX_BITS},
     BIT,
