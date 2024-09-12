@@ -1,6 +1,4 @@
 #[cfg(target_arch = "aarch64")]
-use core::arch::asm;
-#[cfg(target_arch = "aarch64")]
 use core::intrinsics::unlikely;
 use sel4_common::arch::ArchReg;
 #[cfg(target_arch = "aarch64")]
@@ -17,8 +15,10 @@ use sel4_common::{
     message_info::seL4_MessageInfo_t,
     sel4_config::*,
     structures::exception_t,
-    utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
+    utils::convert_to_mut_type_ref,
 };
+#[cfg(target_arch = "aarch64")]
+use sel4_common::utils::convert_ref_type_to_usize;
 #[cfg(target_arch = "riscv64")]
 use sel4_cspace::interface::cte_insert;
 use sel4_cspace::interface::{cap_t, cte_t};

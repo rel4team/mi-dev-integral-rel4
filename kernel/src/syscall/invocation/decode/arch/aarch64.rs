@@ -26,7 +26,7 @@ use sel4_common::{
     structures::{exception_t, seL4_IPCBuffer},
     MASK,
 };
-use sel4_common::{println, BIT, IS_ALIGNED};
+use sel4_common::{BIT, IS_ALIGNED};
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t, CapTag};
 
 use sel4_vspace::{

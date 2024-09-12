@@ -1,6 +1,3 @@
-use core::intrinsics::unlikely;
-
-use super::machine::mair_types;
 use crate::arch::VAddr;
 use sel4_common::BIT;
 use sel4_common::{
@@ -8,8 +5,6 @@ use sel4_common::{
         config::{KERNEL_ELF_BASE_OFFSET, PPTR_BASE_OFFSET},
         vm_rights_t,
     },
-    fault::lookup_fault_t,
-    ffi_addr,
     sel4_config::*,
     utils::convert_to_mut_slice,
     MASK,
@@ -618,11 +613,11 @@ impl PTE {
     }
 }
 
-/// Get current lookup fault object.
-pub(super) fn get_current_lookup_fault() -> &'static mut lookup_fault_t {
-    unsafe {
-        (ffi_addr!(current_lookup_fault) as *mut lookup_fault_t)
-            .as_mut()
-            .unwrap()
-    }
-}
+// /// Get current lookup fault object.
+// pub(super) fn get_current_lookup_fault() -> &'static mut lookup_fault_t {
+//     unsafe {
+//         (ffi_addr!(current_lookup_fault) as *mut lookup_fault_t)
+//             .as_mut()
+//             .unwrap()
+//     }
+// }
