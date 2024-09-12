@@ -227,6 +227,27 @@ impl PTE {
 
         PTE(val)
     }
+
+	pub fn pte_new_4k_page(
+        UXN: usize,
+        page_base_address: usize,
+        nG: usize,
+        AF: usize,
+        SH: usize,
+        AP: usize,
+        AttrIndx: usize,
+    ) -> PTE {
+        let val = 0
+            | (UXN & 0x1) << 54
+            | (page_base_address & 0xfffffffff000) >> 0
+            | (nG & 0x1) << 11
+            | (AF & 0x1) << 10
+            | (SH & 0x3) << 8
+            | (AP & 0x3) << 6
+            | (AttrIndx & 0x7) << 2
+			| 0x400000000000003;
+        PTE(val)
+    }
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
     pub fn lookup_pt_slot(&mut self, vptr: vptr_t) -> lookupPTSlot_ret_t {
         let mut pt = self as *mut PTE;
