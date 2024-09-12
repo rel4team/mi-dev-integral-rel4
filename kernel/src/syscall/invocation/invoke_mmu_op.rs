@@ -1,8 +1,9 @@
 #[cfg(target_arch = "aarch64")]
-use core::arch::asm;
+use core::intrinsics::unlikely;
 use sel4_common::arch::ArchReg;
 #[cfg(target_arch = "aarch64")]
 use sel4_common::BIT;
+
 #[cfg(target_arch = "riscv64")]
 use sel4_common::{
     arch::maskVMRights,
@@ -11,20 +12,24 @@ use sel4_common::{
     MASK,
 };
 use sel4_common::{
-    message_info::seL4_MessageInfo_t, sel4_config::*, structures::exception_t,
+    message_info::seL4_MessageInfo_t,
+    sel4_config::*,
+    structures::exception_t,
     utils::convert_to_mut_type_ref,
 };
+#[cfg(target_arch = "aarch64")]
+use sel4_common::utils::convert_ref_type_to_usize;
 #[cfg(target_arch = "riscv64")]
 use sel4_cspace::interface::cte_insert;
 use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
-#[cfg(target_arch = "aarch64")]
-use sel4_vspace::invalidate_tlb_by_asid_va;
 #[cfg(target_arch = "riscv64")]
 use sel4_vspace::{
     asid_pool_t, copyGlobalMappings, pptr_t, set_asid_pool_by_index, sfence, vm_attributes_t,
     PTEFlags,
 };
+#[cfg(target_arch = "aarch64")]
+use sel4_vspace::{clean_by_va_pou, invalidate_tlb_by_asid_va, pte_tag_t};
 use sel4_vspace::{pptr_to_paddr, unmapPage, unmap_page_table, PTE};
 
 use crate::{kernel::boot::current_lookup_fault, utils::clear_memory};
@@ -138,13 +143,25 @@ pub fn invoke_page_map(
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_page_map(// _frame_cap: &mut cap_t,
-
-    // asid: usize,
-    // pt_slot: &mut PTE,
-    // frame_slot: &mut cte_t,
+pub fn invoke_page_map(
+    asid: usize,
+    cap: cap_t,
+    frame_slot: &mut cte_t,
+    pte: PTE,
+    pt_slot: &mut PTE,
 ) -> exception_t {
-    // TODO:unimplement
+    let tlbflush_required: bool = pt_slot.get_type() != (pte_tag_t::pte_invalid) as usize;
+    frame_slot.cap = cap;
+    pt_slot.update(pte);
+
+    clean_by_va_pou(
+        convert_ref_type_to_usize(pt_slot),
+        pptr_to_paddr(convert_ref_type_to_usize(pt_slot)),
+    );
+    if unlikely(tlbflush_required) {
+        assert!(asid < BIT!(16));
+        invalidate_tlb_by_asid_va(asid, cap.get_frame_mapped_address());
+    }
     exception_t::EXCEPTION_NONE
 }
 // #[cfg(target_arch = "aarch64")]

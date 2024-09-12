@@ -5,20 +5,17 @@ use crate::syscall::invocation::decode::current_syscall_error;
 use crate::syscall::ThreadState;
 use crate::syscall::{current_lookup_fault, get_syscall_arg, set_thread_state, unlikely};
 use crate::syscall::{ensure_empty_slot, get_currenct_thread, lookup_slot_for_cnode_op};
-use crate::utils::clear_memory_pt;
 use log::debug;
 use sel4_common::arch::maskVMRights;
 use sel4_common::cap_rights::seL4_CapRights_t;
-use sel4_common::fault::{lookup_fault_missing_capability, lookup_fault_t, LookupFaultType};
+use sel4_common::fault::lookup_fault_t;
 use sel4_common::sel4_config::{
     asidInvalid, asidLowBits, nASIDPools, seL4_AlignmentError, seL4_FailedLookup, seL4_PageBits,
-    seL4_RangeError, ARM_Huge_Page, ARM_Large_Page, ARM_Small_Page, PAGE_BITS, PGD_INDEX_OFFSET,
-    PUD_INDEX_OFFSET,
+    seL4_RangeError,
 };
 use sel4_common::sel4_config::{seL4_DeleteFirst, seL4_InvalidArgument};
 use sel4_common::sel4_config::{
     seL4_IllegalOperation, seL4_InvalidCapability, seL4_RevokeFirst, seL4_TruncatedMessage,
-    PD_INDEX_OFFSET,
 };
 use sel4_common::utils::{
     convert_ref_type_to_usize, convert_to_mut_type_ref, global_ops, pageBitsForSize, ptr_to_mut,
@@ -480,24 +477,28 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
         }
     }
     // TODO: copy cap in the here. Not write slot when the address is not need to write.
-    // frame_slot.cap.set_frame_mapped_asid(asid);
-    // frame_slot.cap.set_frame_mapped_address(vaddr);
+    frame_slot.cap.set_frame_mapped_asid(asid);
+    frame_slot.cap.set_frame_mapped_address(vaddr);
 
     let mut vspace_root = PTE::new_from_pte(vspace_root);
     let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     let lu_ret = vspace_root.lookup_pt_slot(vaddr);
-    if lu_ret.ptBitsLeft != pageBitsForSize(frame_size) {
+    if unlikely(lu_ret.ptBitsLeft != pageBitsForSize(frame_size)) {
         unsafe {
             current_lookup_fault = lookup_fault_t::new_missing_cap(lu_ret.ptBitsLeft);
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
-        set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-        // TODO:unimplement
-        return invoke_page_map();
     }
-    exception_t::EXCEPTION_SYSCALL_ERROR
+    set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+    return invoke_page_map(
+        asid,
+        frame_slot.cap,
+        frame_slot,
+        PTE::make_user_pte(base, vm_rights, attr, frame_size),
+        ptr_to_mut(lu_ret.ptSlot),
+    );
     // match frame_size {
     //     ARM_Small_Page => {
     //         let lu_ret = vspace_root.lookup_pt_slot(vaddr);
@@ -725,7 +726,6 @@ fn decode_vspace_root_invocation(
     cte: &mut cte_t,
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
-    // TODO:unimplement
     match label {
         MessageLabel::ARMVSpaceClean_Data
         | MessageLabel::ARMVSpaceInvalidate_Data
@@ -780,7 +780,7 @@ fn decode_vspace_root_invocation(
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
             let resolve_ret = ptr_to_mut(vspace_root).lookup_pt_slot(start);
-			let pte = resolve_ret.ptSlot;
+            let pte = resolve_ret.ptSlot;
             if ptr_to_ref(pte).get_type() != (pte_tag_t::pte_page) as usize {
                 get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
                 return exception_t::EXCEPTION_NONE;
@@ -796,8 +796,8 @@ fn decode_vspace_root_invocation(
                 }
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
-            let pstart =
-                ptr_to_ref(pte).get_page_base_address() + start & MASK!(pageBitsForSize(resolve_ret.ptBitsLeft));
+            let pstart = ptr_to_ref(pte).get_page_base_address() + start
+                & MASK!(pageBitsForSize(resolve_ret.ptBitsLeft));
             get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
             return decode_vspace_flush_invocation(
                 label,

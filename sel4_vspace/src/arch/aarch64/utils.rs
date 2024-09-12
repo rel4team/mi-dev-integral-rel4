@@ -1,22 +1,12 @@
-use core::intrinsics::unlikely;
-
-use super::machine::mair_types;
-use super::structures::lookupPTSlot_ret_t;
-use super::{clean_by_va_pou, find_vspace_for_asid, invalidate_tlb_by_asid};
 use crate::arch::VAddr;
-use crate::vptr_t;
-use sel4_common::utils::convert_ref_type_to_usize;
 use sel4_common::BIT;
 use sel4_common::{
     arch::{
         config::{KERNEL_ELF_BASE_OFFSET, PPTR_BASE_OFFSET},
         vm_rights_t,
     },
-    fault::lookup_fault_t,
-    ffi_addr,
     sel4_config::*,
-    structures::exception_t,
-    utils::{convert_to_mut_slice, convert_to_type_ref},
+    utils::convert_to_mut_slice,
     MASK,
 };
 
@@ -623,11 +613,11 @@ impl PTE {
     }
 }
 
-/// Get current lookup fault object.
-pub(super) fn get_current_lookup_fault() -> &'static mut lookup_fault_t {
-    unsafe {
-        (ffi_addr!(current_lookup_fault) as *mut lookup_fault_t)
-            .as_mut()
-            .unwrap()
-    }
-}
+// /// Get current lookup fault object.
+// pub(super) fn get_current_lookup_fault() -> &'static mut lookup_fault_t {
+//     unsafe {
+//         (ffi_addr!(current_lookup_fault) as *mut lookup_fault_t)
+//             .as_mut()
+//             .unwrap()
+//     }
+// }

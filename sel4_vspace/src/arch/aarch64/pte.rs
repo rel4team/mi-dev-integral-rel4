@@ -2,15 +2,12 @@ use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
 use super::{seL4_VSpaceIndexBits, UPT_LEVELS};
-use crate::arch::aarch64::get_current_lookup_fault;
-use crate::{lookupPTSlot_ret_t, vptr_t, GET_PT_INDEX};
+use crate::{lookupPTSlot_ret_t, vptr_t};
 use sel4_common::utils::ptr_to_mut;
 use sel4_common::MASK;
 use sel4_common::{
     arch::vm_rights_t,
-    fault::lookup_fault_t,
     sel4_config::{seL4_PageBits, seL4_PageTableBits, PT_INDEX_BITS},
-    structures::exception_t,
     utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
     BIT,
 };
@@ -226,8 +223,30 @@ impl PTE {
             | (AF & 0x1) << 10
             | (SH & 0x3) << 8
             | (AP & 0x3) << 6
-            | (AttrIndx & 0x7) << 2;
+            | (AttrIndx & 0x7) << 2
+			| (0x1 << 0);
 
+        PTE(val)
+    }
+
+	pub fn pte_new_4k_page(
+        UXN: usize,
+        page_base_address: usize,
+        nG: usize,
+        AF: usize,
+        SH: usize,
+        AP: usize,
+        AttrIndx: usize,
+    ) -> PTE {
+        let val = 0
+            | (UXN & 0x1) << 54
+            | (page_base_address & 0xfffffffff000) >> 0
+            | (nG & 0x1) << 11
+            | (AF & 0x1) << 10
+            | (SH & 0x3) << 8
+            | (AP & 0x3) << 6
+            | (AttrIndx & 0x7) << 2
+			| 0x400000000000003;
         PTE(val)
     }
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置

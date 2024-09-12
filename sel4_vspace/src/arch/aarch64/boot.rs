@@ -75,6 +75,7 @@ pub const RESERVED: usize = 3;
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn rust_map_kernel_window() {
+    // println!("go into rusta map kernel window");
     set_kernel_page_global_directory_by_index(
         (VAddr(PPTR_BASE)).GET_KPT_INDEX(0),
         PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_upper_directory_base())),
@@ -146,7 +147,7 @@ pub fn map_kernel_frame(
     }
     set_kernel_page_table_by_index(
         VAddr(vaddr).GET_KPT_INDEX(3),
-        PTE::pte_new_page(
+        PTE::pte_new_4k_page(
             uxn,
             paddr,
             0,
@@ -207,7 +208,7 @@ pub fn map_it_frame_cap(vspace_cap: &cap_t, frame_cap: &cap_t, exec: bool) {
     ));
     // TODO: Make set_attr usage more efficient.
     // TIPS: exec true will be cast to 1 and false to 0.
-    pte.set_attr(PTE::pte_new_page((!exec) as usize, 0, 1, 1, 0, 1, 0).0);
+    pte.set_attr(PTE::pte_new_4k_page((!exec) as usize, 0, 1, 1, 0, 1, 0).0);
     pte.set_next_level_paddr(pptr_to_paddr(frame_cap.get_frame_base_ptr()));
 }
 
