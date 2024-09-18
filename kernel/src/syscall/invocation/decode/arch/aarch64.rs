@@ -140,17 +140,17 @@ fn decode_page_table_invocation(
     let pd_slot = PTE(vspace_root).lookup_pt_slot(vaddr);
 
     if unlikely(
-        pd_slot.ptBitsLeft != seL4_PageBits
+        pd_slot.ptBitsLeft == seL4_PageBits
             || ptr_to_ref(pd_slot.ptSlot).get_type() != (pte_tag_t::pte_invalid) as usize,
     ) {
         global_ops!(current_syscall_error._type = seL4_DeleteFirst);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-
     let pte = PTE::pte_new_table(pptr_to_paddr(cte.cap.get_pt_base_ptr()));
     cte.cap.set_pt_is_mapped(1);
     cte.cap.set_pt_mapped_asid(asid);
-    cte.cap.set_pt_mapped_address(vaddr);
+    cte.cap
+        .set_pt_mapped_address(vaddr & !(MASK!(pd_slot.ptBitsLeft)));
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
 
     *ptr_to_mut(pd_slot.ptSlot) = pte;
@@ -480,9 +480,9 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     frame_slot.cap.set_frame_mapped_asid(asid);
     frame_slot.cap.set_frame_mapped_address(vaddr);
 
-    let mut vspace_root = PTE::new_from_pte(vspace_root);
+    let mut vspace_root_pte = PTE::new_from_pte(vspace_root);
     let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
-    let lu_ret = vspace_root.lookup_pt_slot(vaddr);
+    let lu_ret = vspace_root_pte.lookup_pt_slot(vaddr);
     if unlikely(lu_ret.ptBitsLeft != pageBitsForSize(frame_size)) {
         unsafe {
             current_lookup_fault = lookup_fault_t::new_missing_cap(lu_ret.ptBitsLeft);
@@ -491,13 +491,14 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
     }
+    let pt_slot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
     return invoke_page_map(
         asid,
-        frame_slot.cap,
+        frame_slot.cap.clone(),
         frame_slot,
         PTE::make_user_pte(base, vm_rights, attr, frame_size),
-        ptr_to_mut(lu_ret.ptSlot),
+        pt_slot,
     );
     // match frame_size {
     //     ARM_Small_Page => {

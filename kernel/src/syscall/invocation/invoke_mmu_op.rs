@@ -4,6 +4,8 @@ use sel4_common::arch::ArchReg;
 #[cfg(target_arch = "aarch64")]
 use sel4_common::BIT;
 
+#[cfg(target_arch = "aarch64")]
+use sel4_common::utils::convert_ref_type_to_usize;
 #[cfg(target_arch = "riscv64")]
 use sel4_common::{
     arch::maskVMRights,
@@ -12,13 +14,9 @@ use sel4_common::{
     MASK,
 };
 use sel4_common::{
-    message_info::seL4_MessageInfo_t,
-    sel4_config::*,
-    structures::exception_t,
+    message_info::seL4_MessageInfo_t, sel4_config::*, structures::exception_t,
     utils::convert_to_mut_type_ref,
 };
-#[cfg(target_arch = "aarch64")]
-use sel4_common::utils::convert_ref_type_to_usize;
 #[cfg(target_arch = "riscv64")]
 use sel4_cspace::interface::cte_insert;
 use sel4_cspace::interface::{cap_t, cte_t};
@@ -151,10 +149,10 @@ pub fn invoke_page_map(
     pt_slot: &mut PTE,
 ) -> exception_t {
     let tlbflush_required: bool = pt_slot.get_type() != (pte_tag_t::pte_invalid) as usize;
-    frame_slot.cap = cap;
+    // frame_slot.cap = cap;
     pt_slot.update(pte);
 
-    clean_by_va_pou(
+	clean_by_va_pou(
         convert_ref_type_to_usize(pt_slot),
         pptr_to_paddr(convert_ref_type_to_usize(pt_slot)),
     );

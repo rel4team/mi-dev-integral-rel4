@@ -38,7 +38,7 @@ pub enum MessageLabel {
     ARMVSpaceInvalidate_Data,
     ARMVSpaceCleanInvalidate_Data,
     ARMVSpaceUnify_Instruction,
-	ARMSMCCall,
+    ARMSMCCall,
     ARMPageTableMap,
     ARMPageTableUnmap,
     ARMPageMap,
