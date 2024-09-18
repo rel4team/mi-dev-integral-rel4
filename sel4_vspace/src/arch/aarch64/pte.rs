@@ -1,7 +1,7 @@
 use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
-use super::{seL4_VSpaceIndexBits, UPT_LEVELS};
+use super::{mair_types, seL4_VSpaceIndexBits, UPT_LEVELS};
 use crate::{lookupPTSlot_ret_t, vptr_t};
 use sel4_common::utils::ptr_to_mut;
 use sel4_common::{
@@ -118,9 +118,9 @@ impl PTE {
     pub fn pte_next_table(addr: usize, _: bool) -> Self {
         Self::new(addr, PTEFlags::VALID | PTEFlags::NON_BLOCK)
     }
-    fn new_4k_page(addr: usize, flags: PTEFlags) -> Self {
-        Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
-    }
+    // fn new_4k_page(addr: usize, flags: PTEFlags) -> Self {
+    //     Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
+    // }
 
     pub fn get_page_base_address(&self) -> usize {
         self.0 & 0xfffffffff000
@@ -187,17 +187,12 @@ impl PTE {
     ) -> Self {
         let nonexecutable = attr.get_armExecuteNever();
         let cacheable = attr.get_armPageCacheable();
-        let mut flags = PTEFlags::NG;
+		let mut attrindx =mair_types::DEVICE_nGnRnE as usize;
         if cacheable {
-            flags |= PTEFlags::NORMAL;
-        }
-        if nonexecutable {
-            flags |= PTEFlags::UXN;
+            attrindx=mair_types::NORMAL as usize;
         }
         let nG: usize = 1;
-        flags |= Self::ap_from_vm_rights_t(rights);
-		// let vm_right:usize = Self::ap_from_vm_rights_t(rights) as usize;
-		// TODO:change the apfromvmright and attridx
+		let vm_right:usize = Self::ap_from_vm_rights_t(rights).bits() >> 6;
         if VMPageSize::ARMSmallPage as usize == page_size {
             PTE::pte_new_4k_page(
                 nonexecutable as usize,
@@ -205,8 +200,8 @@ impl PTE {
                 nG,
                 1,
                 0,
-                1,
-                0b100,
+                vm_right,
+                attrindx,
             )
         } else {
             PTE::pte_new_page(
@@ -215,8 +210,8 @@ impl PTE {
                 nG,
                 1,
                 0,
-                1,
-                0b100,
+                vm_right,
+                attrindx,
             )
         }
     }
