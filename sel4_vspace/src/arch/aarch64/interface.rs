@@ -4,10 +4,7 @@ use core::ops::{Deref, DerefMut};
 use super::pte::pte_tag_t;
 use super::{kpptr_to_paddr, machine::*, UPT_LEVELS};
 use crate::arch::VAddr;
-use crate::{
-    asid_t, find_vspace_for_asid, paddr_to_pptr, pptr_t, pptr_to_paddr,
-    vptr_t, PTE,
-};
+use crate::{asid_t, find_vspace_for_asid, paddr_to_pptr, pptr_t, pptr_to_paddr, vptr_t, PTE};
 use sel4_common::arch::MessageLabel;
 use sel4_common::structures::exception_t;
 use sel4_common::utils::{pageBitsForSize, ptr_to_mut};

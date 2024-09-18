@@ -2,8 +2,7 @@ use core::ops::{Deref, DerefMut};
 
 use crate::{vm_attributes_t, PTE};
 use sel4_common::{
-    plus_define_bitfield, sel4_config::asidLowBits,
-    utils::convert_to_mut_type_ref, BIT,
+    plus_define_bitfield, sel4_config::asidLowBits, utils::convert_to_mut_type_ref, BIT,
 };
 
 use super::machine::mair_types;

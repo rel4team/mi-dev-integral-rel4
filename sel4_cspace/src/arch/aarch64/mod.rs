@@ -105,7 +105,7 @@ plus_define_bitfield! {
         //     capPGDIsMapped, get_pgd_is_mapped, set_pgd_is_mapped, 0, 58, 1, 0, false
         // },
         new_vspace_cap, CapTag::CapVspaceCap as usize => {
-            capVSMappedASID, get_vs_mapped_asid, set_vs_mapped_asid, 0, 48, 16, 0, false,
+            capVSMappedASID, get_vs_mapped_asid, set_vs_mapped_asid, 1, 48, 16, 0, false,
             capVSBasePtr, get_vs_base_ptr, set_vs_base_ptr, 1, 0, 48, 0, true,
             capVSIsMapped, get_vs_is_mapped, set_vs_is_mapped, 0, 58, 1, 0, false
         },

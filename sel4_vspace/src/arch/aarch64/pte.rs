@@ -4,13 +4,13 @@ use super::utils::paddr_to_pptr;
 use super::{seL4_VSpaceIndexBits, UPT_LEVELS};
 use crate::{lookupPTSlot_ret_t, vptr_t};
 use sel4_common::utils::ptr_to_mut;
-use sel4_common::MASK;
 use sel4_common::{
     arch::vm_rights_t,
     sel4_config::{seL4_PageBits, seL4_PageTableBits, PT_INDEX_BITS},
     utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
     BIT,
 };
+use sel4_common::MASK;
 
 #[allow(unused)]
 pub enum VMPageSize {
@@ -194,11 +194,30 @@ impl PTE {
         if nonexecutable {
             flags |= PTEFlags::UXN;
         }
+        let nG: usize = 1;
         flags |= Self::ap_from_vm_rights_t(rights);
+		// let vm_right:usize = Self::ap_from_vm_rights_t(rights) as usize;
+		// TODO:change the apfromvmright and attridx
         if VMPageSize::ARMSmallPage as usize == page_size {
-            PTE::new_4k_page(paddr, flags)
+            PTE::pte_new_4k_page(
+                nonexecutable as usize,
+                paddr,
+                nG,
+                1,
+                0,
+                1,
+                0b100,
+            )
         } else {
-            PTE::new(paddr, flags)
+            PTE::pte_new_page(
+                nonexecutable as usize,
+                paddr,
+                nG,
+                1,
+                0,
+                1,
+                0b100,
+            )
         }
     }
 
@@ -224,12 +243,12 @@ impl PTE {
             | (SH & 0x3) << 8
             | (AP & 0x3) << 6
             | (AttrIndx & 0x7) << 2
-			| (0x1 << 0);
+            | (0x1 << 0);
 
         PTE(val)
     }
 
-	pub fn pte_new_4k_page(
+    pub fn pte_new_4k_page(
         UXN: usize,
         page_base_address: usize,
         nG: usize,
@@ -246,27 +265,28 @@ impl PTE {
             | (SH & 0x3) << 8
             | (AP & 0x3) << 6
             | (AttrIndx & 0x7) << 2
-			| 0x400000000000003;
+            | 0x400000000000003;
         PTE(val)
     }
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
     pub fn lookup_pt_slot(&mut self, vptr: vptr_t) -> lookupPTSlot_ret_t {
-        let mut pt = self as *mut PTE;
+        let mut pt = self.0 as *mut PTE;
         let mut level: usize = UPT_LEVELS - 1;
         let ptBitsLeft = PT_INDEX_BITS * level + seL4_PageBits;
-        let mut ret = lookupPTSlot_ret_t {
-            ptSlot: unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(seL4_VSpaceIndexBits)) },
+		pt = unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(seL4_VSpaceIndexBits)) };
+        let mut ret: lookupPTSlot_ret_t = lookupPTSlot_ret_t {
+            ptSlot: pt,
             ptBitsLeft: ptBitsLeft,
         };
-
+        
         while ptr_to_mut(ret.ptSlot).get_type() == (pte_tag_t::pte_table) as usize && level > 0 {
             level = level - 1;
             ret.ptBitsLeft = ret.ptBitsLeft - PT_INDEX_BITS;
             let paddr = ptr_to_mut(ret.ptSlot).next_level_paddr();
             pt = paddr_to_pptr(paddr) as *mut PTE;
-            ret.ptSlot = unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(PT_INDEX_BITS)) };
+			pt = unsafe { pt.add((vptr >> ret.ptBitsLeft) & MASK!(PT_INDEX_BITS)) };
+            ret.ptSlot = pt;
         }
-
         ret
     }
 }
