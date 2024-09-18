@@ -310,17 +310,17 @@ pub fn unmap_page_table(asid: asid_t, vaddr: vptr_t, pt: &PTE) {
     let mut pte = find_ret.vspace_root.unwrap();
     let mut level: usize = 0;
     while level < UPT_LEVELS - 1 && pte as usize != pt as *const PTE as usize {
-        level = level + 1;
         ptSlot = unsafe { pte.add(VAddr(vaddr).GET_UPT_INDEX(level)) };
         if ptr_to_mut(ptSlot).get_type() != (pte_tag_t::pte_table) as usize {
             return;
         }
         pte = paddr_to_pptr(ptr_to_mut(ptSlot).next_level_paddr()) as *mut PTE;
+        level = level + 1;
     }
     if pte as usize != pt as *const PTE as usize {
         return;
     }
-    assert!(ptSlot.is_null());
+    assert!(!ptSlot.is_null());
     unsafe {
         *(ptSlot) = PTE(0);
         ptr_to_mut(pte).update(*(ptSlot));

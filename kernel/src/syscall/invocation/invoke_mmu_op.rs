@@ -152,7 +152,7 @@ pub fn invoke_page_map(
     // frame_slot.cap = cap;
     pt_slot.update(pte);
 
-	clean_by_va_pou(
+    clean_by_va_pou(
         convert_ref_type_to_usize(pt_slot),
         pptr_to_paddr(convert_ref_type_to_usize(pt_slot)),
     );
