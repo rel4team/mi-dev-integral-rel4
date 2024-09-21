@@ -111,7 +111,7 @@ pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
         }
     }
     frame_slot.cap.set_frame_mapped_address(0);
-    frame_slot.cap.set_pt_mapped_asid(asidInvalid);
+    frame_slot.cap.set_frame_mapped_asid(asidInvalid);
     exception_t::EXCEPTION_NONE
 }
 

@@ -141,7 +141,7 @@ fn decode_page_table_invocation(
 
     if unlikely(
         pd_slot.ptBitsLeft == seL4_PageBits
-            || ptr_to_ref(pd_slot.ptSlot).get_type() != (pte_tag_t::pte_invalid) as usize,
+            || (ptr_to_ref(pd_slot.ptSlot).get_type() != (pte_tag_t::pte_invalid) as usize),
     ) {
         global_ops!(current_syscall_error._type = seL4_DeleteFirst);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -683,7 +683,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
 #[allow(unused)]
 fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
     if !pt_cte.is_final_cap() {
-        debug!("RISCVPageTableUnmap: cannot unmap if more than once cap exists");
+        debug!("PageTableUnmap: cannot unmap if more than once cap exists");
         global_ops!(current_syscall_error._type = seL4_RevokeFirst);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
