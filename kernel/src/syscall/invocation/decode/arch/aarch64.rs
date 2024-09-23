@@ -141,7 +141,7 @@ fn decode_page_table_invocation(
 
     if unlikely(
         pd_slot.ptBitsLeft == seL4_PageBits
-            || ptr_to_ref(pd_slot.ptSlot).get_type() != (pte_tag_t::pte_invalid) as usize,
+            || (ptr_to_ref(pd_slot.ptSlot).get_type() != (pte_tag_t::pte_invalid) as usize),
     ) {
         global_ops!(current_syscall_error._type = seL4_DeleteFirst);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -476,10 +476,6 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
     }
-    // TODO: copy cap in the here. Not write slot when the address is not need to write.
-    frame_slot.cap.set_frame_mapped_asid(asid);
-    frame_slot.cap.set_frame_mapped_address(vaddr);
-
     let mut vspace_root_pte = PTE::new_from_pte(vspace_root);
     let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     let lu_ret = vspace_root_pte.lookup_pt_slot(vaddr);
@@ -493,6 +489,8 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     }
     let pt_slot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+	frame_slot.cap.set_frame_mapped_asid(asid);
+    frame_slot.cap.set_frame_mapped_address(vaddr);
     return invoke_page_map(
         asid,
         frame_slot.cap.clone(),
@@ -683,7 +681,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
 #[allow(unused)]
 fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
     if !pt_cte.is_final_cap() {
-        debug!("RISCVPageTableUnmap: cannot unmap if more than once cap exists");
+        debug!("PageTableUnmap: cannot unmap if more than once cap exists");
         global_ops!(current_syscall_error._type = seL4_RevokeFirst);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }

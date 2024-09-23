@@ -310,20 +310,20 @@ pub fn unmap_page_table(asid: asid_t, vaddr: vptr_t, pt: &PTE) {
     let mut pte = find_ret.vspace_root.unwrap();
     let mut level: usize = 0;
     while level < UPT_LEVELS - 1 && pte as usize != pt as *const PTE as usize {
-        level = level + 1;
         ptSlot = unsafe { pte.add(VAddr(vaddr).GET_UPT_INDEX(level)) };
         if ptr_to_mut(ptSlot).get_type() != (pte_tag_t::pte_table) as usize {
             return;
         }
         pte = paddr_to_pptr(ptr_to_mut(ptSlot).next_level_paddr()) as *mut PTE;
+        level = level + 1;
     }
     if pte as usize != pt as *const PTE as usize {
         return;
     }
-    assert!(ptSlot.is_null());
+    assert!(!ptSlot.is_null());
     unsafe {
         *(ptSlot) = PTE(0);
-        ptr_to_mut(pte).update(*(ptSlot));
+        ptr_to_mut(ptSlot).update(*(pte));
     }
     invalidate_tlb_by_asid(asid);
 }
@@ -347,8 +347,8 @@ pub fn unmapPage(
     }
 
     let pte = ptr_to_mut(lu_ret.ptSlot);
-    if pte.get_type() == (pte_tag_t::pte_4k_page) as usize
-        || pte.get_type() == (pte_tag_t::pte_page) as usize
+    if !(pte.get_type() == (pte_tag_t::pte_4k_page) as usize
+        || pte.get_type() == (pte_tag_t::pte_page) as usize)
     {
         return Ok(());
     }
@@ -359,6 +359,7 @@ pub fn unmapPage(
         *(lu_ret.ptSlot) = PTE(0);
         pte.update(*(lu_ret.ptSlot));
     }
+    assert!(asid < BIT!(16));
     invalidate_tlb_by_asid(asid);
     Ok(())
 
