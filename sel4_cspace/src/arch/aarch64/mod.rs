@@ -85,7 +85,7 @@ plus_define_bitfield! {
             capPTMappedASID, get_pt_mapped_asid, set_pt_mapped_asid, 1, 48, 16, 0, false,
             capPTBasePtr, get_pt_base_ptr, set_pt_base_ptr, 1, 0, 48, 0, true,
             capPTIsMapped, get_pt_is_mapped, set_pt_is_mapped, 0, 48, 1, 0, false,
-            capPTMappedAddress, get_pt_mapped_address, set_pt_mapped_address, 0, 20, 28, 0, true
+            capPTMappedAddress, get_pt_mapped_address, set_pt_mapped_address, 0, 20, 28, 20, true
         },
         // new_page_directory_cap, CapTag::CapPageDirectoryCap as usize => {
         //     capPDMappedASID, get_pd_mapped_asid, set_pd_mapped_asid, 1, 48, 16, 0, false,
