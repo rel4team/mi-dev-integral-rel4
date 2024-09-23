@@ -476,10 +476,6 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
     }
-    // TODO: copy cap in the here. Not write slot when the address is not need to write.
-    frame_slot.cap.set_frame_mapped_asid(asid);
-    frame_slot.cap.set_frame_mapped_address(vaddr);
-
     let mut vspace_root_pte = PTE::new_from_pte(vspace_root);
     let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     let lu_ret = vspace_root_pte.lookup_pt_slot(vaddr);
@@ -493,6 +489,8 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     }
     let pt_slot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+	frame_slot.cap.set_frame_mapped_asid(asid);
+    frame_slot.cap.set_frame_mapped_address(vaddr);
     return invoke_page_map(
         asid,
         frame_slot.cap.clone(),
