@@ -21,9 +21,7 @@ pub enum CapTag {
     CapDomainCap = 20,
     CapFrameCap = 1,
     CapPageTableCap = 3,
-    CapPageDirectoryCap = 5,
-    CapPageUpperDirectoryCap = 7,
-    CapPageGlobalDirectoryCap = 9,
+    CapVspaceCap = 9,
     CapASIDControlCap = 11,
     CapASIDPoolCap = 13,
 }
@@ -87,24 +85,29 @@ plus_define_bitfield! {
             capPTMappedASID, get_pt_mapped_asid, set_pt_mapped_asid, 1, 48, 16, 0, false,
             capPTBasePtr, get_pt_base_ptr, set_pt_base_ptr, 1, 0, 48, 0, true,
             capPTIsMapped, get_pt_is_mapped, set_pt_is_mapped, 0, 48, 1, 0, false,
-            capPTMappedAddress, get_pt_mapped_address, set_pt_mapped_address, 0, 20, 28, 0, true
+            capPTMappedAddress, get_pt_mapped_address, set_pt_mapped_address, 0, 20, 28, 20, true
         },
-        new_page_directory_cap, CapTag::CapPageDirectoryCap as usize => {
-            capPDMappedASID, get_pd_mapped_asid, set_pd_mapped_asid, 1, 48, 16, 0, false,
-            capPDBasePtr, get_pd_base_ptr, set_pd_base_ptr, 1, 0, 48, 0, true,
-            capPDIsMapped, get_pd_is_mapped, set_pd_is_mapped, 0, 48, 1, 0, false,
-            capPDMappedAddress, get_pd_mapped_address, set_pd_mapped_address, 0, 29, 19, 0, true
-        },
-        new_page_upper_directory_cap, CapTag::CapPageUpperDirectoryCap as usize => {
-            capPUDMappedASID, get_pud_mapped_asid, set_pud_mapped_asid, 1, 48, 16, 0, false,
-            capPUDBasePtr, get_pud_base_ptr, set_pud_base_ptr, 1, 0, 48, 0, true,
-            capPUDIsMapped, get_pud_is_mapped, set_pud_is_mapped, 0, 58, 1, 0, false,
-            capPUDMappedAddress, get_pud_mapped_address, set_pud_mapped_address, 0, 48, 10, 0, true
-        },
-        new_page_global_directory_cap, CapTag::CapPageGlobalDirectoryCap as usize => {
-            capPGDMappedASID, get_pgd_mapped_asid, set_pgd_mapped_asid, 1, 48, 16, 0, false,
-            capPGDBasePtr, get_pgd_base_ptr, set_pgd_base_ptr, 1, 0, 48, 0, true,
-            capPGDIsMapped, get_pgd_is_mapped, set_pgd_is_mapped, 0, 58, 1, 0, false
+        // new_page_directory_cap, CapTag::CapPageDirectoryCap as usize => {
+        //     capPDMappedASID, get_pd_mapped_asid, set_pd_mapped_asid, 1, 48, 16, 0, false,
+        //     capPDBasePtr, get_pd_base_ptr, set_pd_base_ptr, 1, 0, 48, 0, true,
+        //     capPDIsMapped, get_pd_is_mapped, set_pd_is_mapped, 0, 48, 1, 0, false,
+        //     capPDMappedAddress, get_pd_mapped_address, set_pd_mapped_address, 0, 29, 19, 0, true
+        // },
+        // new_page_upper_directory_cap, CapTag::CapPageUpperDirectoryCap as usize => {
+        //     capPUDMappedASID, get_pud_mapped_asid, set_pud_mapped_asid, 1, 48, 16, 0, false,
+        //     capPUDBasePtr, get_pud_base_ptr, set_pud_base_ptr, 1, 0, 48, 0, true,
+        //     capPUDIsMapped, get_pud_is_mapped, set_pud_is_mapped, 0, 58, 1, 0, false,
+        //     capPUDMappedAddress, get_pud_mapped_address, set_pud_mapped_address, 0, 48, 10, 0, true
+        // },
+        // new_page_global_directory_cap, CapTag::CapPageGlobalDirectoryCap as usize => {
+        //     capPGDMappedASID, get_pgd_mapped_asid, set_pgd_mapped_asid, 1, 48, 16, 0, false,
+        //     capPGDBasePtr, get_pgd_base_ptr, set_pgd_base_ptr, 1, 0, 48, 0, true,
+        //     capPGDIsMapped, get_pgd_is_mapped, set_pgd_is_mapped, 0, 58, 1, 0, false
+        // },
+        new_vspace_cap, CapTag::CapVspaceCap as usize => {
+            capVSMappedASID, get_vs_mapped_asid, set_vs_mapped_asid, 1, 48, 16, 0, false,
+            capVSBasePtr, get_vs_base_ptr, set_vs_base_ptr, 1, 0, 48, 0, true,
+            capVSIsMapped, get_vs_is_mapped, set_vs_is_mapped, 0, 58, 1, 0, false
         },
         new_asid_control_cap, CapTag::CapASIDControlCap as usize => {},
         new_asid_pool_cap, CapTag::CapASIDPoolCap as usize => {
@@ -126,9 +129,10 @@ impl cap_t {
             CapTag::CapZombieCap => self.get_zombie_ptr(),
             CapTag::CapFrameCap => self.get_frame_base_ptr(),
             CapTag::CapPageTableCap => self.get_pt_base_ptr(),
-            CapTag::CapPageDirectoryCap => self.get_pd_base_ptr(),
-            CapTag::CapPageUpperDirectoryCap => self.get_pud_base_ptr(),
-            CapTag::CapPageGlobalDirectoryCap => self.get_pgd_base_ptr(),
+            CapTag::CapVspaceCap => self.get_vs_base_ptr(),
+            // CapTag::CapPageDirectoryCap => self.get_pd_base_ptr(),
+            // CapTag::CapPageUpperDirectoryCap => self.get_pud_base_ptr(),
+            // CapTag::CapPageGlobalDirectoryCap => self.get_pgd_base_ptr(),
             CapTag::CapASIDControlCap => 0,
             CapTag::CapASIDPoolCap => self.get_asid_pool(),
             _ => 0,
@@ -137,12 +141,12 @@ impl cap_t {
 
     #[inline]
     pub fn is_vtable_root(&self) -> bool {
-        self.get_cap_type() == CapTag::CapPageGlobalDirectoryCap
+        self.get_cap_type() == CapTag::CapVspaceCap
     }
 
     #[inline]
     pub fn is_valid_native_root(&self) -> bool {
-        self.is_vtable_root() && self.get_pgd_is_mapped() != 0
+        self.is_vtable_root() && self.get_vs_is_mapped() != 0
     }
 
     #[inline]
@@ -158,26 +162,35 @@ impl cte_t {
             cap: cap_t::default(),
         };
         match cap.get_cap_type() {
-            CapTag::CapPageGlobalDirectoryCap => {
-                if cap.get_pgd_is_mapped() != 0 {
-                    ret.cap = cap.clone();
-                    ret.status = exception_t::EXCEPTION_NONE;
-                } else {
-                    ret.cap = cap_t::new_null_cap();
-                    ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
-                }
-            }
-            CapTag::CapPageUpperDirectoryCap => {
-                if cap.get_pud_is_mapped() != 0 {
-                    ret.cap = cap.clone();
-                    ret.status = exception_t::EXCEPTION_NONE;
-                } else {
-                    ret.cap = cap_t::new_null_cap();
-                    ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
-                }
-            }
-            CapTag::CapPageDirectoryCap => {
-                if cap.get_pud_is_mapped() != 0 {
+            // CapTag::CapPageGlobalDirectoryCap => {
+            //     if cap.get_pgd_is_mapped() != 0 {
+            //         ret.cap = cap.clone();
+            //         ret.status = exception_t::EXCEPTION_NONE;
+            //     } else {
+            //         ret.cap = cap_t::new_null_cap();
+            //         ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
+            //     }
+            // }
+            // CapTag::CapPageUpperDirectoryCap => {
+            //     if cap.get_pud_is_mapped() != 0 {
+            //         ret.cap = cap.clone();
+            //         ret.status = exception_t::EXCEPTION_NONE;
+            //     } else {
+            //         ret.cap = cap_t::new_null_cap();
+            //         ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
+            //     }
+            // }
+            // CapTag::CapPageDirectoryCap => {
+            //     if cap.get_pud_is_mapped() != 0 {
+            //         ret.cap = cap.clone();
+            //         ret.status = exception_t::EXCEPTION_NONE;
+            //     } else {
+            //         ret.cap = cap_t::new_null_cap();
+            //         ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
+            //     }
+            // }
+            CapTag::CapVspaceCap => {
+                if cap.get_vs_is_mapped() != 0 {
                     ret.cap = cap.clone();
                     ret.status = exception_t::EXCEPTION_NONE;
                 } else {
@@ -186,7 +199,7 @@ impl cte_t {
                 }
             }
             CapTag::CapPageTableCap => {
-                if cap.get_pud_is_mapped() != 0 {
+                if cap.get_pt_is_mapped() != 0 {
                     ret.cap = cap.clone();
                     ret.status = exception_t::EXCEPTION_NONE;
                 } else {
@@ -238,20 +251,9 @@ pub fn arch_same_region_as(cap1: &cap_t, cap2: &cap_t) -> bool {
                 return cap1.get_pt_base_ptr() == cap2.get_pt_base_ptr();
             }
         }
-        CapTag::CapPageDirectoryCap => {
-            if cap2.get_cap_type() == CapTag::CapPageDirectoryCap {
-                return cap1.get_pd_base_ptr() == cap2.get_pd_base_ptr();
-            }
-        }
-        CapTag::CapPageUpperDirectoryCap => {
-            if cap2.get_cap_type() == CapTag::CapPageUpperDirectoryCap {
-                return cap1.get_pud_base_ptr() == cap2.get_pud_base_ptr();
-            }
-        }
-        CapTag::CapPageGlobalDirectoryCap => {
-            // FIXED: Here should be CapTag::CapPageGlobalDirectoryCap
-            if cap2.get_cap_type() == CapTag::CapPageGlobalDirectoryCap {
-                return cap1.get_pgd_base_ptr() == cap2.get_pgd_base_ptr();
+        CapTag::CapVspaceCap => {
+            if cap2.get_cap_type() == CapTag::CapVspaceCap {
+                return cap1.get_vs_base_ptr() == cap2.get_vs_base_ptr();
             }
         }
         CapTag::CapASIDControlCap => {

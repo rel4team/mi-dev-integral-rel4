@@ -316,8 +316,8 @@ impl tcb_t {
                 ));
                 return Ok(());
             }
-            let vspace_root = thread_root.get_pgd_base_ptr();
-            let asid = thread_root.get_pgd_mapped_asid();
+            let vspace_root = thread_root.get_vs_base_ptr();
+            let asid = thread_root.get_vs_mapped_asid();
             let find_ret = find_vspace_for_asid(asid);
 
             if let Some(root) = find_ret.vspace_root {

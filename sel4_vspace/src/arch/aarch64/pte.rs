@@ -1,9 +1,13 @@
-use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PDE, PGDE, PTE, PUDE};
+use crate::{arch::aarch64::machine::clean_by_va_pou, vm_attributes_t, PTE};
 
 use super::utils::paddr_to_pptr;
+use super::{mair_types, seL4_VSpaceIndexBits, UPT_LEVELS};
+use crate::{lookupPTSlot_ret_t, vptr_t};
+use sel4_common::utils::ptr_to_mut;
+use sel4_common::MASK;
 use sel4_common::{
     arch::vm_rights_t,
-    sel4_config::seL4_PageTableBits,
+    sel4_config::{seL4_PageBits, seL4_PageTableBits, PT_INDEX_BITS},
     utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
     BIT,
 };
@@ -28,11 +32,11 @@ impl VMPageSize {
     }
 }
 
-#[allow(unused)]
-pub enum pgde_tag_t {
-    pgde_invalid = 0,
-    pgde_pud = 3,
-}
+// #[allow(unused)]
+// pub enum pgde_tag_t {
+//     pgde_invalid = 0,
+//     pgde_pud = 3,
+// }
 
 #[allow(unused)]
 pub enum pte_tag_t {
@@ -42,18 +46,18 @@ pub enum pte_tag_t {
     pte_invalid = 0,
 }
 
-#[allow(unused)]
-pub enum pude_tag_t {
-    pude_invalid = 0,
-    pude_1g = 1,
-    pude_pd = 3,
-}
+// #[allow(unused)]
+// pub enum pude_tag_t {
+//     pude_invalid = 0,
+//     pude_1g = 1,
+//     pude_pd = 3,
+// }
 
-#[allow(unused)]
-pub enum pde_tag_t {
-    pde_large = 1,
-    pde_small = 3,
-}
+// #[allow(unused)]
+// pub enum pde_tag_t {
+//     pde_large = 1,
+//     pde_small = 3,
+// }
 
 bitflags::bitflags! {
     /// Possible flags for a page table entry.
@@ -114,8 +118,12 @@ impl PTE {
     pub fn pte_next_table(addr: usize, _: bool) -> Self {
         Self::new(addr, PTEFlags::VALID | PTEFlags::NON_BLOCK)
     }
-    fn new_4k_page(addr: usize, flags: PTEFlags) -> Self {
-        Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
+    // fn new_4k_page(addr: usize, flags: PTEFlags) -> Self {
+    //     Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
+    // }
+
+    pub fn get_page_base_address(&self) -> usize {
+        self.0 & 0xfffffffff000
     }
 
     pub fn get_pte_from_ppn_mut(&self) -> &mut PTE {
@@ -126,18 +134,23 @@ impl PTE {
         (self.0 & 0xfffffffff000) >> 10
     }
 
-    pub fn as_pgde(&self) -> PGDE {
-        PGDE::new_from_pte(self.0)
-    }
+    // pub fn as_pgde(&self) -> PGDE {
+    //     PGDE::new_from_pte(self.0)
+    // }
 
-    pub fn as_pude(&self) -> PUDE {
-        PUDE::new_from_pte(self.0)
-    }
+    // pub fn as_pude(&self) -> PUDE {
+    //     PUDE::new_from_pte(self.0)
+    // }
 
-    pub fn as_pde(&self) -> PDE {
-        PDE::new_from_pte(self.0)
-    }
+    // pub fn as_pde(&self) -> PDE {
+    //     PDE::new_from_pte(self.0)
+    // }
 
+    #[inline]
+    pub const fn pte_is_page_type(&self) -> bool {
+        self.get_type() == (pte_tag_t::pte_4k_page) as usize
+            || self.get_type() == (pte_tag_t::pte_page) as usize
+    }
     pub fn is_pte_table(&self) -> bool {
         self.get_type() != pte_tag_t::pte_table as usize
     }
@@ -174,22 +187,25 @@ impl PTE {
     ) -> Self {
         let nonexecutable = attr.get_armExecuteNever();
         let cacheable = attr.get_armPageCacheable();
-        let mut flags = PTEFlags::NG;
+        let mut attrindx = mair_types::DEVICE_nGnRnE as usize;
         if cacheable {
-            flags |= PTEFlags::NORMAL;
+            attrindx = mair_types::NORMAL as usize;
         }
-        if nonexecutable {
-            flags |= PTEFlags::UXN;
-        }
-        flags |= Self::ap_from_vm_rights_t(rights);
+        let nG: usize = 1;
+        let vm_right: usize = Self::ap_from_vm_rights_t(rights).bits() >> 6;
         if VMPageSize::ARMSmallPage as usize == page_size {
-            PTE::new_4k_page(paddr, flags)
+            PTE::pte_new_4k_page(nonexecutable as usize, paddr, nG, 1, 0, vm_right, attrindx)
         } else {
-            PTE::new(paddr, flags)
+            PTE::pte_new_page(nonexecutable as usize, paddr, nG, 1, 0, vm_right, attrindx)
         }
     }
 
-    pub fn pte_new(
+    pub fn pte_new_table(pt_base_address: usize) -> PTE {
+        let val = 0 | (pt_base_address & 0xfffffffff000) | (0x3);
+        PTE(val)
+    }
+
+    pub fn pte_new_page(
         UXN: usize,
         page_base_address: usize,
         nG: usize,
@@ -197,7 +213,6 @@ impl PTE {
         SH: usize,
         AP: usize,
         AttrIndx: usize,
-        reserved: usize,
     ) -> PTE {
         let val = 0
             | (UXN & 0x1) << 54
@@ -207,8 +222,50 @@ impl PTE {
             | (SH & 0x3) << 8
             | (AP & 0x3) << 6
             | (AttrIndx & 0x7) << 2
-            | (reserved & 0x3) << 0;
+            | (0x1 << 0);
 
         PTE(val)
+    }
+
+    pub fn pte_new_4k_page(
+        UXN: usize,
+        page_base_address: usize,
+        nG: usize,
+        AF: usize,
+        SH: usize,
+        AP: usize,
+        AttrIndx: usize,
+    ) -> PTE {
+        let val = 0
+            | (UXN & 0x1) << 54
+            | (page_base_address & 0xfffffffff000) >> 0
+            | (nG & 0x1) << 11
+            | (AF & 0x1) << 10
+            | (SH & 0x3) << 8
+            | (AP & 0x3) << 6
+            | (AttrIndx & 0x7) << 2
+            | 0x400000000000003;
+        PTE(val)
+    }
+    ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
+    pub fn lookup_pt_slot(&mut self, vptr: vptr_t) -> lookupPTSlot_ret_t {
+        let mut pt = self.0 as *mut PTE;
+        let mut level: usize = UPT_LEVELS - 1;
+        let ptBitsLeft = PT_INDEX_BITS * level + seL4_PageBits;
+        pt = unsafe { pt.add((vptr >> ptBitsLeft) & MASK!(seL4_VSpaceIndexBits)) };
+        let mut ret: lookupPTSlot_ret_t = lookupPTSlot_ret_t {
+            ptSlot: pt,
+            ptBitsLeft: ptBitsLeft,
+        };
+
+        while ptr_to_mut(ret.ptSlot).get_type() == (pte_tag_t::pte_table) as usize && level > 0 {
+            level = level - 1;
+            ret.ptBitsLeft = ret.ptBitsLeft - PT_INDEX_BITS;
+            let paddr = ptr_to_mut(ret.ptSlot).next_level_paddr();
+            pt = paddr_to_pptr(paddr) as *mut PTE;
+            pt = unsafe { pt.add((vptr >> ret.ptBitsLeft) & MASK!(PT_INDEX_BITS)) };
+            ret.ptSlot = pt;
+        }
+        ret
     }
 }

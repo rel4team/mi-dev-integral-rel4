@@ -12,7 +12,7 @@ impl PageTable {
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn create_it_pud_cap(vspace_cap: &cap_t, pptr: pptr_t, vptr: vptr_t, asid: usize) -> cap_t {
-    let cap = cap_t::new_page_upper_directory_cap(asid, pptr, 1, vptr);
+    let cap = cap_t::new_page_table_cap(asid, pptr, 1, vptr);
     map_it_pud_cap(vspace_cap, &cap);
     return cap;
 }

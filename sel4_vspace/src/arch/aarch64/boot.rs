@@ -14,7 +14,7 @@ use crate::{
     get_kernel_page_upper_directory_base, kpptr_to_paddr, mair_types, pptr_t, pptr_to_paddr,
     set_kernel_page_directory_by_index, set_kernel_page_global_directory_by_index,
     set_kernel_page_table_by_index, set_kernel_page_upper_directory_by_index, vm_attributes_t,
-    vptr_t, GET_KPT_INDEX, GET_PD_INDEX, GET_PT_INDEX, GET_PUD_INDEX, PDE, PGDE, PTE, PUDE,
+    vptr_t, PTE,
 };
 
 use super::{map_kernel_devices, page_slice};
@@ -75,16 +75,17 @@ pub const RESERVED: usize = 3;
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn rust_map_kernel_window() {
+    // println!("go into rusta map kernel window");
     set_kernel_page_global_directory_by_index(
-        GET_KPT_INDEX(PPTR_BASE, 0),
-        PGDE::pude_new(kpptr_to_paddr(get_kernel_page_upper_directory_base())),
+        (VAddr(PPTR_BASE)).GET_KPT_INDEX(0),
+        PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_upper_directory_base())),
     );
 
-    let mut idx = GET_PUD_INDEX(PPTR_BASE);
-    while idx < GET_PUD_INDEX(PPTR_TOP) {
+    let mut idx = VAddr(PPTR_BASE).GET_KPT_INDEX(1);
+    while idx < VAddr(PPTR_TOP).GET_KPT_INDEX(1) {
         set_kernel_page_upper_directory_by_index(
             idx,
-            PUDE::pd_new(kpptr_to_paddr(get_kernel_page_directory_base_by_index(idx))),
+            PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_directory_base_by_index(idx))),
         );
         idx += 1;
     }
@@ -93,9 +94,9 @@ pub fn rust_map_kernel_window() {
     let mut paddr = PADDR_BASE;
     while paddr < PADDR_TOP {
         set_kernel_page_directory_by_index(
-            GET_PUD_INDEX(vaddr),
-            GET_PD_INDEX(vaddr),
-            PDE::new_large(true, paddr, 0, 1, 0, 0, mair_types::NORMAL),
+            VAddr(vaddr).GET_KPT_INDEX(1),
+            VAddr(vaddr).GET_KPT_INDEX(2),
+            PTE::pte_new_page(1, paddr, 0, 1, 0, 0, mair_types::NORMAL as usize),
         );
 
         vaddr += BIT!(seL4_LargePageBits);
@@ -113,15 +114,15 @@ pub fn rust_map_kernel_window() {
     //
 
     set_kernel_page_upper_directory_by_index(
-        GET_PUD_INDEX(PPTR_TOP),
-        PUDE::pd_new(kpptr_to_paddr(get_kernel_page_directory_base_by_index(
+        VAddr(PPTR_TOP).GET_KPT_INDEX(1),
+        PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_directory_base_by_index(
             BIT!(PUD_INDEX_BITS) - 1,
         ))),
     );
     set_kernel_page_directory_by_index(
         BIT!(PUD_INDEX_BITS) - 1,
         BIT!(PUD_INDEX_BITS) - 1,
-        PDE::new_small(kpptr_to_paddr(get_kernel_page_table_base())),
+        PTE::pte_new_table(kpptr_to_paddr(get_kernel_page_table_base())),
     );
     map_kernel_devices();
     // ffi_call!(map_kernel_devices());
@@ -145,8 +146,8 @@ pub fn map_kernel_frame(
         shareable = 0;
     }
     set_kernel_page_table_by_index(
-        GET_PT_INDEX(vaddr),
-        PTE::pte_new(
+        VAddr(vaddr).GET_KPT_INDEX(3),
+        PTE::pte_new_4k_page(
             uxn,
             paddr,
             0,
@@ -154,7 +155,6 @@ pub fn map_kernel_frame(
             shareable,
             PTE::ap_from_vm_rights_t(vm_rights).bits() >> 6,
             attr_index,
-            RESERVED,
         ),
     );
 }
@@ -166,7 +166,7 @@ pub fn map_it_pt_cap(vspace_cap: &cap_t, pt_cap: &cap_t) {
     let vptr = pt_cap.get_pt_mapped_address();
     let pt = pt_cap.get_pt_base_ptr();
     let target_pte =
-        convert_to_mut_type_ref::<PDE>(find_pt(vspace_root, vptr.into(), find_type::PDE));
+        convert_to_mut_type_ref::<PTE>(find_pt(vspace_root, vptr.into(), find_type::PDE));
     target_pte.set_next_level_paddr(pptr_to_paddr(pt));
     // TODO: move 0x3 into a proper position.
     target_pte.set_attr(3);
@@ -176,25 +176,25 @@ pub fn map_it_pt_cap(vspace_cap: &cap_t, pt_cap: &cap_t) {
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn map_it_pd_cap(vspace_cap: &cap_t, pd_cap: &cap_t) {
-    let pgd = page_slice::<PGDE>(vspace_cap.get_cap_ptr());
-    let pd_addr = pd_cap.get_pd_base_ptr();
-    let vptr: VAddr = pd_cap.get_pd_mapped_address().into();
-    assert_eq!(pd_cap.get_pd_is_mapped(), 1);
+    let pgd = page_slice::<PTE>(vspace_cap.get_cap_ptr());
+    let pd_addr = pd_cap.get_pt_base_ptr();
+    let vptr: VAddr = pd_cap.get_pt_mapped_address().into();
+    assert_eq!(pd_cap.get_pt_is_mapped(), 1);
     // TODO: move 0x3 into a proper position.
     assert_eq!(pgd[vptr.pgd_index()].attr(), 0x3);
-    let pud = pgd[vptr.pgd_index()].next_level_slice::<PUDE>();
-    pud[vptr.pud_index()] = PUDE::new_page(pptr_to_paddr(pd_addr), 0x3);
+    let pud = pgd[vptr.pgd_index()].next_level_slice::<PTE>();
+    pud[vptr.pud_index()] = PTE::new_page(pptr_to_paddr(pd_addr), 0x3);
 }
 
 /// TODO: Write the comments.
 pub fn map_it_pud_cap(vspace_cap: &cap_t, pud_cap: &cap_t) {
-    let pgd = page_slice::<PGDE>(vspace_cap.get_cap_ptr());
-    let pud_addr = pud_cap.get_pud_base_ptr();
-    let vptr: VAddr = pud_cap.get_pud_mapped_address().into();
-    assert_eq!(pud_cap.get_pud_is_mapped(), 1);
+    let pgd = page_slice::<PTE>(vspace_cap.get_cap_ptr());
+    let pud_addr = pud_cap.get_pt_base_ptr();
+    let vptr: VAddr = pud_cap.get_pt_mapped_address().into();
+    assert_eq!(pud_cap.get_pt_is_mapped(), 1);
 
     // TODO: move 0x3 into a proper position.
-    pgd[vptr.pgd_index()] = PGDE::new_page(pptr_to_paddr(pud_addr), 0x3);
+    pgd[vptr.pgd_index()] = PTE::new_page(pptr_to_paddr(pud_addr), 0x3);
 }
 
 /// TODO: Write the comments.
@@ -208,19 +208,19 @@ pub fn map_it_frame_cap(vspace_cap: &cap_t, frame_cap: &cap_t, exec: bool) {
     ));
     // TODO: Make set_attr usage more efficient.
     // TIPS: exec true will be cast to 1 and false to 0.
-    pte.set_attr(PTE::pte_new((!exec) as usize, 0, 1, 1, 0, 1, 0, 3).0);
+    pte.set_attr(PTE::pte_new_4k_page((!exec) as usize, 0, 1, 1, 0, 1, 0).0);
     pte.set_next_level_paddr(pptr_to_paddr(frame_cap.get_frame_base_ptr()));
 }
 
 /// TODO: Write the comments.
 #[link_section = ".boot.text"]
 fn find_pt(vspace_root: usize, vptr: VAddr, ftype: find_type) -> usize {
-    let pgd = page_slice::<PGDE>(vspace_root);
-    let pud = pgd[vptr.pgd_index()].next_level_slice::<PUDE>();
+    let pgd = page_slice::<PTE>(vspace_root);
+    let pud = pgd[vptr.pgd_index()].next_level_slice::<PTE>();
     if ftype == find_type::PUDE {
         return pud[vptr.pud_index()].self_addr();
     }
-    let pd = pud[vptr.pud_index()].next_level_slice::<PDE>();
+    let pd = pud[vptr.pud_index()].next_level_slice::<PTE>();
     if ftype == find_type::PDE {
         return pd[vptr.pd_index()].self_addr();
     }
@@ -232,7 +232,7 @@ fn find_pt(vspace_root: usize, vptr: VAddr, ftype: find_type) -> usize {
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn create_it_pd_cap(vspace_cap: &cap_t, pptr: usize, vptr: usize, asid: usize) -> cap_t {
-    let cap = cap_t::new_page_directory_cap(asid, pptr, 1, vptr);
+    let cap = cap_t::new_page_table_cap(asid, pptr, 1, vptr);
     map_it_pd_cap(vspace_cap, &cap);
     return cap;
 }
