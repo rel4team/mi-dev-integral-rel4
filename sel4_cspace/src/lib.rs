@@ -38,12 +38,6 @@ mod tests {
     global_asm!(include_str!("entry.asm"));
 
     use super::*;
-    pub fn test_runner(tests: &[&dyn Fn()]) {
-        println!("Running {} tests", tests.len());
-        for test in tests {
-            test();
-        }
-    }
 
     #[test_case]
     pub fn same_object_as_test() {
@@ -241,15 +235,89 @@ mod tests {
     }
 
     #[test_case]
+    pub fn cap_t_create_happy_test() {
+        println!("-----------------------------------");
+        println!("Entering cap_t_create_happy_test case");
+        let cap1 = cap_t::new_cnode_cap(1, 1, 1, 1);
+        assert_eq!(cap1.get_cap_type(), CapTag::CapCNodeCap);
+        assert_eq!(cap1.get_cnode_guard_size(), 1);
+        println!("Test cap_t_create_happy_test passed");
+    }
+
+    #[test_case]
+    pub fn slot_get_ptr_happy_case_test() {
+        println!("-----------------------------------");
+        println!("Entering slot_get_ptr_happy_case_test case");
+
+        let mut slot = new_mock_slot(CapTag::CapCNodeCap);
+        println!("Slot: {:?}", slot.get_ptr());
+
+        let slot = &mut slot;
+        println!("Slot: {:?}", slot.get_ptr());
+
+        assert!(slot.get_ptr() == slot.get_ptr());
+
+        println!("Test slot_get_ptr_happy_case_test passed");
+    }
+
+    #[test_case]
     pub fn shutdown_test() {
         println!("All Test Cases passed, shutdown");
         shutdown();
+    }
+
+    fn new_mock_slot(tag: CapTag) -> cte_t {
+        match tag {
+            CapTag::CapCNodeCap => {
+                let cap = cap_t::new_cnode_cap(0, 0, 0, 0);
+                cte_t {
+                    cap,
+                    cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
+                }
+            }
+            CapTag::CapFrameCap => {
+                let cap = cap_t::new_frame_cap(0, 0, 0, 0, 0, 0);
+                cte_t {
+                    cap,
+                    cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
+                }
+            }
+            CapTag::CapPageTableCap => {
+                let cap = cap_t::new_page_table_cap(0, 0, 0, 0);
+                cte_t {
+                    cap,
+                    cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
+                }
+            }
+            CapTag::CapASIDControlCap => {
+                let cap = cap_t::new_asid_control_cap();
+                cte_t {
+                    cap,
+                    cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
+                }
+            }
+            CapTag::CapASIDPoolCap => {
+                let cap = cap_t::new_asid_pool_cap(0, 0);
+                cte_t {
+                    cap,
+                    cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
+                }
+            }
+            _ => panic!("Invalid cap tag"),
+        }
     }
 
     #[panic_handler]
     fn panic(info: &core::panic::PanicInfo) -> ! {
         println!("{}", info);
         shutdown()
+    }
+
+    pub fn test_runner(tests: &[&dyn Fn()]) {
+        println!("Running {} tests", tests.len());
+        for test in tests {
+            test();
+        }
     }
 
     #[no_mangle]
