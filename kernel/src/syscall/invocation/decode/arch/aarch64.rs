@@ -489,12 +489,11 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     }
     let pt_slot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-	frame_slot.cap.set_frame_mapped_asid(asid);
+    frame_slot.cap.set_frame_mapped_asid(asid);
     frame_slot.cap.set_frame_mapped_address(vaddr);
     return invoke_page_map(
         asid,
         frame_slot.cap.clone(),
-        frame_slot,
         PTE::make_user_pte(base, vm_rights, attr, frame_size),
         pt_slot,
     );

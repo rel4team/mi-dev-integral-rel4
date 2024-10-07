@@ -141,15 +141,8 @@ pub fn invoke_page_map(
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_page_map(
-    asid: usize,
-    cap: cap_t,
-    frame_slot: &mut cte_t,
-    pte: PTE,
-    pt_slot: &mut PTE,
-) -> exception_t {
+pub fn invoke_page_map(asid: usize, cap: cap_t, pte: PTE, pt_slot: &mut PTE) -> exception_t {
     let tlbflush_required: bool = pt_slot.get_type() != (pte_tag_t::pte_invalid) as usize;
-    // frame_slot.cap = cap;
     pt_slot.update(pte);
 
     clean_by_va_pou(
