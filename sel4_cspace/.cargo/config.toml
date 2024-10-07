@@ -4,7 +4,7 @@ target = "riscv64imac-unknown-none-elf"
 [target.'cfg(target_os = "none")']
 runner = "./test.sh"
 rustflags = [
-    "-Clink-arg=-Tsel4_cspace/linker-riscv64.ld",
+    "-Clink-arg=-Tlinker-riscv64.ld",
     "-Cforce-frame-pointers=yes",
     '--cfg=board="qemu"',
 ]
