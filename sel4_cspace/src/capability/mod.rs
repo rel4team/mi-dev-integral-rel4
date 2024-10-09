@@ -114,7 +114,7 @@ impl cap_pub_func for cap {
         if self.isArchCap() {
             return self.clone();
         }
-        match self.clone().splay() {
+        match self.splay() {
 			cap_Splayed::endpoint_cap(data) => {
                 if !preserve && data.get_capEPBadge() == 0 {
                     let mut new_cap = data.clone();
@@ -152,7 +152,7 @@ impl cap_pub_func for cap {
     }
 
     fn get_cap_size_bits(&self) -> usize {
-        match self.clone().splay() {
+        match self.splay() {
 			cap_Splayed::untyped_cap(data)=>data.get_capBlockSize() as usize,
             cap_Splayed::endpoint_cap(_) => seL4_EndpointBits,
 			cap_Splayed::notification_cap(_) => seL4_NotificationBits,
@@ -185,7 +185,7 @@ impl cap_pub_func for cap {
 
 /// 判断两个cap指向的内核对象是否是同一个内存区域
 pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
-	match cap1.clone().splay(){
+	match cap1.splay(){
 		cap_Splayed::untyped_cap(data1) => {
             if cap2.get_cap_is_physical() {
                 let aBase = data1.get_capPtr() as usize;
@@ -212,7 +212,7 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
             false
         }
 		cap_Splayed::cnode_cap(data1)=> {
-			match cap2.clone().splay() {
+			match cap2.splay() {
 				cap_Splayed::cnode_cap(data2)=>{
 					return (data1.get_capCNodePtr() == data2.get_capCNodePtr())
 						&& (data1.get_capCNodeRadix() == data2.get_capCNodeRadix());
@@ -227,7 +227,7 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
             )
         }
 		cap_Splayed::irq_handler_cap(data1)=>{
-			match cap2.clone().splay() {
+			match cap2.splay() {
 				cap_Splayed::irq_handler_cap(data2)=>{
 					return data1.get_capIRQ() == data2.get_capIRQ();
 				},
@@ -264,9 +264,9 @@ pub fn is_cap_revocable(derived_cap: &cap, src_cap: &cap) -> bool {
         return false;
     }
 
-    match derived_cap.clone().splay() {
+    match derived_cap.splay() {
         cap_Splayed::endpoint_cap(data1) => {
-			match src_cap.clone().splay(){
+			match src_cap.splay(){
 				cap_Splayed::endpoint_cap(data2)=>{
 					return data1.get_capEPBadge() != data2.get_capEPBadge()
 				},
@@ -278,7 +278,7 @@ pub fn is_cap_revocable(derived_cap: &cap, src_cap: &cap) -> bool {
         }
 
 		cap_Splayed::notification_cap(data1) => {
-			match src_cap.clone().splay(){
+			match src_cap.splay(){
 				cap_Splayed::notification_cap(data2)=>{
 					return data1.get_capNtfnBadge() != data2.get_capNtfnBadge()
 				},

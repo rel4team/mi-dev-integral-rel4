@@ -92,9 +92,9 @@ impl cte_t {
         if !same_region_as(&self.capability, &next.capability) {
             return false;
         }
-        match self.capability.clone().splay() {
+        match self.capability.splay() {
 			cap_Splayed::endpoint_cap(self_data) => {
-				match next.capability.clone().splay(){
+				match next.capability.splay(){
 					cap_Splayed::endpoint_cap(next_data)=>{
 						let badge = self_data.get_capEPBadge();
 						if badge == 0 {
@@ -109,7 +109,7 @@ impl cte_t {
 				}
             }
 			cap_Splayed::notification_cap(self_data)=> {
-				match next.capability.clone().splay(){
+				match next.capability.splay(){
 					cap_Splayed::notification_cap(next_data)=>{
 						let badge = self_data.get_capNtfnBadge();
 						if badge == 0 {
@@ -178,7 +178,7 @@ impl cte_t {
                 ret.cleanupInfo = fc_ret.cleanupInfo;
                 return ret;
             }
-            self.capability = fc_ret.remainder.clone();
+            self.capability = fc_ret.remainder;
             if !immediate && capCyclicZombie(&fc_ret.remainder, self) {
                 ret.status = exception_t::EXCEPTION_NONE;
                 ret.success = false;
@@ -256,7 +256,7 @@ impl cte_t {
 
     /// 每次删除`zombie cap`中的最后一个`capability`,用于删除unremovable的capability。
     fn reduce_zombie(&mut self, immediate: bool) -> exception_t {
-		match self.capability.clone().splay(){
+		match self.capability.splay(){
 			cap_Splayed::zombie_cap(data)=>{
 				let self_ptr = self as *mut cte_t as usize;
 				let ptr = data.get_zombie_ptr();
@@ -269,7 +269,7 @@ impl cte_t {
 					if status != exception_t::EXCEPTION_NONE {
 						return status;
 					}
-					match self.capability.clone().splay() {
+					match self.capability.splay() {
 						cap_Splayed::null_cap(_) => {
 							return exception_t::EXCEPTION_NONE;
 						}
@@ -292,8 +292,8 @@ impl cte_t {
 				} else {
 					assert_ne!(ptr, self_ptr);
 					let next_slot = convert_to_mut_type_ref::<cte_t>(ptr);
-					let cap1 = next_slot.capability.clone();
-					let cap2 = self.capability.clone();
+					let cap1 = next_slot.capability;
+					let cap2 = self.capability;
 					cte_swap(&cap1, next_slot, &cap2, self);
 				}
 				exception_t::EXCEPTION_NONE
@@ -473,7 +473,7 @@ pub fn cte_swap(cap1: &cap, slot1: &mut cte_t, cap2: &cap, slot2: &mut cte_t) {
 /// 判断当前`cap`能否被删除，只有`CNode Capability`能够做到`slot=z_slot`，且n==1意味着是`tcb`初始分配的`CNode`。
 #[inline]
 fn cap_removable(capability: &cap, slot: *mut cte_t) -> bool {
-    match capability.clone().splay() {
+    match capability.splay() {
 		cap_Splayed::null_cap(_) => true,
 		cap_Splayed::zombie_cap(data)=>{
             let n = data.get_zombie_number();
@@ -490,9 +490,9 @@ fn cap_removable(capability: &cap, slot: *mut cte_t) -> bool {
 /// 如果`srcCap`和`newCap`都是`UntypedCap`，并且指向同一块内存，内存大小也相同，就将`srcCap`记录为没有剩余空间。
 /// 自我认为是防止同一块内存空间被分配两次
 fn setUntypedCapAsFull(srcCap: &cap, newCap: &cap, srcSlot: &mut cte_t) {
-	match srcCap.clone().splay() {
+	match srcCap.splay() {
 		cap_Splayed::untyped_cap(data1)=>{
-			match newCap.clone().splay() {
+			match newCap.splay() {
 				cap_Splayed::untyped_cap(data2)=>{
 					if data1.get_capPtr() == data2.get_capPtr() && data1.get_capBlockSize() == data2.get_capBlockSize(){
 						unsafe { core::mem::transmute::<cap, cap_untyped_cap>(srcSlot.capability) }.set_capFreeIndex(MAX_FREE_INDEX(data1.get_capBlockSize() as usize) as u64);
@@ -523,7 +523,7 @@ pub fn resolve_address_bits(
 
 	if nodeCap.get_tag()== cap_tag::cap_cnode_cap{
 			loop {
-				match nodeCap.clone().splay() {
+				match nodeCap.splay() {
 					cap_Splayed::cnode_cap(data)=>{
 						let radixBits = data.get_capCNodeRadix() as usize;
 						let guardBits = data.get_capCNodeGuardSize() as usize;

@@ -100,7 +100,7 @@ use crate::{capability::{cap_arch_func, zombie::cap_zombie_func}, cte::{cte_t, d
 
 impl cap_arch_func for  cap {
     fn get_cap_ptr(&self) -> usize {
-		match self.clone().splay(){
+		match self.splay(){
 			cap_Splayed::untyped_cap(data)=>data.get_capPtr() as usize,
 			cap_Splayed::endpoint_cap(data)=>data.get_capEPPtr() as usize,
 			cap_Splayed::notification_cap(data) =>data.get_capNtfnPtr() as usize,
@@ -140,7 +140,7 @@ impl cap_arch_func for  cap {
 
     #[inline]
     fn is_valid_native_root(&self) -> bool {
-		match self.clone().splay() {
+		match self.splay() {
 			cap_Splayed::vspace_cap(data)=>{
 				self.is_vtable_root() && data.get_capVSIsMapped() != 0
 			}
@@ -160,7 +160,7 @@ impl cte_t {
             status: exception_t::EXCEPTION_NONE,
             capability: cap_null_cap::new().unsplay(),
         };
-        match capability.clone().splay() {
+        match capability.splay() {
             // cap_tag::CapPageGlobalDirectoryCap => {
             //     if cap.get_pgd_is_mapped() != 0 {
             //         ret.cap = cap.clone();
@@ -190,7 +190,7 @@ impl cte_t {
             // }
             cap_Splayed::vspace_cap(data) => {
                 if data.get_capVSIsMapped() != 0 {
-                    ret.capability = data.unsplay();
+                    ret.capability = data.clone().unsplay();
                     ret.status = exception_t::EXCEPTION_NONE;
                 } else {
                     ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -198,7 +198,7 @@ impl cte_t {
             }
             cap_Splayed::page_table_cap(data) => {
                 if data.get_capPTIsMapped() != 0 {
-                    ret.capability = data.unsplay();
+                    ret.capability = data.clone().unsplay();
                     ret.status = exception_t::EXCEPTION_NONE;
                 } else {
                     ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -224,7 +224,7 @@ impl cte_t {
 }
 
 pub fn arch_mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
-	match capability.clone().splay() {
+	match capability.splay() {
 		cap_Splayed::frame_cap(data)=>{
 			let mut vm_rights = vm_rights_from_word(data.get_capFVMRights() as usize);
 			vm_rights = maskVMRights(vm_rights, rights);
@@ -237,9 +237,9 @@ pub fn arch_mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
 }
 
 pub fn arch_same_region_as(cap1: &cap, cap2: &cap) -> bool {
-    match cap1.clone().splay() {
+    match cap1.splay() {
 		cap_Splayed::frame_cap(data1)=>{
-			match cap2.clone().splay(){
+			match cap2.splay(){
 				cap_Splayed::frame_cap(data2)=>{
 					let botA = data1.get_capFBasePtr() as usize;
 					let botB = data2.get_capFBasePtr() as usize;
@@ -251,7 +251,7 @@ pub fn arch_same_region_as(cap1: &cap, cap2: &cap) -> bool {
 			}
         }
 		cap_Splayed::page_table_cap(data1)=>{
-			match cap2.clone().splay() {
+			match cap2.splay() {
 				cap_Splayed::page_table_cap(data2)=>{
 					return data1.get_capPTBasePtr() == data2.get_capPTBasePtr();
 				},
@@ -259,7 +259,7 @@ pub fn arch_same_region_as(cap1: &cap, cap2: &cap) -> bool {
 			}
         }
 		cap_Splayed::vspace_cap(data1) => {
-			match cap2.clone().splay() {
+			match cap2.splay() {
 				cap_Splayed::vspace_cap(data2)=>{
 					return data1.get_capVSBasePtr() == data2.get_capVSBasePtr();
 				},
@@ -270,7 +270,7 @@ pub fn arch_same_region_as(cap1: &cap, cap2: &cap) -> bool {
             return cap2.get_tag() == cap_tag::cap_asid_control_cap;
         }
 		cap_Splayed::asid_pool_cap(data1) => {
-			match cap2.clone().splay() {
+			match cap2.splay() {
 				cap_Splayed::asid_pool_cap(data2)=>{
 					return data1.get_capASIDPool() == data2.get_capASIDPool();
 				},
@@ -282,10 +282,10 @@ pub fn arch_same_region_as(cap1: &cap, cap2: &cap) -> bool {
 }
 
 pub fn arch_same_object_as(cap1: &cap, cap2: &cap) -> bool {
-	match cap1.clone().splay() {
+	match cap1.splay() {
 		cap_Splayed::frame_cap(data1) =>
 		{
-			match cap2.clone().splay(){
+			match cap2.splay(){
 				cap_Splayed::frame_cap(data2)=>{
 					return data1.get_capFBasePtr() == data2.get_capFBasePtr()
 					&& data1.get_capFSize() == data2.get_capFSize()

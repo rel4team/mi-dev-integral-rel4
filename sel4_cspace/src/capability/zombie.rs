@@ -65,7 +65,7 @@ pub fn ZombieType_ZombieCNode(n: usize) -> usize {
 #[inline]
 #[no_mangle]
 pub fn capCyclicZombie(capability: &cap, slot: *mut cte_t) -> bool {
-	match capability.clone().splay(){
+	match capability.splay(){
 		cap_Splayed::zombie_cap(data)=>{
 			let ptr = data.get_zombie_ptr() as *mut cte_t;
 			(capability.get_tag() == cap_tag::cap_zombie_cap) && (ptr == slot)
