@@ -11,6 +11,7 @@ use sel4_common::arch::{maskVMRights, msgRegisterNum, ArchReg};
 use sel4_common::cap_rights::seL4_CapRights_t;
 use sel4_common::fault::*;
 use sel4_common::sel4_config::seL4_MinUntypedBits;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{
     sel4_config::*,
     structures::{exception_t, seL4_IPCBuffer},
@@ -22,7 +23,7 @@ use sel4_common::{
     utils::convert_to_mut_type_ref,
 };
 use sel4_cspace::arch::arch_mask_cap_rights;
-use sel4_cspace::interface::{cap_t, cte_t, resolve_address_bits, CapTag};
+use sel4_cspace::interface::{cap_t, cte_t, resolve_address_bits};
 use sel4_ipc::notification_t;
 use sel4_task::{get_currenct_thread, lookupSlot_ret_t, tcb_t};
 
@@ -99,7 +100,7 @@ pub fn check_prio(prio: usize, auth_tcb: &tcb_t) -> exception_t {
 
 #[inline]
 pub fn check_ipc_buffer_vaild(vptr: usize, cap: &cap_t) -> exception_t {
-    if cap.get_cap_type() != CapTag::CapFrameCap {
+    if cap.get_cap_type() != cap_tag::cap_frame_cap {
         debug!("Requested IPC Buffer is not a frame cap.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -148,7 +149,7 @@ pub fn safe_unbind_notification(tcb: &mut tcb_t) {
 #[inline]
 #[cfg(target_arch = "riscv64")]
 pub fn is_valid_vtable_root(cap: &cap_t) -> bool {
-    cap.get_cap_type() == CapTag::CapPageTableCap && cap.get_pt_is_mapped() != 0
+    cap.get_cap_type() == cap_tag::cap_page_table_cap && cap.get_pt_is_mapped() != 0
 }
 
 #[no_mangle]
@@ -163,7 +164,7 @@ pub fn lookup_slot_for_cnode_op(
     depth: usize,
 ) -> lookupSlot_ret_t {
     let mut ret: lookupSlot_ret_t = lookupSlot_ret_t::default();
-    if unlikely(root.get_cap_type() != CapTag::CapCNodeCap) {
+    if unlikely(root.get_cap_type() != cap_tag::cap_cnode_cap) {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = is_source as usize;
@@ -218,7 +219,7 @@ pub fn lookupSlotForCNodeOp(
 
 #[inline]
 pub fn ensure_empty_slot(slot: &cte_t) -> exception_t {
-    if slot.cap.get_cap_type() != CapTag::CapNullCap {
+    if slot.cap.get_cap_type() != cap_tag::cap_null_cap {
         unsafe {
             current_syscall_error._type = seL4_DeleteFirst;
         }
@@ -238,7 +239,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, cap: &cap_t) -> cap_t {
     }
     let mut new_cap = cap.clone();
     match cap.get_cap_type() {
-        CapTag::CapEndpointCap => {
+        cap_tag::cap_endpoint_cap => {
             new_cap.set_ep_can_send(cap.get_ep_can_send() & rights.get_allow_write());
             new_cap.set_ep_can_receive(cap.get_ep_can_receive() & rights.get_allow_read());
             new_cap.set_ep_can_grant(cap.get_ep_can_grant() & rights.get_allow_grant());
@@ -246,14 +247,14 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, cap: &cap_t) -> cap_t {
                 cap.get_ep_can_grant_reply() & rights.get_allow_grant_reply(),
             );
         }
-        CapTag::CapNotificationCap => {
+        cap_tag::cap_notification_cap => {
             new_cap.set_nf_can_send(cap.get_nf_can_send() & rights.get_allow_write());
             new_cap.set_nf_can_receive(cap.get_nf_can_receive() & rights.get_allow_read());
         }
-        CapTag::CapReplyCap => {
+        cap_tag::cap_reply_cap => {
             new_cap.set_reply_can_grant(cap.get_reply_can_grant() & rights.get_allow_grant());
         }
-        CapTag::CapFrameCap => {
+        cap_tag::cap_frame_cap => {
             let mut vm_rights = unsafe { core::mem::transmute(cap.get_frame_vm_rights()) };
             vm_rights = maskVMRights(vm_rights, rights);
             new_cap.set_frame_vm_rights(vm_rights as usize);

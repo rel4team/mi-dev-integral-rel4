@@ -14,9 +14,10 @@ use sel4_common::sel4_config::{
     seL4_RevokeFirst, seL4_TruncatedMessage,
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 use sel4_common::{BIT, MASK};
-use sel4_cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 use sel4_vspace::{
     checkVPAlignment, find_vspace_for_asid, get_asid_pool_by_index, vm_attributes_t, PTE,
@@ -51,10 +52,10 @@ pub fn decode_mmu_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match slot.cap.get_cap_type() {
-        CapTag::CapPageTableCap => decode_page_table_invocation(label, length, slot, buffer),
-        CapTag::CapFrameCap => decode_frame_invocation(label, length, slot, call, buffer),
-        CapTag::CapASIDControlCap => decode_asid_control(label, length, buffer),
-        CapTag::CapASIDPoolCap => decode_asid_pool(label, slot),
+        cap_tag::cap_page_table_cap => decode_page_table_invocation(label, length, slot, buffer),
+        cap_tag::cap_frame_cap => decode_frame_invocation(label, length, slot, call, buffer),
+        cap_tag::cap_asid_control_cap => decode_asid_control(label, length, buffer),
+        cap_tag::cap_asid_pool_cap => decode_asid_pool(label, slot),
         _ => {
             panic!("Invalid arch cap type");
         }
@@ -143,7 +144,7 @@ fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuff
     }
 
     let asid_base = i << asidLowBits;
-    if untyped_cap.get_cap_type() != CapTag::CapUntypedCap
+    if untyped_cap.get_cap_type() != cap_tag::cap_untyped_cap
         || untyped_cap.get_untyped_block_size() != seL4_ASIDPoolBits
         || untyped_cap.get_untyped_is_device() != 0
     {
@@ -170,7 +171,7 @@ fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuff
 
     let dest_slot = convert_to_mut_type_ref::<cte_t>(lu_ret.slot as usize);
 
-    if dest_slot.cap.get_cap_type() != CapTag::CapNullCap {
+    if dest_slot.cap.get_cap_type() != cap_tag::cap_null_cap {
         unsafe {
             current_syscall_error._type = seL4_DeleteFirst;
         }
@@ -200,7 +201,8 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     let vspace_cap = vspace_slot.cap;
 
     if unlikely(
-        vspace_cap.get_cap_type() != CapTag::CapPageTableCap || vspace_cap.get_pt_is_mapped() != 0,
+        vspace_cap.get_cap_type() != cap_tag::cap_page_table_cap
+            || vspace_cap.get_pt_is_mapped() != 0,
     ) {
         debug!("RISCVASIDPool: Invalid vspace root.");
         unsafe {
@@ -420,7 +422,7 @@ fn decode_page_table_map(
 }
 
 fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(&mut PTE, usize)> {
-    if lvl1pt_cap.get_cap_type() != CapTag::CapPageTableCap
+    if lvl1pt_cap.get_cap_type() != cap_tag::cap_page_table_cap
         || lvl1pt_cap.get_pt_is_mapped() == asidInvalid
     {
         debug!("RISCVMMUInvocation: Invalid top-level PageTable.");

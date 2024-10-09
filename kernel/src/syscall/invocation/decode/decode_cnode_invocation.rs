@@ -1,6 +1,7 @@
 use log::debug;
 use sel4_common::cap_rights::seL4_CapRights_t;
 use sel4_common::fault::lookup_fault_t;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{
     arch::MessageLabel,
     sel4_config::{
@@ -9,7 +10,7 @@ use sel4_common::{
     structures::{exception_t, seL4_IPCBuffer},
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_cspace::interface::{cap_t, cte_t};
 
 use crate::{
     kernel::boot::{current_lookup_fault, current_syscall_error, get_extra_cap_by_index},
@@ -79,7 +80,7 @@ fn decode_cnode_invoke_with_two_slot(
     let src_index = get_syscall_arg(2, buffer);
     let src_depth = get_syscall_arg(3, buffer);
     let src_root = get_extra_cap_by_index(0).unwrap().cap;
-    if dest_slot.cap.get_cap_type() != CapTag::CapNullCap {
+    if dest_slot.cap.get_cap_type() != cap_tag::cap_null_cap {
         debug!("CNode Copy/Mint/Move/Mutate: Destination not empty.");
         unsafe {
             current_syscall_error._type = seL4_DeleteFirst;
@@ -93,7 +94,7 @@ fn decode_cnode_invoke_with_two_slot(
         return lu_ret.status;
     }
     let src_slot = convert_to_mut_type_ref::<cte_t>(lu_ret.slot as usize);
-    if src_slot.cap.get_cap_type() == CapTag::CapNullCap {
+    if src_slot.cap.get_cap_type() == cap_tag::cap_null_cap {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 1;
@@ -192,7 +193,7 @@ fn decode_cnode_rotate(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     if src_slot.get_ptr() != dest_slot.get_ptr() {
-        if dest_slot.cap.get_cap_type() != CapTag::CapNullCap {
+        if dest_slot.cap.get_cap_type() != cap_tag::cap_null_cap {
             unsafe {
                 current_syscall_error._type = seL4_DeleteFirst;
             }
@@ -200,7 +201,7 @@ fn decode_cnode_rotate(
         }
     }
 
-    if src_slot.cap.get_cap_type() == CapTag::CapNullCap {
+    if src_slot.cap.get_cap_type() == cap_tag::cap_null_cap {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 1;
@@ -209,7 +210,7 @@ fn decode_cnode_rotate(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    if pivot_slot.cap.get_cap_type() == CapTag::CapNullCap {
+    if pivot_slot.cap.get_cap_type() == cap_tag::cap_null_cap {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;

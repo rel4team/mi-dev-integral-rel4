@@ -2,9 +2,10 @@
 //! 当`tcb_cap`和`cnode_cap`删除的过程中会变为`zombie_cap`
 use crate::cte::cte_t;
 use sel4_common::sel4_config::wordRadix;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::MASK;
 
-use super::{cap_t, CapTag};
+use super::cap_t;
 
 /// Judge whether the zombie cap is from tcb cap.
 pub const ZombieType_ZombieTCB: usize = 1usize << wordRadix;
@@ -61,5 +62,5 @@ pub fn ZombieType_ZombieCNode(n: usize) -> usize {
 #[no_mangle]
 pub fn capCyclicZombie(cap: &cap_t, slot: *mut cte_t) -> bool {
     let ptr = cap.get_zombie_ptr() as *mut cte_t;
-    (cap.get_cap_type() == CapTag::CapZombieCap) && (ptr == slot)
+    (cap.get_cap_type() == cap_tag::cap_zombie_cap) && (ptr == slot)
 }

@@ -9,13 +9,14 @@ mod decode_untyped_invocation;
 use core::intrinsics::unlikely;
 
 use log::debug;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{
     arch::MessageLabel,
     sel4_config::seL4_InvalidCapability,
     structures::{exception_t, seL4_IPCBuffer},
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_ipc::{endpoint_t, notification_t, Transfer};
 use sel4_task::{get_currenct_thread, set_thread_state, tcb_t, ThreadState};
 
@@ -41,7 +42,7 @@ pub fn decode_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match cap.get_cap_type() {
-        CapTag::CapNullCap | CapTag::CapZombieCap => {
+        cap_tag::cap_null_cap | cap_tag::cap_zombie_cap => {
             debug!(
                 "Attempted to invoke a null or zombie cap {:#x}, {:?}.",
                 cap_index,
@@ -54,7 +55,7 @@ pub fn decode_invocation(
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
 
-        CapTag::CapEndpointCap => {
+        cap_tag::cap_endpoint_cap => {
             if unlikely(cap.get_ep_can_send() == 0) {
                 debug!(
                     "Attempted to invoke a read-only endpoint cap {}.",
@@ -78,7 +79,7 @@ pub fn decode_invocation(
             return exception_t::EXCEPTION_NONE;
         }
 
-        CapTag::CapNotificationCap => {
+        cap_tag::cap_notification_cap => {
             if unlikely(cap.get_nf_can_send() == 0) {
                 debug!(
                     "Attempted to invoke a read-only notification cap {}.",
@@ -96,7 +97,7 @@ pub fn decode_invocation(
             exception_t::EXCEPTION_NONE
         }
 
-        CapTag::CapReplyCap => {
+        cap_tag::cap_reply_cap => {
             if unlikely(cap.get_reply_master() != 0) {
                 debug!("Attempted to invoke an invalid reply cap {}.", cap_index);
                 unsafe {
@@ -113,12 +114,12 @@ pub fn decode_invocation(
             );
             exception_t::EXCEPTION_NONE
         }
-        CapTag::CapThreadCap => decode_tcb_invocation(label, length, cap, slot, call, buffer),
-        CapTag::CapDomainCap => decode_domain_invocation(label, length, buffer),
-        CapTag::CapCNodeCap => decode_cnode_invocation(label, length, cap, buffer),
-        CapTag::CapUntypedCap => decode_untyed_invocation(label, length, slot, cap, buffer),
-        CapTag::CapIrqControlCap => decode_irq_control_invocation(label, length, slot, buffer),
-        CapTag::CapIrqHandlerCap => decode_irq_handler_invocation(label, cap.get_irq_handler()),
+        cap_tag::cap_thread_cap => decode_tcb_invocation(label, length, cap, slot, call, buffer),
+        cap_tag::cap_domain_cap => decode_domain_invocation(label, length, buffer),
+        cap_tag::cap_cnode_cap => decode_cnode_invocation(label, length, cap, buffer),
+        cap_tag::cap_untyped_cap => decode_untyed_invocation(label, length, slot, cap, buffer),
+        cap_tag::cap_irq_control_cap => decode_irq_control_invocation(label, length, slot, buffer),
+        cap_tag::cap_irq_handler_cap => decode_irq_handler_invocation(label, cap.get_irq_handler()),
         _ => decode_mmu_invocation(label, length, slot, call, buffer),
     }
 }

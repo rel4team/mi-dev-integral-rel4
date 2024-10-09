@@ -94,26 +94,6 @@ pub struct rootserver_mem_t {
     pub paging: region_t,
 }
 
-#[derive(PartialEq)]
-#[allow(dead_code)]
-pub enum cap_tag_t {
-    cap_null_cap = 0,
-    cap_untyped_cap = 2,
-    cap_endpoint_cap = 4,
-    cap_notification_cap = 6,
-    cap_reply_cap = 8,
-    cap_cnode_cap = 10,
-    cap_thread_cap = 12,
-    cap_irq_control_cap = 14,
-    cap_irq_handler_cap = 16,
-    cap_zombie_cap = 18,
-    cap_domain_cap = 20,
-    cap_frame_cap = 1,
-    cap_page_table_cap = 3,
-    cap_asid_control_cap = 11,
-    cap_asid_pool_cap = 13,
-}
-
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct create_frames_of_region_ret_t {

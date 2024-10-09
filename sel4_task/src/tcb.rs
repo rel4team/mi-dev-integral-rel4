@@ -4,11 +4,12 @@ use sel4_common::arch::{
 };
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_t;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::BIT;
 use sel4_common::MASK;
-use sel4_cspace::interface::{cap_t, cte_insert, cte_t, mdb_node_t, resolve_address_bits, CapTag};
+use sel4_cspace::interface::{cap_t, cte_insert, cte_t, mdb_node_t, resolve_address_bits};
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::{
     find_vspace_for_asid, get_arm_global_user_vspace_base, kpptr_to_paddr,
@@ -379,7 +380,7 @@ impl tcb_t {
     /// Setup the reply master of the TCB
     pub fn setup_reply_master(&mut self) {
         let slot = self.get_cspace_mut_ref(tcbReply);
-        if slot.cap.get_cap_type() == CapTag::CapNullCap {
+        if slot.cap.get_cap_type() == cap_tag::cap_null_cap {
             slot.cap = cap_t::new_reply_cap(1, 1, self.get_ptr());
             slot.cteMDBNode = mdb_node_t::new(0, 1, 1, 0);
         }
@@ -421,13 +422,13 @@ impl tcb_t {
         let reply_slot = sender.get_cspace_mut_ref(tcbReply);
         let master_cap = reply_slot.cap;
 
-        assert_eq!(master_cap.get_cap_type(), CapTag::CapReplyCap);
+        assert_eq!(master_cap.get_cap_type(), cap_tag::cap_reply_cap);
         assert_eq!(master_cap.get_reply_master(), 1);
         assert_eq!(master_cap.get_reply_can_grant(), 1);
         assert_eq!(master_cap.get_reply_tcb_ptr(), sender.get_ptr());
 
         let caller_slot = self.get_cspace_mut_ref(tcbCaller);
-        assert_eq!(caller_slot.cap.get_cap_type(), CapTag::CapNullCap);
+        assert_eq!(caller_slot.cap.get_cap_type(), cap_tag::cap_null_cap);
         cte_insert(
             &cap_t::new_reply_cap(can_grant as usize, 0, sender.get_ptr()),
             reply_slot,
@@ -450,7 +451,7 @@ impl tcb_t {
     pub fn lookup_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = self.get_cspace(tcbBuffer).cap;
-        if unlikely(buffer_cap.get_cap_type() != CapTag::CapFrameCap) {
+        if unlikely(buffer_cap.get_cap_type() != cap_tag::cap_frame_cap) {
             return None;
         }
 
@@ -542,7 +543,7 @@ impl tcb_t {
     ) -> Option<&'static mut seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = self.get_cspace(tcbBuffer).cap;
-        if buffer_cap.get_cap_type() != CapTag::CapFrameCap {
+        if buffer_cap.get_cap_type() != cap_tag::cap_frame_cap {
             return None;
         }
 

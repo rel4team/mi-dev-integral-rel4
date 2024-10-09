@@ -1,11 +1,12 @@
 use log::debug;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{
     arch::MessageLabel,
     sel4_config::*,
     structures::{exception_t, seL4_IPCBuffer},
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::interface::{cte_t, CapTag};
+use sel4_cspace::interface::cte_t;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 
 use super::arch::{arch_decode_irq_control_invocation, check_irq};
@@ -51,7 +52,7 @@ pub fn decode_irq_control_invocation(
             return lu_ret.status;
         }
         let dest_slot = convert_to_mut_type_ref::<cte_t>(lu_ret.slot as usize);
-        if dest_slot.cap.get_cap_type() != CapTag::CapNullCap {
+        if dest_slot.cap.get_cap_type() != cap_tag::cap_null_cap {
             unsafe {
                 current_syscall_error._type = seL4_DeleteFirst;
             }
@@ -85,7 +86,7 @@ pub fn decode_irq_handler_invocation(label: MessageLabel, irq: usize) -> excepti
             }
             let slot = get_extra_cap_by_index(0).unwrap();
             let ntfn_cap = slot.cap;
-            if ntfn_cap.get_cap_type() != CapTag::CapNotificationCap
+            if ntfn_cap.get_cap_type() != cap_tag::cap_notification_cap
                 || ntfn_cap.get_nf_can_send() == 0
             {
                 unsafe {

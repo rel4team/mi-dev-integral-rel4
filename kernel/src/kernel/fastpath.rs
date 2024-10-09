@@ -5,6 +5,7 @@ use crate::{
 };
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{
     fault::*,
     message_info::*,
@@ -27,7 +28,7 @@ pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
     let mut capGuard: usize;
     let mut radix: usize;
     let mut slot: *mut cte_t;
-    if unlikely(!(cap.get_cap_type() == CapTag::CapCNodeCap)) {
+    if unlikely(!(cap.get_cap_type() == cap_tag::cap_cnode_cap)) {
         return cap_t::new_null_cap();
     }
     loop {
@@ -44,7 +45,7 @@ pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
         cap = unsafe { (*slot).cap };
         bits += guardBits + radixBits;
 
-        if likely(!(bits < wordBits && cap.get_cap_type() == CapTag::CapCNodeCap)) {
+        if likely(!(bits < wordBits && cap.get_cap_type() == cap_tag::cap_cnode_cap)) {
             break;
         }
     }
@@ -102,7 +103,7 @@ pub fn mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
 #[no_mangle]
 pub fn isValidVTableRoot_fp(cap: &cap_t) -> bool {
     // cap_capType_equals(cap, cap_page_table_cap) && cap.get_pt_is_mapped() != 0
-    cap.get_cap_type() == CapTag::CapPageTableCap && cap.get_pt_is_mapped() != 0
+    cap.get_cap_type() == cap_tag::cap_page_table_cap && cap.get_pt_is_mapped() != 0
 }
 
 #[inline]
@@ -201,7 +202,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     }
     let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).cap, cptr);
     if unlikely(
-        !(ep_cap.get_cap_type() == CapTag::CapEndpointCap) || (ep_cap.get_ep_can_send() == 0),
+        !(ep_cap.get_cap_type() == cap_tag::cap_endpoint_cap) || (ep_cap.get_ep_can_send() == 0),
     ) {
         slowpath(SysCall as usize);
     }
@@ -280,7 +281,8 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
 
     let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).cap, cptr);
 
-    if unlikely(ep_cap.get_cap_type() != CapTag::CapEndpointCap || ep_cap.get_ep_can_send() == 0) {
+    if unlikely(ep_cap.get_cap_type() != cap_tag::cap_endpoint_cap || ep_cap.get_ep_can_send() == 0)
+    {
         slowpath(SysReplyRecv as usize);
     }
 
@@ -300,7 +302,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     let caller_slot = current.get_cspace_mut_ref(tcbCaller);
     let caller_cap = &caller_slot.cap;
 
-    if unlikely(caller_cap.get_cap_type() != CapTag::CapReplyCap) {
+    if unlikely(caller_cap.get_cap_type() != cap_tag::cap_reply_cap) {
         slowpath(SysReplyRecv as usize);
     }
 

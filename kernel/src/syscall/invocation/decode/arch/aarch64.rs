@@ -17,6 +17,7 @@ use sel4_common::sel4_config::{seL4_DeleteFirst, seL4_InvalidArgument};
 use sel4_common::sel4_config::{
     seL4_IllegalOperation, seL4_InvalidCapability, seL4_RevokeFirst, seL4_TruncatedMessage,
 };
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::{
     convert_ref_type_to_usize, convert_to_mut_type_ref, global_ops, pageBitsForSize, ptr_to_mut,
     ptr_to_ref, MAX_FREE_INDEX,
@@ -27,7 +28,7 @@ use sel4_common::{
     MASK,
 };
 use sel4_common::{BIT, IS_ALIGNED};
-use sel4_cspace::interface::{cap_t, cte_insert, cte_t, CapTag};
+use sel4_cspace::interface::{cap_t, cte_insert, cte_t};
 
 use sel4_vspace::{
     asid_map_t, asid_pool_t, asid_t, clean_by_va_pou, doFlush, find_vspace_for_asid,
@@ -52,11 +53,11 @@ pub fn decode_mmu_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match slot.cap.get_cap_type() {
-        CapTag::CapVspaceCap => decode_vspace_root_invocation(label, length, slot, buffer),
-        CapTag::CapPageTableCap => decode_page_table_invocation(label, length, slot, buffer),
-        CapTag::CapFrameCap => decode_frame_invocation(label, length, slot, call, buffer),
-        CapTag::CapASIDControlCap => decode_asid_control(label, length, buffer),
-        CapTag::CapASIDPoolCap => decode_asid_pool(label, slot),
+        cap_tag::cap_vspace_cap => decode_vspace_root_invocation(label, length, slot, buffer),
+        cap_tag::cap_page_table_cap => decode_page_table_invocation(label, length, slot, buffer),
+        cap_tag::cap_frame_cap => decode_frame_invocation(label, length, slot, call, buffer),
+        cap_tag::cap_asid_control_cap => decode_asid_control(label, length, buffer),
+        cap_tag::cap_asid_pool_cap => decode_asid_pool(label, slot),
         _ => {
             panic!("Invalid arch cap type");
         }
@@ -315,7 +316,7 @@ fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuff
     }
     let asid_base = i << asidLowBits;
     if unlikely(
-        untyped.get_cap_type() != CapTag::CapUntypedCap
+        untyped.get_cap_type() != cap_tag::cap_untyped_cap
             || untyped.get_untyped_block_size() != seL4_ASIDPoolBits
             || untyped.get_untyped_is_device() == 1,
     ) {

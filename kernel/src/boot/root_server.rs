@@ -19,6 +19,7 @@ use sel4_common::sel4_config::{
     IT_ASID, PAGE_BITS, TCB_OFFSET,
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_cspace::interface::*;
 
@@ -62,7 +63,7 @@ pub fn root_server_init(
         root_server_mem_init(it_v_reg, extra_bi_size_bits);
     }
     let root_cnode_cap = unsafe { create_root_cnode() };
-    if root_cnode_cap.get_cap_type() == CapTag::CapNullCap {
+    if root_cnode_cap.get_cap_type() == cap_tag::cap_null_cap {
         debug!("ERROR: root c-node creation failed\n");
         return None;
     }
@@ -73,7 +74,7 @@ pub fn root_server_init(
         rust_populate_bi_frame(0, CONFIG_MAX_NUM_NODES, ipcbuf_vptr, extra_bi_size);
     }
     let it_pd_cap = unsafe { rust_create_it_address_space(&root_cnode_cap, it_v_reg) };
-    if it_pd_cap.get_cap_type() == CapTag::CapNullCap {
+    if it_pd_cap.get_cap_type() == cap_tag::cap_null_cap {
         debug!("ERROR: address space creation for initial thread failed");
         return None;
     }
@@ -88,12 +89,12 @@ pub fn root_server_init(
         return None;
     }
     let ipcbuf_cap = unsafe { create_ipcbuf_frame_cap(&root_cnode_cap, &it_pd_cap, ipcbuf_vptr) };
-    if ipcbuf_cap.get_cap_type() == CapTag::CapNullCap {
+    if ipcbuf_cap.get_cap_type() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create IPC buffer for initial thread");
         return None;
     }
 
-    if ipcbuf_cap.get_cap_type() == CapTag::CapNullCap {
+    if ipcbuf_cap.get_cap_type() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create IPC buffer for initial thread");
         return None;
     }
@@ -188,7 +189,7 @@ unsafe fn create_initial_thread(
 
 fn asid_init(root_cnode_cap: cap_t, it_pd_cap: cap_t) -> bool {
     let it_ap_cap = create_it_asid_pool(&root_cnode_cap);
-    if it_ap_cap.get_cap_type() == CapTag::CapNullCap {
+    if it_ap_cap.get_cap_type() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create ASID pool for initial thread");
         return false;
     }

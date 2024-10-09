@@ -28,12 +28,13 @@ pub mod arch;
 
 #[cfg(test)]
 mod tests {
-    use arch::{cap_t, CapTag};
+    use arch::cap_t;
     use cap::same_object_as;
     use core::arch::global_asm;
     use cte::{cte_insert, cte_move, cte_swap, cte_t, insert_new_cap, resolve_address_bits};
     use mdb::mdb_node_t;
     use riscv::register::{stvec, utvec::TrapMode};
+    use sel4_common::structures_gen::cap_tag;
     use sel4_common::{arch::shutdown, println, utils::convert_to_mut_type_ref};
     global_asm!(include_str!("entry.asm"));
 
@@ -77,8 +78,8 @@ mod tests {
         };
         cte_insert(&cap1, &mut cte1, &mut cte2);
         cte_insert(&cap2, &mut cte2, &mut cte3);
-        assert_eq!(cte2.cap.get_cap_type(), CapTag::CapASIDControlCap);
-        assert_eq!(cte3.cap.get_cap_type(), CapTag::CapDomainCap);
+        assert_eq!(cte2.cap.get_cap_type(), cap_tag::cap_asid_control_cap);
+        assert_eq!(cte3.cap.get_cap_type(), cap_tag::cap_domain_cap);
         assert_eq!(cte1.cteMDBNode.get_next(), &mut cte2 as *mut cte_t as usize);
         assert_eq!(cte2.cteMDBNode.get_next(), &mut cte3 as *mut cte_t as usize);
         assert_eq!(cte2.cteMDBNode.get_prev(), &mut cte1 as *mut cte_t as usize);
@@ -116,7 +117,7 @@ mod tests {
         assert_eq!(cte2.cteMDBNode.get_prev(), &mut cte1 as *mut cte_t as usize);
         assert_eq!(cte3.cteMDBNode.get_prev(), &mut cte2 as *mut cte_t as usize);
         cte_move(&cap3, &mut cte2, &mut cte4);
-        assert_eq!(cte4.cap.get_cap_type(), CapTag::CapIrqControlCap);
+        assert_eq!(cte4.cap.get_cap_type(), cap_tag::cap_irq_control_cap);
         assert_eq!(cte4.cteMDBNode.get_next(), &mut cte3 as *mut cte_t as usize);
         assert_eq!(cte4.cteMDBNode.get_prev(), &mut cte1 as *mut cte_t as usize);
         assert_eq!(cte1.cteMDBNode.get_next(), &mut cte4 as *mut cte_t as usize);
@@ -159,8 +160,8 @@ mod tests {
         assert_eq!(cte3.cteMDBNode.get_next(), &mut cte4 as *mut cte_t as usize);
         assert_eq!(cte4.cteMDBNode.get_prev(), &mut cte3 as *mut cte_t as usize);
         cte_swap(&cap1, &mut cte2, &cap2, &mut cte4);
-        assert_eq!(cte2.cap.get_cap_type(), CapTag::CapDomainCap);
-        assert_eq!(cte4.cap.get_cap_type(), CapTag::CapASIDControlCap);
+        assert_eq!(cte2.cap.get_cap_type(), cap_tag::cap_domain_cap);
+        assert_eq!(cte4.cap.get_cap_type(), cap_tag::cap_asid_control_cap);
         assert_eq!(cte4.cteMDBNode.get_prev(), &mut cte1 as *mut cte_t as usize);
         assert_eq!(cte1.cteMDBNode.get_next(), &mut cte4 as *mut cte_t as usize);
         assert_eq!(cte2.cteMDBNode.get_prev(), &mut cte3 as *mut cte_t as usize);
@@ -188,7 +189,7 @@ mod tests {
             cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
         };
         cte_insert(&cap1, &mut cte1, &mut cte2);
-        assert_eq!(cte2.cap.get_cap_type(), CapTag::CapASIDControlCap);
+        assert_eq!(cte2.cap.get_cap_type(), cap_tag::cap_asid_control_cap);
         assert_eq!(cte1.cteMDBNode.get_next(), &mut cte2 as *mut cte_t as usize);
         assert_eq!(cte2.cteMDBNode.get_prev(), &mut cte1 as *mut cte_t as usize);
         insert_new_cap(&mut cte1, &mut cte3, &cap2);
@@ -230,7 +231,7 @@ mod tests {
         );
         let res_ret = resolve_address_bits(&cap1, cap_ptr, 10);
         let ret_cap = unsafe { (*(res_ret.slot)).cap };
-        assert_eq!(ret_cap.get_cap_type(), CapTag::CapDomainCap);
+        assert_eq!(ret_cap.get_cap_type(), cap_tag::cap_domain_cap);
         println!("Test resolve_address_bits_test passed");
     }
 
@@ -239,7 +240,7 @@ mod tests {
         println!("-----------------------------------");
         println!("Entering cap_t_create_happy_test case");
         let cap1 = cap_t::new_cnode_cap(1, 1, 1, 1);
-        assert_eq!(cap1.get_cap_type(), CapTag::CapCNodeCap);
+        assert_eq!(cap1.get_cap_type(), cap_tag::cap_cnode_cap);
         assert_eq!(cap1.get_cnode_guard_size(), 1);
         println!("Test cap_t_create_happy_test passed");
     }
@@ -249,7 +250,7 @@ mod tests {
         println!("-----------------------------------");
         println!("Entering slot_get_ptr_happy_case_test case");
 
-        let mut slot = new_mock_slot(CapTag::CapCNodeCap);
+        let mut slot = new_mock_slot(cap_tag::cap_cnode_cap);
         println!("Slot: {:?}", slot.get_ptr());
 
         let slot = &mut slot;
@@ -266,37 +267,37 @@ mod tests {
         shutdown();
     }
 
-    fn new_mock_slot(tag: CapTag) -> cte_t {
+    fn new_mock_slot(tag: u64) -> cte_t {
         match tag {
-            CapTag::CapCNodeCap => {
+            cap_tag::cap_cnode_cap => {
                 let cap = cap_t::new_cnode_cap(0, 0, 0, 0);
                 cte_t {
                     cap,
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
-            CapTag::CapFrameCap => {
+            cap_tag::cap_frame_cap => {
                 let cap = cap_t::new_frame_cap(0, 0, 0, 0, 0, 0);
                 cte_t {
                     cap,
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
-            CapTag::CapPageTableCap => {
+            cap_tag::cap_page_table_cap => {
                 let cap = cap_t::new_page_table_cap(0, 0, 0, 0);
                 cte_t {
                     cap,
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
-            CapTag::CapASIDControlCap => {
+            cap_tag::cap_asid_control_cap => {
                 let cap = cap_t::new_asid_control_cap();
                 cte_t {
                     cap,
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
-            CapTag::CapASIDPoolCap => {
+            cap_tag::cap_asid_pool_cap => {
                 let cap = cap_t::new_asid_pool_cap(0, 0);
                 cte_t {
                     cap,

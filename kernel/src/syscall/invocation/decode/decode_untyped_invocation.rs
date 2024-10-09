@@ -1,13 +1,14 @@
 use crate::BIT;
 use log::debug;
 use sel4_common::fault::lookup_fault_t;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{
     arch::{MessageLabel, ObjectType},
     sel4_config::*,
     structures::*,
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 
 use crate::syscall::{alignUp, FREE_INDEX_TO_OFFSET, GET_FREE_REF};
@@ -183,7 +184,7 @@ fn get_target_cnode(node_index: usize, node_depth: usize, node_cap: &mut cap_t) 
         unsafe { (*lu_ret.slot).cap }
     };
 
-    if target_node_cap.get_cap_type() != CapTag::CapCNodeCap {
+    if target_node_cap.get_cap_type() != cap_tag::cap_cnode_cap {
         debug!("Untyped Retype: Destination cap invalid or read-only.");
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
@@ -237,7 +238,7 @@ fn check_cnode_slot(node_cap: &cap_t, node_offset: usize, node_window: usize) ->
 
     let dest_cnode = convert_to_mut_type_ref::<cte_t>(node_cap.get_cnode_ptr());
     for i in node_offset..(node_offset + node_window) {
-        if dest_cnode.get_offset_slot(i).cap.get_cap_type() != CapTag::CapNullCap {
+        if dest_cnode.get_offset_slot(i).cap.get_cap_type() != cap_tag::cap_null_cap {
             debug!(
                 "Untyped Retype: Slot {:#x} in destination window non-empty.",
                 i

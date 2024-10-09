@@ -6,8 +6,9 @@ use crate::PTEFlags;
 use crate::RISCV_GET_PT_INDEX;
 use core::intrinsics::unlikely;
 use sel4_common::sel4_config::CONFIG_PT_LEVELS;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::{fault::lookup_fault_t, structures::exception_t, utils::convert_to_mut_type_ref};
-use sel4_cspace::interface::{cap_t, CapTag};
+use sel4_cspace::interface::cap_t;
 
 use crate::PTE;
 
@@ -17,7 +18,7 @@ use super::{kpptr_to_paddr, pagetable::kernel_root_pageTable, pptr_to_paddr, set
 ///
 /// Use page table in vspace_root to set the satp register.
 pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
-    if vspace_root.get_cap_type() != CapTag::CapPageTableCap {
+    if vspace_root.get_cap_type() != cap_tag::cap_page_table_cap {
         unsafe {
             setVSpaceRoot(kpptr_to_paddr(kernel_root_pageTable.as_ptr() as usize), 0);
             return Ok(());

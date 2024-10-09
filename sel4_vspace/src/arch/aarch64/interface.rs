@@ -7,13 +7,14 @@ use crate::arch::VAddr;
 use crate::{asid_t, find_vspace_for_asid, paddr_to_pptr, pptr_t, pptr_to_paddr, vptr_t, PTE};
 use sel4_common::arch::MessageLabel;
 use sel4_common::structures::exception_t;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::{pageBitsForSize, ptr_to_mut};
 use sel4_common::{
     fault::lookup_fault_t,
     sel4_config::{seL4_PageBits, PT_INDEX_BITS},
     BIT,
 };
-use sel4_cspace::{arch::CapTag, interface::cap_t};
+use sel4_cspace::interface::cap_t;
 pub const PageAlignedLen: usize = BIT!(PT_INDEX_BITS);
 #[repr(align(4096))]
 #[derive(Clone, Copy)]
@@ -190,7 +191,7 @@ pub fn set_vm_root_for_flush_with_thread_root(
     asid: asid_t,
     thread_root: &cap_t,
 ) -> bool {
-    if thread_root.get_cap_type() == CapTag::CapVspaceCap
+    if thread_root.get_cap_type() == cap_tag::cap_vspace_cap
         && thread_root.get_vs_is_mapped() != 0
         && thread_root.get_vs_base_ptr() == vspace as usize
     {

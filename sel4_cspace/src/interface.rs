@@ -1,4 +1,4 @@
-pub use super::arch::{cap_t, CapTag};
+pub use super::arch::cap_t;
 pub use super::cap::same_object_as;
 pub use super::mdb::mdb_node_t;
 

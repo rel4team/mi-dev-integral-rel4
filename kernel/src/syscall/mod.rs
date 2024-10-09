@@ -26,8 +26,8 @@ pub const SysDebugSnapshot: isize = -13;
 pub const SysDebugNameThread: isize = -14;
 pub const SysGetClock: isize = -30;
 use sel4_common::structures::exception_t;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
-use sel4_cspace::interface::CapTag;
 use sel4_ipc::{endpoint_t, notification_t, Transfer};
 use sel4_task::{
     activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
@@ -116,7 +116,7 @@ fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
         return exception_t::EXCEPTION_FAULT;
     }
     let handler_cap = &mut ptr_to_mut(lu_ret.slot).cap;
-    if handler_cap.get_cap_type() == CapTag::CapEndpointCap
+    if handler_cap.get_cap_type() == cap_tag::cap_endpoint_cap
         && (handler_cap.get_ep_can_grant() != 0 || handler_cap.get_ep_can_grant_reply() != 0)
     {
         thread.tcbFault = unsafe { current_fault };
@@ -152,7 +152,7 @@ fn handle_reply() {
     let current_thread = get_currenct_thread();
     let caller_slot = current_thread.get_cspace_mut_ref(tcbCaller);
     let caller_cap = &caller_slot.cap;
-    if caller_cap.get_cap_type() == CapTag::CapReplyCap {
+    if caller_cap.get_cap_type() == cap_tag::cap_reply_cap {
         if caller_cap.get_reply_master() != 0 {
             return;
         }
@@ -173,7 +173,7 @@ fn handle_recv(block: bool) {
     }
     let ipc_cap = unsafe { (*lu_ret.slot).cap };
     match ipc_cap.get_cap_type() {
-        CapTag::CapEndpointCap => {
+        cap_tag::cap_endpoint_cap => {
             if unlikely(ipc_cap.get_ep_can_receive() == 0) {
                 unsafe {
                     current_lookup_fault = lookup_fault_t::new_missing_cap(0);
@@ -189,7 +189,7 @@ fn handle_recv(block: bool) {
             );
         }
 
-        CapTag::CapNotificationCap => {
+        cap_tag::cap_notification_cap => {
             let ntfn = convert_to_mut_type_ref::<notification_t>(ipc_cap.get_nf_ptr());
             let bound_tcb_ptr = ntfn.get_bound_tcb();
             if unlikely(

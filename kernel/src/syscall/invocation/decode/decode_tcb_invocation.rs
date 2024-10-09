@@ -11,9 +11,10 @@ use sel4_common::sel4_config::{
     tcbCTable, tcbVTable,
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_common::BIT;
-use sel4_cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_ipc::notification_t;
 use sel4_task::{get_currenct_thread, set_thread_state, tcb_t, ThreadState};
 
@@ -197,7 +198,7 @@ fn decode_copy_registers(cap: &cap_t, _length: usize, buffer: &seL4_IPCBuffer) -
 
     let source_cap = get_extra_cap_by_index(0).unwrap().cap;
 
-    if cap.get_cap_type() != CapTag::CapThreadCap {
+    if cap.get_cap_type() != cap_tag::cap_thread_cap {
         debug!("TCB CopyRegisters: Truncated message.");
         unsafe {
             current_syscall_error._type = seL4_TruncatedMessage;
@@ -282,7 +283,7 @@ fn decode_tcb_configure(
         Ok(cap) => croot_cap = cap,
         Err(status) => return status,
     }
-    if croot_cap.get_cap_type() != CapTag::CapCNodeCap {
+    if croot_cap.get_cap_type() != cap_tag::cap_cnode_cap {
         debug!("TCB Configure: CSpace cap is invalid.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -341,7 +342,7 @@ fn decode_set_priority(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> e
     }
     let new_prio = get_syscall_arg(0, buffer);
     let auth_cap = get_extra_cap_by_index(0).unwrap().cap;
-    if auth_cap.get_cap_type() != CapTag::CapThreadCap {
+    if auth_cap.get_cap_type() != cap_tag::cap_thread_cap {
         debug!("Set priority: authority cap not a TCB.");
         unsafe {
             current_syscall_error._type = seL4_InvalidCapability;
@@ -371,7 +372,7 @@ fn decode_set_mc_priority(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -
     }
     let new_mcp = get_syscall_arg(0, buffer);
     let auth_cap = get_extra_cap_by_index(0).unwrap().cap;
-    if auth_cap.get_cap_type() != CapTag::CapThreadCap {
+    if auth_cap.get_cap_type() != cap_tag::cap_thread_cap {
         debug!("SetMCPriority: authority cap not a TCB.");
         unsafe {
             current_syscall_error._type = seL4_InvalidCapability;
@@ -404,7 +405,7 @@ fn decode_set_sched_params(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) 
     let new_mcp = get_syscall_arg(0, buffer);
     let new_prio = get_syscall_arg(1, buffer);
     let auth_cap = get_extra_cap_by_index(0).unwrap().cap;
-    if auth_cap.get_cap_type() != CapTag::CapThreadCap {
+    if auth_cap.get_cap_type() != cap_tag::cap_thread_cap {
         debug!("SetSchedParams: authority cap not a TCB.");
         unsafe {
             current_syscall_error._type = seL4_InvalidCapability;
@@ -516,7 +517,7 @@ fn decode_set_space(
         Ok(cap) => croot_cap = cap,
         Err(status) => return status,
     }
-    if croot_cap.get_cap_type() != CapTag::CapCNodeCap {
+    if croot_cap.get_cap_type() != cap_tag::cap_cnode_cap {
         debug!("TCB Configure: CSpace cap is invalid.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -574,7 +575,7 @@ fn decode_bind_notification(cap: &cap_t) -> exception_t {
     }
 
     let ntfn_cap = get_extra_cap_by_index(0).unwrap().cap;
-    if ntfn_cap.get_cap_type() != CapTag::CapNotificationCap {
+    if ntfn_cap.get_cap_type() != cap_tag::cap_notification_cap {
         debug!("TCB BindNotification: Notification is invalid.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;

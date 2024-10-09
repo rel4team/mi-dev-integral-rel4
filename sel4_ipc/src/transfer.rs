@@ -9,6 +9,7 @@ use sel4_common::fault::*;
 use sel4_common::message_info::*;
 use sel4_common::sel4_config::*;
 use sel4_common::structures::*;
+use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::*;
 use sel4_cspace::interface::*;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
@@ -102,7 +103,7 @@ impl Transfer for tcb_t {
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
             let cap = &slot.cap.clone();
-            if cap.get_cap_type() == CapTag::CapEndpointCap
+            if cap.get_cap_type() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && cap.get_ep_ptr() == endpoint.unwrap().get_ptr()
             {
@@ -115,7 +116,7 @@ impl Transfer for tcb_t {
                     let dest = dest_slot.take();
                     let dc_ret = slot.derive_cap(cap);
                     if dc_ret.status != exception_t::EXCEPTION_NONE
-                        || dc_ret.cap.get_cap_type() == CapTag::CapNullCap
+                        || dc_ret.cap.get_cap_type() == cap_tag::cap_null_cap
                     {
                         break;
                     }
@@ -146,7 +147,7 @@ impl Transfer for tcb_t {
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
             let cap = &slot.cap.clone();
-            if cap.get_cap_type() == CapTag::CapEndpointCap
+            if cap.get_cap_type() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && cap.get_ep_ptr() == endpoint.unwrap().get_ptr()
             {
@@ -159,7 +160,7 @@ impl Transfer for tcb_t {
                     let dest = dest_slot.take();
                     let dc_ret = slot.derive_cap(cap);
                     if dc_ret.status != exception_t::EXCEPTION_NONE
-                        || dc_ret.cap.get_cap_type() == CapTag::CapNullCap
+                        || dc_ret.cap.get_cap_type() == cap_tag::cap_null_cap
                     {
                         break;
                     }
