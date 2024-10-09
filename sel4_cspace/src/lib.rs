@@ -11,7 +11,7 @@
 #![test_runner(crate::tests::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-mod capability;
+pub mod capability;
 mod cte;
 mod mdb;
 mod structures;

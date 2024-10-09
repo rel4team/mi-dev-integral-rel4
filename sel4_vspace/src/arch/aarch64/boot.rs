@@ -2,12 +2,9 @@ use sel4_common::{
     arch::{
         config::{PADDR_BASE, PADDR_TOP, PPTR_BASE, PPTR_TOP},
         vm_rights_t,
-    },
-    sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PUD_INDEX_BITS},
-    utils::convert_to_mut_type_ref,
-    BIT,
+    }, sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PUD_INDEX_BITS}, structures_gen::{cap, cap_frame_cap, cap_page_table_cap}, utils::convert_to_mut_type_ref, BIT
 };
-use sel4_cspace::arch::cap_t;
+use sel4_cspace::capability::cap_arch_func;
 
 use crate::{
     arch::VAddr, asid_t, get_kernel_page_directory_base_by_index, get_kernel_page_table_base,
@@ -161,10 +158,10 @@ pub fn map_kernel_frame(
 
 #[no_mangle]
 #[link_section = ".boot.text"]
-pub fn map_it_pt_cap(vspace_cap: &cap_t, pt_cap: &cap_t) {
+pub fn map_it_pt_cap(vspace_cap: &cap, pt_cap: &cap) {
     let vspace_root = vspace_cap.get_cap_ptr();
-    let vptr = pt_cap.get_pt_mapped_address();
-    let pt = pt_cap.get_pt_base_ptr();
+    let vptr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pt_cap)}.get_capPTMappedAddress() as usize;
+    let pt = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pt_cap)}.get_capPTBasePtr() as usize;
     let target_pte =
         convert_to_mut_type_ref::<PTE>(find_pt(vspace_root, vptr.into(), find_type::PDE));
     target_pte.set_next_level_paddr(pptr_to_paddr(pt));
@@ -175,11 +172,11 @@ pub fn map_it_pt_cap(vspace_cap: &cap_t, pt_cap: &cap_t) {
 /// TODO: Write the comments.
 #[no_mangle]
 #[link_section = ".boot.text"]
-pub fn map_it_pd_cap(vspace_cap: &cap_t, pd_cap: &cap_t) {
+pub fn map_it_pd_cap(vspace_cap: &cap, pd_cap: &cap) {
     let pgd = page_slice::<PTE>(vspace_cap.get_cap_ptr());
-    let pd_addr = pd_cap.get_pt_base_ptr();
-    let vptr: VAddr = pd_cap.get_pt_mapped_address().into();
-    assert_eq!(pd_cap.get_pt_is_mapped(), 1);
+    let pd_addr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap)}.get_capPTBasePtr() as usize;
+    let vptr: VAddr = (unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap)}.get_capPTMappedAddress() as usize).into();
+    assert_eq!(unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap)}.get_capPTIsMapped(), 1);
     // TODO: move 0x3 into a proper position.
     assert_eq!(pgd[vptr.pgd_index()].attr(), 0x3);
     let pud = pgd[vptr.pgd_index()].next_level_slice::<PTE>();
@@ -187,11 +184,11 @@ pub fn map_it_pd_cap(vspace_cap: &cap_t, pd_cap: &cap_t) {
 }
 
 /// TODO: Write the comments.
-pub fn map_it_pud_cap(vspace_cap: &cap_t, pud_cap: &cap_t) {
+pub fn map_it_pud_cap(vspace_cap: &cap, pud_cap: &cap) {
     let pgd = page_slice::<PTE>(vspace_cap.get_cap_ptr());
-    let pud_addr = pud_cap.get_pt_base_ptr();
-    let vptr: VAddr = pud_cap.get_pt_mapped_address().into();
-    assert_eq!(pud_cap.get_pt_is_mapped(), 1);
+    let pud_addr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap)}.get_capPTBasePtr() as usize;
+    let vptr: VAddr = (unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap)}.get_capPTMappedAddress() as usize).into();
+    assert_eq!(unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap)}.get_capPTIsMapped(), 1);
 
     // TODO: move 0x3 into a proper position.
     pgd[vptr.pgd_index()] = PTE::new_page(pptr_to_paddr(pud_addr), 0x3);
@@ -200,16 +197,16 @@ pub fn map_it_pud_cap(vspace_cap: &cap_t, pud_cap: &cap_t) {
 /// TODO: Write the comments.
 #[no_mangle]
 #[link_section = ".boot.text"]
-pub fn map_it_frame_cap(vspace_cap: &cap_t, frame_cap: &cap_t, exec: bool) {
+pub fn map_it_frame_cap(vspace_cap: &cap, frame_cap: &cap, exec: bool) {
     let pte = convert_to_mut_type_ref::<PTE>(find_pt(
         vspace_cap.get_cap_ptr(),
-        frame_cap.get_frame_mapped_address().into(),
+        (unsafe { core::mem::transmute::<cap, cap_frame_cap>(*frame_cap)}.get_capFMappedAddress() as usize).into(),
         find_type::PTE,
     ));
     // TODO: Make set_attr usage more efficient.
     // TIPS: exec true will be cast to 1 and false to 0.
     pte.set_attr(PTE::pte_new_4k_page((!exec) as usize, 0, 1, 1, 0, 1, 0).0);
-    pte.set_next_level_paddr(pptr_to_paddr(frame_cap.get_frame_base_ptr()));
+    pte.set_next_level_paddr(pptr_to_paddr(unsafe { core::mem::transmute::<cap, cap_frame_cap>(*frame_cap)}.get_capFBasePtr() as usize));
 }
 
 /// TODO: Write the comments.
@@ -231,47 +228,47 @@ fn find_pt(vspace_root: usize, vptr: VAddr, ftype: find_type) -> usize {
 
 #[no_mangle]
 #[link_section = ".boot.text"]
-pub fn create_it_pd_cap(vspace_cap: &cap_t, pptr: usize, vptr: usize, asid: usize) -> cap_t {
-    let cap = cap_t::new_page_table_cap(asid, pptr, 1, vptr);
-    map_it_pd_cap(vspace_cap, &cap);
-    return cap;
+pub fn create_it_pd_cap(vspace_cap: &cap, pptr: usize, vptr: usize, asid: usize) -> cap {
+    let capability = cap_page_table_cap::new(asid as u64, pptr as u64, 1, vptr as u64).unsplay();
+    map_it_pd_cap(vspace_cap, &capability);
+    return capability;
 }
 
 #[no_mangle]
 #[link_section = ".boot.text"]
-pub fn create_unmapped_it_frame_cap(pptr: pptr_t, use_large: bool) -> cap_t {
+pub fn create_unmapped_it_frame_cap(pptr: pptr_t, use_large: bool) -> cap {
     return create_it_frame_cap(pptr, 0, 0, use_large);
 }
 
 #[no_mangle]
 #[link_section = ".boot.text"]
-pub fn create_it_frame_cap(pptr: pptr_t, vptr: vptr_t, asid: asid_t, use_large: bool) -> cap_t {
+pub fn create_it_frame_cap(pptr: pptr_t, vptr: vptr_t, asid: asid_t, use_large: bool) -> cap {
     let frame_size;
     if use_large {
         frame_size = ARM_Large_Page;
     } else {
         frame_size = ARM_Small_Page;
     }
-    cap_t::new_frame_cap(
+    cap_frame_cap::new(
         0,
-        vm_rights_t::VMReadWrite as usize,
-        vptr,
-        frame_size,
-        asid,
-        pptr,
-    )
+        vm_rights_t::VMReadWrite as u64,
+        vptr as u64,
+        frame_size as u64,
+        asid as u64,
+        pptr as u64,
+    ).unsplay()
 }
 
 #[no_mangle]
 pub fn create_mapped_it_frame_cap(
-    pd_cap: &cap_t,
+    pd_cap: &cap,
     pptr: usize,
     vptr: usize,
     asid: usize,
     use_large: bool,
     exec: bool,
-) -> cap_t {
-    let cap = create_it_frame_cap(pptr, vptr, asid, use_large);
-    map_it_frame_cap(pd_cap, &cap, exec);
-    cap
+) -> cap {
+    let capability = create_it_frame_cap(pptr, vptr, asid, use_large);
+    map_it_frame_cap(pd_cap, &capability, exec);
+    capability
 }

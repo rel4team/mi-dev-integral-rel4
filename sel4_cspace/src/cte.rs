@@ -5,7 +5,7 @@ use super::{
     mdb::mdb_node_t,
     structures::{finaliseSlot_ret, resolveAddressBits_ret_t},
 };
-use crate::capability::{self, cap_pub_func, zombie::{capCyclicZombie, cap_zombie_func}};
+use crate::capability::{cap_pub_func, zombie::{capCyclicZombie, cap_zombie_func}};
 use core::intrinsics::{likely, unlikely};
 use core::ptr;
 use sel4_common::structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag, cap_untyped_cap};
