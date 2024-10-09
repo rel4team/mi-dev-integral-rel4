@@ -1,15 +1,14 @@
 //! `CSpace Table Entry`相关操作的具体实现，包含`cte`链表的插入删除等。
 use super::{
-    arch::cap_t,
     cap::{is_cap_revocable, same_object_as, same_region_as},
     deps::{finaliseCap, post_cap_deletion, preemptionPoint},
     mdb::mdb_node_t,
     structures::{finaliseSlot_ret, resolveAddressBits_ret_t},
 };
-use crate::cap::zombie::capCyclicZombie;
+use crate::cap::{self, zombie::capCyclicZombie};
 use core::intrinsics::{likely, unlikely};
 use core::ptr;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap_tag,cap};
 use sel4_common::utils::{convert_to_option_mut_type_ref, MAX_FREE_INDEX};
 use sel4_common::{
     sel4_config::wordRadix,
@@ -22,14 +21,14 @@ use sel4_common::{
 #[derive(Clone, Copy)]
 pub struct deriveCap_ret {
     pub status: exception_t,
-    pub cap: cap_t,
+    pub capability: cap,
 }
 
 /// 由cap_t和 mdb_node 组成，是CSpace的基本组成单元
 #[repr(C)]
 #[derive(Clone, Copy, Default, Debug)]
 pub struct cte_t {
-    pub cap: cap_t,
+    pub capability: cap,
     pub cteMDBNode: mdb_node_t,
 }
 
@@ -42,13 +41,13 @@ impl cte_t {
         convert_to_mut_type_ref::<Self>(self.get_ptr() + core::mem::size_of::<cte_t>() * index)
     }
 
-    pub fn derive_cap(&mut self, cap: &cap_t) -> deriveCap_ret {
+    pub fn derive_cap(&mut self, capability: &cap) -> deriveCap_ret {
         if cap.isArchCap() {
             return self.arch_derive_cap(cap);
         }
         let mut ret = deriveCap_ret {
             status: exception_t::EXCEPTION_NONE,
-            cap: cap_t::default(),
+            capability: cap_t::default(),
         };
 
         match cap.get_cap_type() {

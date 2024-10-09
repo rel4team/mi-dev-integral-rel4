@@ -16,7 +16,7 @@
 
 pub mod zombie;
 
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag};
 use sel4_common::{sel4_config::*, MASK};
 
 use crate::arch::{arch_same_object_as, cap_t};
@@ -96,67 +96,76 @@ impl CNodeCapData {
 // }
 
 /// cap 的公用方法
-impl cap_t {
-    pub fn update_data(&self, preserve: bool, new_data: usize) -> Self {
+pub trait cap_pub_func {
+	fn update_data(&self, preserve: bool, new_data: u64) -> Self;
+	fn get_cap_size_bits(&self) -> usize;
+	fn get_cap_is_physical(&self) -> bool;
+	fn isArchCap(&self) -> bool;
+}
+pub trait cap_arch_func{
+	fn get_cap_ptr(&self) -> usize;
+	fn is_vtable_root(&self) -> bool;
+	fn is_valid_native_root(&self) -> bool;
+	fn is_valid_vtable_root(&self) -> bool;
+}
+
+impl cap_pub_func for cap {
+    fn update_data(&self, preserve: bool, new_data: u64) -> Self {
         if self.isArchCap() {
             return self.clone();
         }
-        match self.get_cap_type() {
-            cap_tag::cap_endpoint_cap => {
-                if !preserve && self.get_ep_badge() == 0 {
-                    let mut new_cap = self.clone();
-                    new_cap.set_ep_badge(new_data);
-                    new_cap
+        match self.clone().splay() {
+			cap_Splayed::endpoint_cap(data) => {
+                if !preserve && data.get_capEPBadge() == 0 {
+                    let mut new_cap = data.clone();
+                    new_cap.set_capEPBadge(new_data);
+                    new_cap.unsplay()
                 } else {
-                    cap_t::new_null_cap()
+					cap_null_cap::new().unsplay()
                 }
             }
 
-            cap_tag::cap_notification_cap => {
-                if !preserve && self.get_nf_badge() == 0 {
-                    let mut new_cap = self.clone();
-                    new_cap.set_nf_badge(new_data);
-                    new_cap
+            cap_Splayed::notification_cap(data) => {
+                if !preserve && data.get_capNtfnBadge() == 0 {
+                    let mut new_cap = data.clone();
+                    new_cap.set_capNtfnBadge(new_data);
+                    new_cap.unsplay()
                 } else {
-                    cap_t::new_null_cap()
+                    cap_null_cap::new().unsplay()
                 }
             }
 
-            cap_tag::cap_cnode_cap => {
-                let w = CNodeCapData::new(new_data);
+            cap_Splayed::cnode_cap(data) => {
+                let w = CNodeCapData::new(new_data as usize);
                 let guard_size = w.get_guard_size();
-                if guard_size + self.get_cnode_radix() > wordBits {
-                    return cap_t::new_null_cap();
+                if guard_size + data.get_capCNodeRadix() as usize > wordBits {
+                    return cap_null_cap::new().unsplay();
                 }
                 let guard = w.get_guard() & MASK!(guard_size);
-                let mut new_cap = self.clone();
-                new_cap.set_cnode_guard(guard);
-                new_cap.set_cnode_guard_size(guard_size);
-                new_cap
+                let mut new_cap = data.clone();
+                new_cap.set_capCNodeGuard(guard as u64);
+                new_cap.set_capCNodeGuardSize(guard_size as u64);
+                new_cap.unsplay()
             }
             _ => self.clone(),
         }
     }
 
-    pub fn get_cap_type(&self) -> u64 {
-        self.get_type() as u64
-    }
-
-    pub fn get_cap_size_bits(&self) -> usize {
-        match self.get_cap_type() {
-            cap_tag::cap_untyped_cap => self.get_untyped_block_size(),
-            cap_tag::cap_endpoint_cap => seL4_EndpointBits,
-            cap_tag::cap_notification_cap => seL4_NotificationBits,
-            cap_tag::cap_cnode_cap => self.get_cnode_radix() + seL4_SlotBits,
-            cap_tag::cap_page_table_cap => PT_SIZE_BITS,
-            cap_tag::cap_reply_cap => seL4_ReplyBits,
+    fn get_cap_size_bits(&self) -> usize {
+        match self.clone().splay() {
+			cap_Splayed::untyped_cap(data)=>data.get_capBlockSize() as usize,
+            cap_Splayed::endpoint_cap(_) => seL4_EndpointBits,
+			cap_Splayed::notification_cap(_) => seL4_NotificationBits,
+            cap_Splayed::cnode_cap(data) => data.get_capCNodeRadix() as usize + seL4_SlotBits,
+            cap_Splayed::page_table_cap(_) => PT_SIZE_BITS,
+            cap_Splayed::reply_cap(_) => seL4_ReplyBits,
             _ => 0,
         }
     }
 
-    pub fn get_cap_is_physical(&self) -> bool {
+    fn get_cap_is_physical(&self) -> bool {
         matches!(
-            self.get_cap_type(),
+            self.get_tag(),
             cap_tag::cap_untyped_cap
                 | cap_tag::cap_endpoint_cap
                 | cap_tag::cap_notification_cap
@@ -169,13 +178,13 @@ impl cap_t {
         )
     }
 
-    pub fn isArchCap(&self) -> bool {
-        self.get_cap_type() as usize % 2 != 0
+    fn isArchCap(&self) -> bool {
+        self.get_tag() as usize % 2 != 0
     }
 }
 
 /// 判断两个cap指向的内核对象是否是同一个内存区域
-pub fn same_region_as(cap1: &cap_t, cap2: &cap_t) -> bool {
+pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
     match cap1.get_cap_type() {
         cap_tag::cap_untyped_cap => {
             if cap2.get_cap_is_physical() {
