@@ -4,12 +4,13 @@ use sel4_common::arch::{
 };
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_t;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap, cap_frame_cap, cap_reply_cap, cap_tag, cap_vspace_cap};
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::BIT;
 use sel4_common::MASK;
-use sel4_cspace::interface::{cap_t, cte_insert, cte_t, mdb_node_t, resolve_address_bits};
+use sel4_cspace::capability::cap_arch_func;
+use sel4_cspace::interface::{cte_insert, cte_t, mdb_node_t, resolve_address_bits};
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::{
     find_vspace_for_asid, get_arm_global_user_vspace_base, kpptr_to_paddr,
@@ -307,7 +308,7 @@ impl tcb_t {
     /// Set the VM root of the TCB
     pub fn set_vm_root(&mut self) -> Result<(), lookup_fault_t> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
-        let thread_root = self.get_cspace(tcbVTable).cap;
+        let thread_root = self.get_cspace(tcbVTable).capability;
         #[cfg(target_arch = "aarch64")]
         {
             if !thread_root.is_valid_native_root() {
@@ -317,12 +318,12 @@ impl tcb_t {
                 ));
                 return Ok(());
             }
-            let vspace_root = thread_root.get_vs_base_ptr();
-            let asid = thread_root.get_vs_mapped_asid();
+            let vspace_root = unsafe { core::mem::transmute::<cap, cap_vspace_cap>(thread_root)}.get_capVSBasePtr();
+            let asid = unsafe { core::mem::transmute::<cap, cap_vspace_cap>(thread_root)}.get_capVSMappedASID() as usize;
             let find_ret = find_vspace_for_asid(asid);
 
             if let Some(root) = find_ret.vspace_root {
-                if find_ret.status != exception_t::EXCEPTION_NONE || root as usize != vspace_root {
+                if find_ret.status != exception_t::EXCEPTION_NONE || root as u64 != vspace_root {
                     setCurrentUserVSpaceRoot(ttbr_new(
                         0,
                         kpptr_to_paddr(get_arm_global_user_vspace_base()),
@@ -368,7 +369,7 @@ impl tcb_t {
     /// # Returns
     /// The lookup result structure
     pub fn lookup_slot(&mut self, cap_ptr: usize) -> lookupSlot_raw_ret_t {
-        let thread_root = self.get_cspace(tcbCTable).cap;
+        let thread_root = self.get_cspace(tcbCTable).capability;
         let res_ret = resolve_address_bits(&thread_root, cap_ptr, wordBits);
         lookupSlot_raw_ret_t {
             status: res_ret.status,
@@ -380,8 +381,8 @@ impl tcb_t {
     /// Setup the reply master of the TCB
     pub fn setup_reply_master(&mut self) {
         let slot = self.get_cspace_mut_ref(tcbReply);
-        if slot.cap.get_cap_type() == cap_tag::cap_null_cap {
-            slot.cap = cap_t::new_reply_cap(1, 1, self.get_ptr());
+        if slot.capability.get_tag() == cap_tag::cap_null_cap {
+            slot.capability = cap_reply_cap::new(1, 1, self.get_ptr() as u64).unsplay();
             slot.cteMDBNode = mdb_node_t::new(0, 1, 1, 0);
         }
     }
@@ -420,17 +421,17 @@ impl tcb_t {
     pub fn setup_caller_cap(&mut self, sender: &mut Self, can_grant: bool) {
         set_thread_state(sender, ThreadState::ThreadStateBlockedOnReply);
         let reply_slot = sender.get_cspace_mut_ref(tcbReply);
-        let master_cap = reply_slot.cap;
+        let master_cap = reply_slot.capability;
 
-        assert_eq!(master_cap.get_cap_type(), cap_tag::cap_reply_cap);
-        assert_eq!(master_cap.get_reply_master(), 1);
-        assert_eq!(master_cap.get_reply_can_grant(), 1);
-        assert_eq!(master_cap.get_reply_tcb_ptr(), sender.get_ptr());
+        assert_eq!(master_cap.get_tag(), cap_tag::cap_reply_cap);
+        assert_eq!(unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap)}.get_capReplyMaster(), 1);
+        assert_eq!(unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap)}.get_capReplyCanGrant(), 1);
+        assert_eq!(unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap)}.get_capTCBPtr(), sender.get_ptr() as u64);
 
         let caller_slot = self.get_cspace_mut_ref(tcbCaller);
-        assert_eq!(caller_slot.cap.get_cap_type(), cap_tag::cap_null_cap);
+        assert_eq!(caller_slot.capability.get_tag(), cap_tag::cap_null_cap);
         cte_insert(
-            &cap_t::new_reply_cap(can_grant as usize, 0, sender.get_ptr()),
+            &cap_reply_cap::new(can_grant as u64, 0, sender.get_ptr() as u64).unsplay(),
             reply_slot,
             caller_slot,
         );
@@ -450,23 +451,23 @@ impl tcb_t {
     /// The IPC buffer of the TCB
     pub fn lookup_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
-        let buffer_cap = self.get_cspace(tcbBuffer).cap;
-        if unlikely(buffer_cap.get_cap_type() != cap_tag::cap_frame_cap) {
+        let buffer_cap = unsafe { core::mem::transmute::<cap, cap_frame_cap>(self.get_cspace(tcbBuffer).capability)};
+        if unlikely(buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap) {
             return None;
         }
 
-        if unlikely(buffer_cap.get_frame_is_device() != 0) {
+        if unlikely(buffer_cap.get_capFIsDevice() != 0) {
             return None;
         }
 
         let vm_rights: vm_rights_t =
-            unsafe { core::mem::transmute(buffer_cap.get_frame_vm_rights()) };
+            unsafe { core::mem::transmute(buffer_cap.get_capFVMRights()) };
         if likely(
             vm_rights == vm_rights_t::VMReadWrite
                 || (!is_receiver && vm_rights == vm_rights_t::VMReadOnly),
         ) {
-            let base_ptr = buffer_cap.get_frame_base_ptr();
-            let page_bits = pageBitsForSize(buffer_cap.get_frame_size());
+            let base_ptr = buffer_cap.get_capFBasePtr() as usize;
+            let page_bits = pageBitsForSize(buffer_cap.get_capFSize() as usize);
             return Some(convert_to_mut_type_ref::<seL4_IPCBuffer>(
                 base_ptr + (w_buffer_ptr & MASK!(page_bits)),
             ));
@@ -542,18 +543,18 @@ impl tcb_t {
         is_receiver: bool,
     ) -> Option<&'static mut seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
-        let buffer_cap = self.get_cspace(tcbBuffer).cap;
-        if buffer_cap.get_cap_type() != cap_tag::cap_frame_cap {
+        let buffer_cap = unsafe { core::mem::transmute::<cap, cap_frame_cap>(self.get_cspace(tcbBuffer).capability)};
+        if buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap {
             return None;
         }
 
         let vm_rights: vm_rights_t =
-            unsafe { core::mem::transmute(buffer_cap.get_frame_vm_rights()) };
+            unsafe { core::mem::transmute(buffer_cap.get_capFVMRights()) };
         if vm_rights == vm_rights_t::VMReadWrite
             || (!is_receiver && vm_rights == vm_rights_t::VMReadOnly)
         {
-            let base_ptr = buffer_cap.get_frame_base_ptr();
-            let page_bits = pageBitsForSize(buffer_cap.get_frame_size());
+            let base_ptr = buffer_cap.get_capFBasePtr() as usize;
+            let page_bits = pageBitsForSize(buffer_cap.get_capFSize() as usize);
             return Some(convert_to_mut_type_ref::<seL4_IPCBuffer>(
                 base_ptr + (w_buffer_ptr & MASK!(page_bits)),
             ));
@@ -626,7 +627,7 @@ impl tcb_t {
             if lu_ret.status != exception_t::EXCEPTION_NONE {
                 return None;
             }
-            let cnode_cap = unsafe { &(*lu_ret.slot).cap };
+            let cnode_cap = unsafe { &(*lu_ret.slot).capability };
             let lus_ret = resolve_address_bits(cnode_cap, buffer.receiveIndex, buffer.receiveDepth);
             if unlikely(lus_ret.status != exception_t::EXCEPTION_NONE || lus_ret.bitsRemaining != 0)
             {
