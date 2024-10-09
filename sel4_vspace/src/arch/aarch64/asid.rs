@@ -1,6 +1,11 @@
 use crate::PTE;
 use sel4_common::{
-    fault::lookup_fault_t, sel4_config::{asidHighBits, asidLowBits, IT_ASID}, structures::exception_t, structures_gen::{cap, cap_Splayed}, utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref}, BIT, MASK
+    fault::lookup_fault_t,
+    sel4_config::{asidHighBits, asidLowBits, IT_ASID},
+    structures::exception_t,
+    structures_gen::{cap, cap_Splayed},
+    utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
+    BIT, MASK,
 };
 use sel4_cspace::capability::cap_arch_func;
 
@@ -102,13 +107,12 @@ pub fn delete_asid_pool(
 #[inline]
 pub fn write_it_asid_pool(it_ap_cap: &cap, it_vspace_cap: &cap) {
     let ap = asid_pool_from_addr(it_ap_cap.get_cap_ptr());
-	match it_vspace_cap.splay() {
-		cap_Splayed::vspace_cap(data)=>{
-			let asid_map = asid_map_t::new_vspace(data.get_capVSBasePtr() as usize);
-			ap[IT_ASID] = asid_map;
-			set_asid_pool_by_index(IT_ASID >> asidLowBits, ap as *const _ as usize);
-		}
-		_=>{}
-	}
-    
+    match it_vspace_cap.splay() {
+        cap_Splayed::vspace_cap(data) => {
+            let asid_map = asid_map_t::new_vspace(data.get_capVSBasePtr() as usize);
+            ap[IT_ASID] = asid_map;
+            set_asid_pool_by_index(IT_ASID >> asidLowBits, ap as *const _ as usize);
+        }
+        _ => {}
+    }
 }

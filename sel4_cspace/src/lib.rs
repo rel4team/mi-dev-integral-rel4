@@ -33,7 +33,10 @@ mod tests {
     use cte::{cte_insert, cte_move, cte_swap, cte_t, insert_new_cap, resolve_address_bits};
     use mdb::mdb_node_t;
     use riscv::register::{stvec, utvec::TrapMode};
-    use sel4_common::structures_gen::{cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap, cap_frame_cap, cap_null_cap, cap_page_table_cap, cap_tag};
+    use sel4_common::structures_gen::{
+        cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap, cap_frame_cap,
+        cap_null_cap, cap_page_table_cap, cap_tag,
+    };
     use sel4_common::{arch::shutdown, println, utils::convert_to_mut_type_ref};
     global_asm!(include_str!("entry.asm"));
 
@@ -227,7 +230,7 @@ mod tests {
         );
         insert_new_cap(
             &mut cte1,
-            convert_to_mut_type_ref((cap2.get_capCNodePtr()  + idx * 32) as usize),
+            convert_to_mut_type_ref((cap2.get_capCNodePtr() + idx * 32) as usize),
             &cap3,
         );
         let res_ret = resolve_address_bits(&cap1.unsplay(), cap_ptr as usize, 10);
@@ -273,35 +276,35 @@ mod tests {
             cap_tag::cap_cnode_cap => {
                 let capability = cap_cnode_cap::new(0, 0, 0, 0);
                 cte_t {
-                    capability:capability.unsplay(),
+                    capability: capability.unsplay(),
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
             cap_tag::cap_frame_cap => {
                 let capability = cap_frame_cap::new(0, 0, 0, 0, 0, 0);
                 cte_t {
-                    capability:capability.unsplay(),
+                    capability: capability.unsplay(),
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
             cap_tag::cap_page_table_cap => {
                 let capability = cap_page_table_cap::new(0, 0, 0, 0);
                 cte_t {
-                    capability:capability.unsplay(),
+                    capability: capability.unsplay(),
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
             cap_tag::cap_asid_control_cap => {
                 let capability = cap_asid_control_cap::new();
                 cte_t {
-                    capability:capability.unsplay(),
+                    capability: capability.unsplay(),
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }
             cap_tag::cap_asid_pool_cap => {
                 let capability = cap_asid_pool_cap::new(0, 0);
                 cte_t {
-                    capability:capability.unsplay(),
+                    capability: capability.unsplay(),
                     cteMDBNode: mdb_node_t::new(0, 0, 0, 0),
                 }
             }

@@ -4,7 +4,7 @@ use crate::interrupt::*;
 use core::intrinsics::unlikely;
 use log::debug;
 use sel4_common::structures::exception_t;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap_Splayed, cap_tag};
 use sel4_ipc::notification_t;
 use sel4_task::{activateThread, schedule, timerTick};
 
@@ -41,13 +41,16 @@ pub fn handleInterrupt(irq: usize) {
         IRQState::IRQSignal => {
             debug!("IRQSignal");
             let handler_slot = get_irq_handler_slot(irq);
-            let handler_cap = &handler_slot.cap;
-            if handler_cap.get_cap_type() == cap_tag::cap_notification_cap
-                && handler_cap.get_nf_can_send() != 0
-            {
-                let nf = convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr());
-                nf.send_signal(handler_cap.get_nf_badge());
-            }
+            let handler_cap = &handler_slot.capability;
+			match handler_cap.splay() {
+				cap_Splayed::notification_cap(data)=>{
+					if data.get_capNtfnCanSend() !=0{
+						let nf = convert_to_mut_type_ref::<notification_t>(data.get_capNtfnPtr() as usize);
+						nf.send_signal(data.get_capNtfnBadge() as usize);
+					}
+				}
+				_=>{}
+			}
         }
         IRQState::IRQTimer => {
             timerTick();

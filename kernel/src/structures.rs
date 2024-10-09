@@ -1,7 +1,8 @@
 use crate::config::{CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS, MAX_NUM_FREEMEM_REG, MAX_NUM_RESV_REG};
 use sel4_common::sel4_config::seL4_MsgMaxExtraCaps;
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
-use sel4_cspace::interface::{cap_t, cte_t};
+use sel4_common::structures_gen::{cap, cap_null_cap};
+use sel4_cspace::interface::cte_t;
 use sel4_vspace::pptr_t;
 
 #[repr(C)]
@@ -105,14 +106,14 @@ pub struct create_frames_of_region_ret_t {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct lookupCap_ret_t {
     pub status: exception_t,
-    pub cap: cap_t,
+    pub capability: cap,
 }
 
 impl Default for lookupCap_ret_t {
     fn default() -> Self {
         lookupCap_ret_t {
             status: exception_t::EXCEPTION_NONE,
-            cap: cap_t::default(),
+            capability: cap_null_cap::new().unsplay(),
         }
     }
 }
@@ -121,7 +122,7 @@ impl Default for lookupCap_ret_t {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct lookupCapAndSlot_ret_t {
     pub status: exception_t,
-    pub cap: cap_t,
+    pub capability: cap,
     pub slot: *mut cte_t,
 }
 
@@ -129,7 +130,7 @@ impl Default for lookupCapAndSlot_ret_t {
     fn default() -> Self {
         lookupCapAndSlot_ret_t {
             status: exception_t::EXCEPTION_NONE,
-            cap: cap_t::default(),
+            capability: cap_null_cap::new().unsplay(),
             slot: 0 as *mut cte_t,
         }
     }

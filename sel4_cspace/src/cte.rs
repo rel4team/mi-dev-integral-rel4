@@ -5,7 +5,10 @@ use super::{
     mdb::mdb_node_t,
     structures::{finaliseSlot_ret, resolveAddressBits_ret_t},
 };
-use crate::capability::{cap_pub_func, zombie::{capCyclicZombie, cap_zombie_func}};
+use crate::capability::{
+    cap_pub_func,
+    zombie::{capCyclicZombie, cap_zombie_func},
+};
 use core::intrinsics::{likely, unlikely};
 use core::ptr;
 use sel4_common::structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag, cap_untyped_cap};
@@ -93,36 +96,32 @@ impl cte_t {
             return false;
         }
         match self.capability.splay() {
-			cap_Splayed::endpoint_cap(self_data) => {
-				match next.capability.splay(){
-					cap_Splayed::endpoint_cap(next_data)=>{
-						let badge = self_data.get_capEPBadge();
-						if badge == 0 {
-							return true;
-						}
-						badge == next_data.get_capEPBadge() && next.cteMDBNode.get_first_badged() == 0
-					}
-					_=>{
-						assert_eq!(next.capability.get_tag(), cap_tag::cap_endpoint_cap);
-						return false
-					}
-				}
-            }
-			cap_Splayed::notification_cap(self_data)=> {
-				match next.capability.splay(){
-					cap_Splayed::notification_cap(next_data)=>{
-						let badge = self_data.get_capNtfnBadge();
-						if badge == 0 {
-							return true;
-						}
-						badge == next_data.get_capNtfnBadge() && next.cteMDBNode.get_first_badged() == 0
-					},
-					_=>{
-						assert_eq!(next.capability.get_tag(), cap_tag::cap_notification_cap);
-						return false
-					}
-				}
-            }
+            cap_Splayed::endpoint_cap(self_data) => match next.capability.splay() {
+                cap_Splayed::endpoint_cap(next_data) => {
+                    let badge = self_data.get_capEPBadge();
+                    if badge == 0 {
+                        return true;
+                    }
+                    badge == next_data.get_capEPBadge() && next.cteMDBNode.get_first_badged() == 0
+                }
+                _ => {
+                    assert_eq!(next.capability.get_tag(), cap_tag::cap_endpoint_cap);
+                    return false;
+                }
+            },
+            cap_Splayed::notification_cap(self_data) => match next.capability.splay() {
+                cap_Splayed::notification_cap(next_data) => {
+                    let badge = self_data.get_capNtfnBadge();
+                    if badge == 0 {
+                        return true;
+                    }
+                    badge == next_data.get_capNtfnBadge() && next.cteMDBNode.get_first_badged() == 0
+                }
+                _ => {
+                    assert_eq!(next.capability.get_tag(), cap_tag::cap_notification_cap);
+                    return false;
+                }
+            },
             _ => true,
         }
     }
@@ -256,55 +255,53 @@ impl cte_t {
 
     /// 每次删除`zombie cap`中的最后一个`capability`,用于删除unremovable的capability。
     fn reduce_zombie(&mut self, immediate: bool) -> exception_t {
-		match self.capability.splay(){
-			cap_Splayed::zombie_cap(data)=>{
-				let self_ptr = self as *mut cte_t as usize;
-				let ptr = data.get_zombie_ptr();
-				let n = data.get_zombie_number();
-				let zombie_type = data.get_capZombieType();
-				assert!(n > 0);
-				if immediate {
-					let end_slot = unsafe { &mut *((ptr as *mut cte_t).add(n - 1)) };
-					let status = end_slot.delete_all(false);
-					if status != exception_t::EXCEPTION_NONE {
-						return status;
-					}
-					match self.capability.splay() {
-						cap_Splayed::null_cap(_) => {
-							return exception_t::EXCEPTION_NONE;
-						}
-						cap_Splayed::zombie_cap(mut data2) => {
-							let ptr2 = data2.get_zombie_ptr();
-							if ptr == ptr2
-								&& data2.get_zombie_number() == n
-								&& data2.get_capZombieType() == zombie_type
-							{
-								assert_eq!(end_slot.capability.get_tag(), cap_tag::cap_null_cap);
-								data2.set_zombie_number(n - 1);
-							} else {
-								assert!(ptr2 == self_ptr && ptr != self_ptr);
-							}
-						}
-						_ => {
-							panic!("Expected recursion to result in Zombie.")
-						}
-					}
-				} else {
-					assert_ne!(ptr, self_ptr);
-					let next_slot = convert_to_mut_type_ref::<cte_t>(ptr);
-					let cap1 = next_slot.capability;
-					let cap2 = self.capability;
-					cte_swap(&cap1, next_slot, &cap2, self);
-				}
-				exception_t::EXCEPTION_NONE
-			}
-			_=>{
-				assert_eq!(self.capability.get_tag(), cap_tag::cap_zombie_cap);
-				exception_t::EXCEPTION_NONE
-			}
-		}
-        
-        
+        match self.capability.splay() {
+            cap_Splayed::zombie_cap(data) => {
+                let self_ptr = self as *mut cte_t as usize;
+                let ptr = data.get_zombie_ptr();
+                let n = data.get_zombie_number();
+                let zombie_type = data.get_capZombieType();
+                assert!(n > 0);
+                if immediate {
+                    let end_slot = unsafe { &mut *((ptr as *mut cte_t).add(n - 1)) };
+                    let status = end_slot.delete_all(false);
+                    if status != exception_t::EXCEPTION_NONE {
+                        return status;
+                    }
+                    match self.capability.splay() {
+                        cap_Splayed::null_cap(_) => {
+                            return exception_t::EXCEPTION_NONE;
+                        }
+                        cap_Splayed::zombie_cap(mut data2) => {
+                            let ptr2 = data2.get_zombie_ptr();
+                            if ptr == ptr2
+                                && data2.get_zombie_number() == n
+                                && data2.get_capZombieType() == zombie_type
+                            {
+                                assert_eq!(end_slot.capability.get_tag(), cap_tag::cap_null_cap);
+                                data2.set_zombie_number(n - 1);
+                            } else {
+                                assert!(ptr2 == self_ptr && ptr != self_ptr);
+                            }
+                        }
+                        _ => {
+                            panic!("Expected recursion to result in Zombie.")
+                        }
+                    }
+                } else {
+                    assert_ne!(ptr, self_ptr);
+                    let next_slot = convert_to_mut_type_ref::<cte_t>(ptr);
+                    let cap1 = next_slot.capability;
+                    let cap2 = self.capability;
+                    cte_swap(&cap1, next_slot, &cap2, self);
+                }
+                exception_t::EXCEPTION_NONE
+            }
+            _ => {
+                assert_eq!(self.capability.get_tag(), cap_tag::cap_zombie_cap);
+                exception_t::EXCEPTION_NONE
+            }
+        }
     }
 
     #[cfg(target_arch = "riscv64")]
@@ -474,8 +471,8 @@ pub fn cte_swap(cap1: &cap, slot1: &mut cte_t, cap2: &cap, slot2: &mut cte_t) {
 #[inline]
 fn cap_removable(capability: &cap, slot: *mut cte_t) -> bool {
     match capability.splay() {
-		cap_Splayed::null_cap(_) => true,
-		cap_Splayed::zombie_cap(data)=>{
+        cap_Splayed::null_cap(_) => true,
+        cap_Splayed::zombie_cap(data) => {
             let n = data.get_zombie_number();
             let ptr = data.get_zombie_ptr();
             let z_slot = ptr as *mut cte_t;
@@ -490,19 +487,20 @@ fn cap_removable(capability: &cap, slot: *mut cte_t) -> bool {
 /// 如果`srcCap`和`newCap`都是`UntypedCap`，并且指向同一块内存，内存大小也相同，就将`srcCap`记录为没有剩余空间。
 /// 自我认为是防止同一块内存空间被分配两次
 fn setUntypedCapAsFull(srcCap: &cap, newCap: &cap, srcSlot: &mut cte_t) {
-	match srcCap.splay() {
-		cap_Splayed::untyped_cap(data1)=>{
-			match newCap.splay() {
-				cap_Splayed::untyped_cap(data2)=>{
-					if data1.get_capPtr() == data2.get_capPtr() && data1.get_capBlockSize() == data2.get_capBlockSize(){
-						unsafe { core::mem::transmute::<cap, cap_untyped_cap>(srcSlot.capability) }.set_capFreeIndex(MAX_FREE_INDEX(data1.get_capBlockSize() as usize) as u64);
-					}
-				}
-				_=>{}
-			}
-		}
-		_=>{}
-	}
+    match srcCap.splay() {
+        cap_Splayed::untyped_cap(data1) => match newCap.splay() {
+            cap_Splayed::untyped_cap(data2) => {
+                if data1.get_capPtr() == data2.get_capPtr()
+                    && data1.get_capBlockSize() == data2.get_capBlockSize()
+                {
+                    unsafe { core::mem::transmute::<cap, cap_untyped_cap>(srcSlot.capability) }
+                        .set_capFreeIndex(MAX_FREE_INDEX(data1.get_capBlockSize() as usize) as u64);
+                }
+            }
+            _ => {}
+        },
+        _ => {}
+    }
 }
 
 /// 从cspace寻址特定的slot
@@ -521,46 +519,47 @@ pub fn resolve_address_bits(
     ret.bitsRemaining = n_bits;
     let mut nodeCap = node_cap.clone();
 
-	if nodeCap.get_tag()== cap_tag::cap_cnode_cap{
-			loop {
-				match nodeCap.splay() {
-					cap_Splayed::cnode_cap(data)=>{
-						let radixBits = data.get_capCNodeRadix() as usize;
-						let guardBits = data.get_capCNodeGuardSize() as usize;
-						let levelBits = radixBits + guardBits;
-						assert_ne!(levelBits, 0);
-						let capGuard = data.get_capCNodeGuard() as usize;
-						let guard = (cap_ptr >> ((n_bits - guardBits) & MASK!(wordRadix))) & MASK!(guardBits);
-						if unlikely(guardBits > n_bits || guard != capGuard) {
-							ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
-							return ret;
-						}
-						if unlikely(levelBits > n_bits) {
-							ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
-							return ret;
-						}
-						let offset = (cap_ptr >> (n_bits - levelBits)) & MASK!(radixBits);
-						let slot = unsafe { (data.get_capCNodePtr() as *mut cte_t).add(offset) };
-				
-						if likely(n_bits == levelBits) {
-							ret.slot = slot;
-							ret.bitsRemaining = 0;
-							return ret;
-						}
-						n_bits -= levelBits;
-						nodeCap = unsafe { (*slot).capability.clone() };
-						if unlikely(nodeCap.get_tag() != cap_tag::cap_cnode_cap) {
-							ret.slot = slot;
-							ret.bitsRemaining = n_bits;
-							return ret;
-						}
-					}
-					_=>{}
-				}
-				panic!("UNREACHABLE");
-			}
-		}else{
-			ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
-			return ret;
-		}
-	}
+    if nodeCap.get_tag() == cap_tag::cap_cnode_cap {
+        loop {
+            match nodeCap.splay() {
+                cap_Splayed::cnode_cap(data) => {
+                    let radixBits = data.get_capCNodeRadix() as usize;
+                    let guardBits = data.get_capCNodeGuardSize() as usize;
+                    let levelBits = radixBits + guardBits;
+                    assert_ne!(levelBits, 0);
+                    let capGuard = data.get_capCNodeGuard() as usize;
+                    let guard =
+                        (cap_ptr >> ((n_bits - guardBits) & MASK!(wordRadix))) & MASK!(guardBits);
+                    if unlikely(guardBits > n_bits || guard != capGuard) {
+                        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
+                        return ret;
+                    }
+                    if unlikely(levelBits > n_bits) {
+                        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
+                        return ret;
+                    }
+                    let offset = (cap_ptr >> (n_bits - levelBits)) & MASK!(radixBits);
+                    let slot = unsafe { (data.get_capCNodePtr() as *mut cte_t).add(offset) };
+
+                    if likely(n_bits == levelBits) {
+                        ret.slot = slot;
+                        ret.bitsRemaining = 0;
+                        return ret;
+                    }
+                    n_bits -= levelBits;
+                    nodeCap = unsafe { (*slot).capability.clone() };
+                    if unlikely(nodeCap.get_tag() != cap_tag::cap_cnode_cap) {
+                        ret.slot = slot;
+                        ret.bitsRemaining = n_bits;
+                        return ret;
+                    }
+                }
+                _ => {}
+            }
+            panic!("UNREACHABLE");
+        }
+    } else {
+        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
+        return ret;
+    }
+}

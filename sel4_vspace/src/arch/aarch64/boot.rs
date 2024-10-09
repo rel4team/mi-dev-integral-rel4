@@ -2,7 +2,11 @@ use sel4_common::{
     arch::{
         config::{PADDR_BASE, PADDR_TOP, PPTR_BASE, PPTR_TOP},
         vm_rights_t,
-    }, sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PUD_INDEX_BITS}, structures_gen::{cap, cap_frame_cap, cap_page_table_cap}, utils::convert_to_mut_type_ref, BIT
+    },
+    sel4_config::{seL4_LargePageBits, ARM_Large_Page, ARM_Small_Page, PUD_INDEX_BITS},
+    structures_gen::{cap, cap_frame_cap, cap_page_table_cap},
+    utils::convert_to_mut_type_ref,
+    BIT,
 };
 use sel4_cspace::capability::cap_arch_func;
 
@@ -160,8 +164,10 @@ pub fn map_kernel_frame(
 #[link_section = ".boot.text"]
 pub fn map_it_pt_cap(vspace_cap: &cap, pt_cap: &cap) {
     let vspace_root = vspace_cap.get_cap_ptr();
-    let vptr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pt_cap)}.get_capPTMappedAddress() as usize;
-    let pt = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pt_cap)}.get_capPTBasePtr() as usize;
+    let vptr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pt_cap) }
+        .get_capPTMappedAddress() as usize;
+    let pt = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pt_cap) }.get_capPTBasePtr()
+        as usize;
     let target_pte =
         convert_to_mut_type_ref::<PTE>(find_pt(vspace_root, vptr.into(), find_type::PDE));
     target_pte.set_next_level_paddr(pptr_to_paddr(pt));
@@ -174,9 +180,15 @@ pub fn map_it_pt_cap(vspace_cap: &cap, pt_cap: &cap) {
 #[link_section = ".boot.text"]
 pub fn map_it_pd_cap(vspace_cap: &cap, pd_cap: &cap) {
     let pgd = page_slice::<PTE>(vspace_cap.get_cap_ptr());
-    let pd_addr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap)}.get_capPTBasePtr() as usize;
-    let vptr: VAddr = (unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap)}.get_capPTMappedAddress() as usize).into();
-    assert_eq!(unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap)}.get_capPTIsMapped(), 1);
+    let pd_addr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap) }
+        .get_capPTBasePtr() as usize;
+    let vptr: VAddr = (unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap) }
+        .get_capPTMappedAddress() as usize)
+        .into();
+    assert_eq!(
+        unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pd_cap) }.get_capPTIsMapped(),
+        1
+    );
     // TODO: move 0x3 into a proper position.
     assert_eq!(pgd[vptr.pgd_index()].attr(), 0x3);
     let pud = pgd[vptr.pgd_index()].next_level_slice::<PTE>();
@@ -186,9 +198,15 @@ pub fn map_it_pd_cap(vspace_cap: &cap, pd_cap: &cap) {
 /// TODO: Write the comments.
 pub fn map_it_pud_cap(vspace_cap: &cap, pud_cap: &cap) {
     let pgd = page_slice::<PTE>(vspace_cap.get_cap_ptr());
-    let pud_addr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap)}.get_capPTBasePtr() as usize;
-    let vptr: VAddr = (unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap)}.get_capPTMappedAddress() as usize).into();
-    assert_eq!(unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap)}.get_capPTIsMapped(), 1);
+    let pud_addr = unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap) }
+        .get_capPTBasePtr() as usize;
+    let vptr: VAddr = (unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap) }
+        .get_capPTMappedAddress() as usize)
+        .into();
+    assert_eq!(
+        unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*pud_cap) }.get_capPTIsMapped(),
+        1
+    );
 
     // TODO: move 0x3 into a proper position.
     pgd[vptr.pgd_index()] = PTE::new_page(pptr_to_paddr(pud_addr), 0x3);
@@ -200,13 +218,18 @@ pub fn map_it_pud_cap(vspace_cap: &cap, pud_cap: &cap) {
 pub fn map_it_frame_cap(vspace_cap: &cap, frame_cap: &cap, exec: bool) {
     let pte = convert_to_mut_type_ref::<PTE>(find_pt(
         vspace_cap.get_cap_ptr(),
-        (unsafe { core::mem::transmute::<cap, cap_frame_cap>(*frame_cap)}.get_capFMappedAddress() as usize).into(),
+        (unsafe { core::mem::transmute::<cap, cap_frame_cap>(*frame_cap) }.get_capFMappedAddress()
+            as usize)
+            .into(),
         find_type::PTE,
     ));
     // TODO: Make set_attr usage more efficient.
     // TIPS: exec true will be cast to 1 and false to 0.
     pte.set_attr(PTE::pte_new_4k_page((!exec) as usize, 0, 1, 1, 0, 1, 0).0);
-    pte.set_next_level_paddr(pptr_to_paddr(unsafe { core::mem::transmute::<cap, cap_frame_cap>(*frame_cap)}.get_capFBasePtr() as usize));
+    pte.set_next_level_paddr(pptr_to_paddr(
+        unsafe { core::mem::transmute::<cap, cap_frame_cap>(*frame_cap) }.get_capFBasePtr()
+            as usize,
+    ));
 }
 
 /// TODO: Write the comments.
@@ -256,7 +279,8 @@ pub fn create_it_frame_cap(pptr: pptr_t, vptr: vptr_t, asid: asid_t, use_large: 
         frame_size as u64,
         asid as u64,
         pptr as u64,
-    ).unsplay()
+    )
+    .unsplay()
 }
 
 #[no_mangle]

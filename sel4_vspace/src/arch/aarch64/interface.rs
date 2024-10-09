@@ -119,13 +119,13 @@ pub fn set_kernel_page_table_by_index(idx: usize, pte: PTE) {
 ///
 /// Use page table in vspace_root to set the satp register.
 pub fn set_vm_root(vspace_root: &cap) -> Result<(), lookup_fault_t> {
-	match vspace_root.splay(){
-		cap_Splayed::vspace_cap(data)=>{
-			setCurrentUserVSpaceRoot(pptr_to_paddr(data.get_capVSBasePtr() as usize));
-    		Ok(())
-		}
-		_=>{ Err(lookup_fault_t::new_missing_cap(0))}
-	}
+    match vspace_root.splay() {
+        cap_Splayed::vspace_cap(data) => {
+            setCurrentUserVSpaceRoot(pptr_to_paddr(data.get_capVSBasePtr() as usize));
+            Ok(())
+        }
+        _ => Err(lookup_fault_t::new_missing_cap(0)),
+    }
 }
 
 #[no_mangle]
@@ -195,16 +195,14 @@ pub fn set_vm_root_for_flush_with_thread_root(
     asid: asid_t,
     thread_root: &cap,
 ) -> bool {
-	match thread_root.splay(){
-		cap_Splayed::vspace_cap(data)=>{
-			if data.get_capVSIsMapped() != 0
-				&& data.get_capVSBasePtr() == vspace as u64
-			{
-				return false;
-			}
-		}
-		_=>{}
-	}
+    match thread_root.splay() {
+        cap_Splayed::vspace_cap(data) => {
+            if data.get_capVSIsMapped() != 0 && data.get_capVSBasePtr() == vspace as u64 {
+                return false;
+            }
+        }
+        _ => {}
+    }
 
     // armv_context_switch(vspace, asid);
     setCurrentUserVSpaceRoot(ttbr_new(asid, vspace as usize));

@@ -11,10 +11,10 @@ pub const TCB_CNODE_RADIX: usize = 4;
 
 /// zombie cap相关字段和方法
 pub trait cap_zombie_func {
-	fn get_zombie_bit(&self) -> usize;
-	fn get_zombie_ptr(&self) -> usize;
-	fn get_zombie_number(&self) -> usize;
-	fn set_zombie_number(&mut self, n: usize);
+    fn get_zombie_bit(&self) -> usize;
+    fn get_zombie_ptr(&self) -> usize;
+    fn get_zombie_number(&self) -> usize;
+    fn set_zombie_number(&mut self, n: usize);
 }
 impl cap_zombie_func for cap_zombie_cap {
     #[inline]
@@ -53,7 +53,7 @@ pub fn Zombie_new(number: usize, _type: usize, ptr: usize) -> cap {
     } else {
         MASK!(_type + 1)
     };
-	cap_zombie_cap::new(((ptr & !mask) | (number & mask)) as u64, _type as u64).unsplay()
+    cap_zombie_cap::new(((ptr & !mask) | (number & mask)) as u64, _type as u64).unsplay()
 }
 
 pub fn ZombieType_ZombieCNode(n: usize) -> usize {
@@ -65,11 +65,11 @@ pub fn ZombieType_ZombieCNode(n: usize) -> usize {
 #[inline]
 #[no_mangle]
 pub fn capCyclicZombie(capability: &cap, slot: *mut cte_t) -> bool {
-	match capability.splay(){
-		cap_Splayed::zombie_cap(data)=>{
-			let ptr = data.get_zombie_ptr() as *mut cte_t;
-			(capability.get_tag() == cap_tag::cap_zombie_cap) && (ptr == slot)
-		}
-		_=> false
-	}
+    match capability.splay() {
+        cap_Splayed::zombie_cap(data) => {
+            let ptr = data.get_zombie_ptr() as *mut cte_t;
+            (capability.get_tag() == cap_tag::cap_zombie_cap) && (ptr == slot)
+        }
+        _ => false,
+    }
 }

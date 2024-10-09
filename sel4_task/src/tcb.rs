@@ -318,8 +318,10 @@ impl tcb_t {
                 ));
                 return Ok(());
             }
-            let vspace_root = unsafe { core::mem::transmute::<cap, cap_vspace_cap>(thread_root)}.get_capVSBasePtr();
-            let asid = unsafe { core::mem::transmute::<cap, cap_vspace_cap>(thread_root)}.get_capVSMappedASID() as usize;
+            let vspace_root = unsafe { core::mem::transmute::<cap, cap_vspace_cap>(thread_root) }
+                .get_capVSBasePtr();
+            let asid = unsafe { core::mem::transmute::<cap, cap_vspace_cap>(thread_root) }
+                .get_capVSMappedASID() as usize;
             let find_ret = find_vspace_for_asid(asid);
 
             if let Some(root) = find_ret.vspace_root {
@@ -424,9 +426,19 @@ impl tcb_t {
         let master_cap = reply_slot.capability;
 
         assert_eq!(master_cap.get_tag(), cap_tag::cap_reply_cap);
-        assert_eq!(unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap)}.get_capReplyMaster(), 1);
-        assert_eq!(unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap)}.get_capReplyCanGrant(), 1);
-        assert_eq!(unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap)}.get_capTCBPtr(), sender.get_ptr() as u64);
+        assert_eq!(
+            unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap) }.get_capReplyMaster(),
+            1
+        );
+        assert_eq!(
+            unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap) }
+                .get_capReplyCanGrant(),
+            1
+        );
+        assert_eq!(
+            unsafe { core::mem::transmute::<cap, cap_reply_cap>(master_cap) }.get_capTCBPtr(),
+            sender.get_ptr() as u64
+        );
 
         let caller_slot = self.get_cspace_mut_ref(tcbCaller);
         assert_eq!(caller_slot.capability.get_tag(), cap_tag::cap_null_cap);
@@ -451,7 +463,9 @@ impl tcb_t {
     /// The IPC buffer of the TCB
     pub fn lookup_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
-        let buffer_cap = unsafe { core::mem::transmute::<cap, cap_frame_cap>(self.get_cspace(tcbBuffer).capability)};
+        let buffer_cap = unsafe {
+            core::mem::transmute::<cap, cap_frame_cap>(self.get_cspace(tcbBuffer).capability)
+        };
         if unlikely(buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap) {
             return None;
         }
@@ -460,8 +474,7 @@ impl tcb_t {
             return None;
         }
 
-        let vm_rights: vm_rights_t =
-            unsafe { core::mem::transmute(buffer_cap.get_capFVMRights()) };
+        let vm_rights: vm_rights_t = unsafe { core::mem::transmute(buffer_cap.get_capFVMRights()) };
         if likely(
             vm_rights == vm_rights_t::VMReadWrite
                 || (!is_receiver && vm_rights == vm_rights_t::VMReadOnly),
@@ -543,13 +556,14 @@ impl tcb_t {
         is_receiver: bool,
     ) -> Option<&'static mut seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
-        let buffer_cap = unsafe { core::mem::transmute::<cap, cap_frame_cap>(self.get_cspace(tcbBuffer).capability)};
+        let buffer_cap = unsafe {
+            core::mem::transmute::<cap, cap_frame_cap>(self.get_cspace(tcbBuffer).capability)
+        };
         if buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap {
             return None;
         }
 
-        let vm_rights: vm_rights_t =
-            unsafe { core::mem::transmute(buffer_cap.get_capFVMRights()) };
+        let vm_rights: vm_rights_t = unsafe { core::mem::transmute(buffer_cap.get_capFVMRights()) };
         if vm_rights == vm_rights_t::VMReadWrite
             || (!is_receiver && vm_rights == vm_rights_t::VMReadOnly)
         {

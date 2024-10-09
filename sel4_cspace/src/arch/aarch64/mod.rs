@@ -1,10 +1,17 @@
 use sel4_common::{
-    arch::maskVMRights, cap_rights::seL4_CapRights_t,
-    structures::exception_t, structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag}, utils::pageBitsForSize,
-    vm_rights::vm_rights_from_word, MASK
+    arch::maskVMRights,
+    cap_rights::seL4_CapRights_t,
+    structures::exception_t,
+    structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag},
+    utils::pageBitsForSize,
+    vm_rights::vm_rights_from_word,
+    MASK,
 };
 
-use crate::{capability::{cap_arch_func, zombie::cap_zombie_func}, cte::{cte_t, deriveCap_ret}};
+use crate::{
+    capability::{cap_arch_func, zombie::cap_zombie_func},
+    cte::{cte_t, deriveCap_ret},
+};
 
 // plus_define_bitfield! {
 //     cap_t, 2, 0, 59, 5 => {
@@ -67,23 +74,23 @@ use crate::{capability::{cap_arch_func, zombie::cap_zombie_func}, cte::{cte_t, d
 //             capPTIsMapped, get_pt_is_mapped, set_pt_is_mapped, 0, 48, 1, 0, false,
 //             capPTMappedAddress, get_pt_mapped_address, set_pt_mapped_address, 0, 20, 28, 20, true
 //         },
-        // new_page_directory_cap, cap_tag::CapPageDirectoryCap as usize => {
-        //     capPDMappedASID, get_pd_mapped_asid, set_pd_mapped_asid, 1, 48, 16, 0, false,
-        //     capPDBasePtr, get_pd_base_ptr, set_pd_base_ptr, 1, 0, 48, 0, true,
-        //     capPDIsMapped, get_pd_is_mapped, set_pd_is_mapped, 0, 48, 1, 0, false,
-        //     capPDMappedAddress, get_pd_mapped_address, set_pd_mapped_address, 0, 29, 19, 0, true
-        // },
-        // new_page_upper_directory_cap, cap_tag::CapPageUpperDirectoryCap as usize => {
-        //     capPUDMappedASID, get_pud_mapped_asid, set_pud_mapped_asid, 1, 48, 16, 0, false,
-        //     capPUDBasePtr, get_pud_base_ptr, set_pud_base_ptr, 1, 0, 48, 0, true,
-        //     capPUDIsMapped, get_pud_is_mapped, set_pud_is_mapped, 0, 58, 1, 0, false,
-        //     capPUDMappedAddress, get_pud_mapped_address, set_pud_mapped_address, 0, 48, 10, 0, true
-        // },
-        // new_page_global_directory_cap, cap_tag::CapPageGlobalDirectoryCap as usize => {
-        //     capPGDMappedASID, get_pgd_mapped_asid, set_pgd_mapped_asid, 1, 48, 16, 0, false,
-        //     capPGDBasePtr, get_pgd_base_ptr, set_pgd_base_ptr, 1, 0, 48, 0, true,
-        //     capPGDIsMapped, get_pgd_is_mapped, set_pgd_is_mapped, 0, 58, 1, 0, false
-        // },
+// new_page_directory_cap, cap_tag::CapPageDirectoryCap as usize => {
+//     capPDMappedASID, get_pd_mapped_asid, set_pd_mapped_asid, 1, 48, 16, 0, false,
+//     capPDBasePtr, get_pd_base_ptr, set_pd_base_ptr, 1, 0, 48, 0, true,
+//     capPDIsMapped, get_pd_is_mapped, set_pd_is_mapped, 0, 48, 1, 0, false,
+//     capPDMappedAddress, get_pd_mapped_address, set_pd_mapped_address, 0, 29, 19, 0, true
+// },
+// new_page_upper_directory_cap, cap_tag::CapPageUpperDirectoryCap as usize => {
+//     capPUDMappedASID, get_pud_mapped_asid, set_pud_mapped_asid, 1, 48, 16, 0, false,
+//     capPUDBasePtr, get_pud_base_ptr, set_pud_base_ptr, 1, 0, 48, 0, true,
+//     capPUDIsMapped, get_pud_is_mapped, set_pud_is_mapped, 0, 58, 1, 0, false,
+//     capPUDMappedAddress, get_pud_mapped_address, set_pud_mapped_address, 0, 48, 10, 0, true
+// },
+// new_page_global_directory_cap, cap_tag::CapPageGlobalDirectoryCap as usize => {
+//     capPGDMappedASID, get_pgd_mapped_asid, set_pgd_mapped_asid, 1, 48, 16, 0, false,
+//     capPGDBasePtr, get_pgd_base_ptr, set_pgd_base_ptr, 1, 0, 48, 0, true,
+//     capPGDIsMapped, get_pgd_is_mapped, set_pgd_is_mapped, 0, 58, 1, 0, false
+// },
 //         new_vspace_cap, cap_tag::cap_vspace_cap as usize => {
 //             capVSMappedASID, get_vs_mapped_asid, set_vs_mapped_asid, 1, 48, 16, 0, false,
 //             capVSBasePtr, get_vs_base_ptr, set_vs_base_ptr, 1, 0, 48, 0, true,
@@ -98,22 +105,22 @@ use crate::{capability::{cap_arch_func, zombie::cap_zombie_func}, cte::{cte_t, d
 //     }
 // }
 
-impl cap_arch_func for  cap {
+impl cap_arch_func for cap {
     fn get_cap_ptr(&self) -> usize {
-		match self.splay(){
-			cap_Splayed::untyped_cap(data)=>data.get_capPtr() as usize,
-			cap_Splayed::endpoint_cap(data)=>data.get_capEPPtr() as usize,
-			cap_Splayed::notification_cap(data) =>data.get_capNtfnPtr() as usize,
-			cap_Splayed::cnode_cap(data)=>data.get_capCNodePtr() as usize,
-			cap_Splayed::thread_cap(data)=>data.get_capTCBPtr() as usize,
-			cap_Splayed::zombie_cap(data)=>data.get_zombie_ptr() as usize,
-			cap_Splayed::frame_cap(data)=>data.get_capFBasePtr() as usize,
-			cap_Splayed::page_table_cap(data)=>data.get_capPTBasePtr() as usize,
-			cap_Splayed::vspace_cap(data)=>data.get_capVSBasePtr() as usize,
-			cap_Splayed::asid_control_cap(_)=>0,
-			cap_Splayed::asid_pool_cap(data)=>data.get_capASIDPool() as usize,
-			_=>0,
-		}
+        match self.splay() {
+            cap_Splayed::untyped_cap(data) => data.get_capPtr() as usize,
+            cap_Splayed::endpoint_cap(data) => data.get_capEPPtr() as usize,
+            cap_Splayed::notification_cap(data) => data.get_capNtfnPtr() as usize,
+            cap_Splayed::cnode_cap(data) => data.get_capCNodePtr() as usize,
+            cap_Splayed::thread_cap(data) => data.get_capTCBPtr() as usize,
+            cap_Splayed::zombie_cap(data) => data.get_zombie_ptr() as usize,
+            cap_Splayed::frame_cap(data) => data.get_capFBasePtr() as usize,
+            cap_Splayed::page_table_cap(data) => data.get_capPTBasePtr() as usize,
+            cap_Splayed::vspace_cap(data) => data.get_capVSBasePtr() as usize,
+            cap_Splayed::asid_control_cap(_) => 0,
+            cap_Splayed::asid_pool_cap(data) => data.get_capASIDPool() as usize,
+            _ => 0,
+        }
         // match self.get_cap_type() {
         //     cap_tag::cap_untyped_cap => self.get_untyped_ptr(),
         //     cap_tag::cap_endpoint_cap => self.get_ep_ptr(),
@@ -140,12 +147,10 @@ impl cap_arch_func for  cap {
 
     #[inline]
     fn is_valid_native_root(&self) -> bool {
-		match self.splay() {
-			cap_Splayed::vspace_cap(data)=>{
-				self.is_vtable_root() && data.get_capVSIsMapped() != 0
-			}
-			_=>false
-		}
+        match self.splay() {
+            cap_Splayed::vspace_cap(data) => self.is_vtable_root() && data.get_capVSIsMapped() != 0,
+            _ => false,
+        }
     }
 
     #[inline]
@@ -209,12 +214,12 @@ impl cte_t {
                 newCap.set_capFMappedASID(0);
                 ret.capability = newCap.unsplay();
             }
-			cap_Splayed::asid_control_cap(data)=>{
-				ret.capability = data.clone().unsplay();
-			}
-			cap_Splayed::asid_pool_cap(data) =>{
-				ret.capability = data.clone().unsplay();
-			}
+            cap_Splayed::asid_control_cap(data) => {
+                ret.capability = data.clone().unsplay();
+            }
+            cap_Splayed::asid_pool_cap(data) => {
+                ret.capability = data.clone().unsplay();
+            }
             _ => {
                 panic!(" Invalid arch cap type : {}", capability.get_tag() as usize);
             }
@@ -224,77 +229,66 @@ impl cte_t {
 }
 
 pub fn arch_mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
-	match capability.splay() {
-		cap_Splayed::frame_cap(data)=>{
-			let mut vm_rights = vm_rights_from_word(data.get_capFVMRights() as usize);
-			vm_rights = maskVMRights(vm_rights, rights);
-			let mut new_cap = data.clone();
-			new_cap.set_capFVMRights(vm_rights as u64);
-			new_cap.unsplay()
-		},
-		_=> capability.clone()
-	}
+    match capability.splay() {
+        cap_Splayed::frame_cap(data) => {
+            let mut vm_rights = vm_rights_from_word(data.get_capFVMRights() as usize);
+            vm_rights = maskVMRights(vm_rights, rights);
+            let mut new_cap = data.clone();
+            new_cap.set_capFVMRights(vm_rights as u64);
+            new_cap.unsplay()
+        }
+        _ => capability.clone(),
+    }
 }
 
 pub fn arch_same_region_as(cap1: &cap, cap2: &cap) -> bool {
     match cap1.splay() {
-		cap_Splayed::frame_cap(data1)=>{
-			match cap2.splay(){
-				cap_Splayed::frame_cap(data2)=>{
-					let botA = data1.get_capFBasePtr() as usize;
-					let botB = data2.get_capFBasePtr() as usize;
-					let topA = botA + MASK!(pageBitsForSize(data1.get_capFSize() as usize));
-					let topB = botB + MASK!(pageBitsForSize(data2.get_capFSize() as usize));
-					return (botA <= botB) && (topA >= topB) && (botB <= topB);
-				},
-				_=> return false,
-			}
-        }
-		cap_Splayed::page_table_cap(data1)=>{
-			match cap2.splay() {
-				cap_Splayed::page_table_cap(data2)=>{
-					return data1.get_capPTBasePtr() == data2.get_capPTBasePtr();
-				},
-				_=> return  false,
-			}
-        }
-		cap_Splayed::vspace_cap(data1) => {
-			match cap2.splay() {
-				cap_Splayed::vspace_cap(data2)=>{
-					return data1.get_capVSBasePtr() == data2.get_capVSBasePtr();
-				},
-				_=> return false,
-			}
-        }
-		cap_Splayed::asid_control_cap(_)=> {
+        cap_Splayed::frame_cap(data1) => match cap2.splay() {
+            cap_Splayed::frame_cap(data2) => {
+                let botA = data1.get_capFBasePtr() as usize;
+                let botB = data2.get_capFBasePtr() as usize;
+                let topA = botA + MASK!(pageBitsForSize(data1.get_capFSize() as usize));
+                let topB = botB + MASK!(pageBitsForSize(data2.get_capFSize() as usize));
+                return (botA <= botB) && (topA >= topB) && (botB <= topB);
+            }
+            _ => return false,
+        },
+        cap_Splayed::page_table_cap(data1) => match cap2.splay() {
+            cap_Splayed::page_table_cap(data2) => {
+                return data1.get_capPTBasePtr() == data2.get_capPTBasePtr();
+            }
+            _ => return false,
+        },
+        cap_Splayed::vspace_cap(data1) => match cap2.splay() {
+            cap_Splayed::vspace_cap(data2) => {
+                return data1.get_capVSBasePtr() == data2.get_capVSBasePtr();
+            }
+            _ => return false,
+        },
+        cap_Splayed::asid_control_cap(_) => {
             return cap2.get_tag() == cap_tag::cap_asid_control_cap;
         }
-		cap_Splayed::asid_pool_cap(data1) => {
-			match cap2.splay() {
-				cap_Splayed::asid_pool_cap(data2)=>{
-					return data1.get_capASIDPool() == data2.get_capASIDPool();
-				},
-				_=> return false,
-			}
-        }
+        cap_Splayed::asid_pool_cap(data1) => match cap2.splay() {
+            cap_Splayed::asid_pool_cap(data2) => {
+                return data1.get_capASIDPool() == data2.get_capASIDPool();
+            }
+            _ => return false,
+        },
         _ => panic!("unknown cap"),
     }
 }
 
 pub fn arch_same_object_as(cap1: &cap, cap2: &cap) -> bool {
-	match cap1.splay() {
-		cap_Splayed::frame_cap(data1) =>
-		{
-			match cap2.splay(){
-				cap_Splayed::frame_cap(data2)=>{
-					return data1.get_capFBasePtr() == data2.get_capFBasePtr()
-					&& data1.get_capFSize() == data2.get_capFSize()
-					&& data1.get_capFIsDevice() == data2.get_capFIsDevice();
-				}
-				_=> {}
-			}
-		},
-		_=> {}
-	}
+    match cap1.splay() {
+        cap_Splayed::frame_cap(data1) => match cap2.splay() {
+            cap_Splayed::frame_cap(data2) => {
+                return data1.get_capFBasePtr() == data2.get_capFBasePtr()
+                    && data1.get_capFSize() == data2.get_capFSize()
+                    && data1.get_capFIsDevice() == data2.get_capFIsDevice();
+            }
+            _ => {}
+        },
+        _ => {}
+    }
     arch_same_region_as(cap1, cap2)
 }
