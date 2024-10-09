@@ -5,8 +5,6 @@ use sel4_common::sel4_config::wordRadix;
 use sel4_common::structures_gen::{cap, cap_Splayed, cap_tag, cap_zombie_cap};
 use sel4_common::MASK;
 
-use super::cap_t;
-
 /// Judge whether the zombie cap is from tcb cap.
 pub const ZombieType_ZombieTCB: usize = 1usize << wordRadix;
 pub const TCB_CNODE_RADIX: usize = 4;

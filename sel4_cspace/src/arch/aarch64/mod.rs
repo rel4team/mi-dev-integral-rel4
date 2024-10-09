@@ -4,7 +4,7 @@ use sel4_common::{
     vm_rights::vm_rights_from_word, MASK
 };
 
-use crate::{cap::{cap_arch_func, zombie::cap_zombie_func}, cte::{cte_t, deriveCap_ret}};
+use crate::{capability::{cap_arch_func, zombie::cap_zombie_func}, cte::{cte_t, deriveCap_ret}};
 
 // plus_define_bitfield! {
 //     cap_t, 2, 0, 59, 5 => {
@@ -190,7 +190,7 @@ impl cte_t {
             // }
             cap_Splayed::vspace_cap(data) => {
                 if data.get_capVSIsMapped() != 0 {
-                    ret.capability = cap.clone();
+                    ret.capability = data.unsplay();
                     ret.status = exception_t::EXCEPTION_NONE;
                 } else {
                     ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -198,7 +198,7 @@ impl cte_t {
             }
             cap_Splayed::page_table_cap(data) => {
                 if data.get_capPTIsMapped() != 0 {
-                    ret.capability = cap.clone();
+                    ret.capability = data.unsplay();
                     ret.status = exception_t::EXCEPTION_NONE;
                 } else {
                     ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -207,13 +207,13 @@ impl cte_t {
             cap_Splayed::frame_cap(data) => {
                 let mut newCap = data.clone();
                 newCap.set_capFMappedASID(0);
-                ret.capability = newCap;
+                ret.capability = newCap.unsplay();
             }
 			cap_Splayed::asid_control_cap(data)=>{
-				ret.capability = cap.clone();
+				ret.capability = data.clone().unsplay();
 			}
 			cap_Splayed::asid_pool_cap(data) =>{
-				ret.capability = cap.clone();
+				ret.capability = data.clone().unsplay();
 			}
             _ => {
                 panic!(" Invalid arch cap type : {}", capability.get_tag() as usize);

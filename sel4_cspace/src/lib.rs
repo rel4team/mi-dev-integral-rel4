@@ -11,7 +11,7 @@
 #![test_runner(crate::tests::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-mod cap;
+mod capability;
 mod cte;
 mod mdb;
 mod structures;
@@ -28,8 +28,7 @@ pub mod arch;
 
 #[cfg(test)]
 mod tests {
-    use arch::cap_t;
-    use cap::same_object_as;
+    use capability::same_object_as;
     use core::arch::global_asm;
     use cte::{cte_insert, cte_move, cte_swap, cte_t, insert_new_cap, resolve_address_bits};
     use mdb::mdb_node_t;

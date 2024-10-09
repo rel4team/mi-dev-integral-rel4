@@ -19,7 +19,7 @@ pub mod zombie;
 use sel4_common::structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag};
 use sel4_common::{sel4_config::*, MASK};
 
-use crate::arch::{arch_same_object_as, cap_t};
+use crate::arch::arch_same_object_as;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -185,54 +185,54 @@ impl cap_pub_func for cap {
 
 /// 判断两个cap指向的内核对象是否是同一个内存区域
 pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
-    match cap1.get_cap_type() {
-        cap_tag::cap_untyped_cap => {
+	match cap1.clone().splay(){
+		cap_Splayed::untyped_cap(data1) => {
             if cap2.get_cap_is_physical() {
-                let aBase = cap1.get_untyped_ptr();
+                let aBase = data1.get_capPtr() as usize;
                 let bBase = cap2.get_cap_ptr();
 
-                let aTop = aBase + MASK!(cap1.get_untyped_block_size());
+                let aTop = aBase + MASK!(data1.get_capBlockSize());
                 let bTop = bBase + MASK!(cap2.get_cap_size_bits());
                 return (aBase <= bBase) && (bTop <= aTop) && (bBase <= bTop);
             }
 
             false
         }
-
-        cap_tag::cap_endpoint_cap
-        | cap_tag::cap_notification_cap
-        | cap_tag::cap_page_table_cap
-        | cap_tag::cap_asid_pool_cap
-        | cap_tag::cap_thread_cap => {
-            if cap2.get_cap_type() == cap1.get_cap_type() {
+		cap_Splayed::endpoint_cap(_) | cap_Splayed::notification_cap(_) | cap_Splayed::page_table_cap(_) | cap_Splayed::asid_pool_cap(_)|
+		cap_Splayed::thread_cap(_) => {
+            if cap2.get_tag() == cap1.get_tag() {
                 return cap1.get_cap_ptr() == cap2.get_cap_ptr();
             }
             false
         }
-        cap_tag::cap_asid_control_cap | cap_tag::cap_domain_cap => {
-            if cap2.get_cap_type() == cap1.get_cap_type() {
+		cap_Splayed::asid_control_cap(_) | cap_Splayed::domain_cap(_)=> {
+            if cap2.get_tag() == cap1.get_tag() {
                 return true;
             }
             false
         }
-        cap_tag::cap_cnode_cap => {
-            if cap2.get_cap_type() == cap_tag::cap_cnode_cap {
-                return (cap1.get_cnode_ptr() == cap2.get_cnode_ptr())
-                    && (cap1.get_cnode_radix() == cap2.get_cnode_radix());
-            }
-            false
+		cap_Splayed::cnode_cap(data1)=> {
+			match cap2.clone().splay() {
+				cap_Splayed::cnode_cap(data2)=>{
+					return (data1.get_capCNodePtr() == data2.get_capCNodePtr())
+						&& (data1.get_capCNodeRadix() == data2.get_capCNodeRadix());
+				},
+				_ => return false
+			}
         }
-        cap_tag::cap_irq_control_cap => {
+		cap_Splayed::irq_control_cap(_)=>{
             matches!(
-                cap2.get_cap_type(),
+                cap2.get_tag(),
                 cap_tag::cap_irq_control_cap | cap_tag::cap_irq_handler_cap
             )
         }
-        cap_tag::cap_irq_handler_cap => {
-            if cap2.get_cap_type() == cap_tag::cap_irq_handler_cap {
-                return cap1.get_irq_handler() == cap2.get_irq_handler();
-            }
-            false
+		cap_Splayed::irq_handler_cap(data1)=>{
+			match cap2.clone().splay() {
+				cap_Splayed::irq_handler_cap(data2)=>{
+					return data1.get_capIRQ() == data2.get_capIRQ();
+				},
+				_=> return false
+			}
         }
         _ => false,
     }
@@ -243,12 +243,12 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
 ///
 /// A special case is that cap2 is a untyped_cap derived from cap1, in this case, cap1 will excute
 /// setUntypedCapAsFull, so you can assume cap1 and cap2 are different.
-pub fn same_object_as(cap1: &cap_t, cap2: &cap_t) -> bool {
-    if cap1.get_cap_type() == cap_tag::cap_untyped_cap {
+pub fn same_object_as(cap1: &cap, cap2: &cap) -> bool {
+    if cap1.get_tag() == cap_tag::cap_untyped_cap {
         return false;
     }
-    if cap1.get_cap_type() == cap_tag::cap_irq_control_cap
-        && cap2.get_cap_type() == cap_tag::cap_irq_handler_cap
+    if cap1.get_tag() == cap_tag::cap_irq_control_cap
+        && cap2.get_tag() == cap_tag::cap_irq_handler_cap
     {
         return false;
     }
@@ -259,25 +259,39 @@ pub fn same_object_as(cap1: &cap_t, cap2: &cap_t) -> bool {
 }
 
 /// 判断一个`capability`是否是可撤销的
-pub fn is_cap_revocable(derived_cap: &cap_t, src_cap: &cap_t) -> bool {
+pub fn is_cap_revocable(derived_cap: &cap, src_cap: &cap) -> bool {
     if derived_cap.isArchCap() {
         return false;
     }
 
-    match derived_cap.get_cap_type() {
-        cap_tag::cap_endpoint_cap => {
-            assert_eq!(src_cap.get_cap_type(), cap_tag::cap_endpoint_cap);
-            derived_cap.get_ep_badge() != src_cap.get_ep_badge()
+    match derived_cap.clone().splay() {
+        cap_Splayed::endpoint_cap(data1) => {
+			match src_cap.clone().splay(){
+				cap_Splayed::endpoint_cap(data2)=>{
+					return data1.get_capEPBadge() != data2.get_capEPBadge()
+				},
+				_=>{
+					assert_eq!(src_cap.get_tag(), cap_tag::cap_endpoint_cap);
+					false
+				}
+			}
         }
 
-        cap_tag::cap_notification_cap => {
-            assert_eq!(src_cap.get_cap_type(), cap_tag::cap_notification_cap);
-            derived_cap.get_nf_badge() != src_cap.get_nf_badge()
+		cap_Splayed::notification_cap(data1) => {
+			match src_cap.clone().splay(){
+				cap_Splayed::notification_cap(data2)=>{
+					return data1.get_capNtfnBadge() != data2.get_capNtfnBadge()
+				},
+				_=>{
+					assert_eq!(src_cap.get_tag(), cap_tag::cap_notification_cap);
+					false
+				}
+			}
         }
 
-        cap_tag::cap_irq_handler_cap => src_cap.get_cap_type() == cap_tag::cap_irq_control_cap,
+		cap_Splayed::irq_handler_cap(_) => src_cap.get_tag() == cap_tag::cap_irq_control_cap,
 
-        cap_tag::cap_untyped_cap => true,
+        cap_Splayed::untyped_cap(_) => true,
 
         _ => false,
     }
