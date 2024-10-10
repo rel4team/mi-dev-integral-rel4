@@ -17,7 +17,7 @@ use sel4_common::sel4_config::{seL4_DeleteFirst, seL4_InvalidArgument};
 use sel4_common::sel4_config::{
     seL4_IllegalOperation, seL4_InvalidCapability, seL4_RevokeFirst, seL4_TruncatedMessage,
 };
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{asid_map_asid_map_vspace, cap_tag};
 use sel4_common::utils::{
     convert_ref_type_to_usize, convert_to_mut_type_ref, global_ops, pageBitsForSize, ptr_to_mut,
     ptr_to_ref, MAX_FREE_INDEX,
@@ -31,7 +31,7 @@ use sel4_common::{BIT, IS_ALIGNED};
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t};
 
 use sel4_vspace::{
-    asid_map_t, asid_pool_t, asid_t, clean_by_va_pou, doFlush, find_vspace_for_asid,
+    asid_pool_t, asid_t, clean_by_va_pou, doFlush, find_vspace_for_asid,
     get_asid_pool_by_index, pptr_to_paddr, pte_tag_t, set_asid_pool_by_index, vm_attributes_t,
     vptr_t, PTE,
 };
@@ -397,7 +397,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     let mut i = 0;
 
     // TODO: Make pool judge more efficient and pretty.
-    while i < BIT!(asidLowBits) && (asid + i == 0 || pool[i].words[0] != 0) {
+    while i < BIT!(asidLowBits) && (asid + i == 0 || pool[i].get_tag() != 0) {
         i += 1;
     }
 
@@ -413,8 +413,8 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
     vspace_cap.set_vs_mapped_asid(asid);
     vspace_cap.set_vs_is_mapped(1);
-    let asid_map = asid_map_t::new_vspace(vspace_cap.get_vs_base_ptr());
-    pool[asid & MASK!(asidLowBits)] = asid_map;
+    let asid_map = asid_map_asid_map_vspace::new(vspace_cap.get_vs_base_ptr() as u64);
+    pool[asid & MASK!(asidLowBits)] = asid_map.unsplay();
     exception_t::EXCEPTION_NONE
 }
 

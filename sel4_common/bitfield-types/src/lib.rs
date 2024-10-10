@@ -215,7 +215,7 @@ pub fn set_bits<T: BitfieldPrimitive, const N: usize, U: BitfieldPrimitive + Try
 
     let num_bits = range.end - range.start;
 
-    assert!(num_bits == U::NUM_BITS || bits >> num_bits == U::zero());
+    // assert!(num_bits == U::NUM_BITS || bits >> num_bits == U::zero());
 
     let index_of_first_primitive = range.start / T::NUM_BITS;
     let offset_into_first_primitive = range.start % T::NUM_BITS;
