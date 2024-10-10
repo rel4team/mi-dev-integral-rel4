@@ -5,7 +5,9 @@ use crate::{
 };
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{
+    cap, cap_cnode_cap, cap_endpoint_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag,
+};
 use sel4_common::{
     fault::*,
     message_info::*,
@@ -19,8 +21,8 @@ use sel4_vspace::*;
 
 #[inline]
 #[no_mangle]
-pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
-    let mut cap = _cap.clone();
+pub fn lookup_fp(_cap: &cap, cptr: usize) -> cap {
+    let mut capability = _cap.clone();
     let mut bits = 0;
     let mut guardBits: usize;
     let mut radixBits: usize;
@@ -28,31 +30,32 @@ pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
     let mut capGuard: usize;
     let mut radix: usize;
     let mut slot: *mut cte_t;
-    if unlikely(!(cap.get_cap_type() == cap_tag::cap_cnode_cap)) {
-        return cap_t::new_null_cap();
+    if unlikely(!(capability.get_tag() == cap_tag::cap_cnode_cap)) {
+        return cap_null_cap::new().unsplay();
     }
     loop {
-        guardBits = cap.get_cnode_guard_size();
-        radixBits = cap.get_cnode_radix();
+        let cap_data = unsafe { core::mem::transmute::<cap, cap_cnode_cap>(capability) };
+        guardBits = cap_data.get_capCNodeGuardSize() as usize;
+        radixBits = cap_data.get_capCNodeRadix() as usize;
         cptr2 = cptr << bits;
-        capGuard = cap.get_cnode_guard();
+        capGuard = cap_data.get_capCNodeGuard() as usize;
         if likely(guardBits != 0) && unlikely(cptr2 >> (wordBits - guardBits) != capGuard) {
-            return cap_t::new_null_cap();
+            return cap_null_cap::new().unsplay();
         }
 
         radix = cptr2 << guardBits >> (wordBits - radixBits);
-        slot = unsafe { (cap.get_cnode_ptr() as *mut cte_t).add(radix) };
-        cap = unsafe { (*slot).cap };
+        slot = unsafe { (cap_data.get_capCNodePtr() as *mut cte_t).add(radix) };
+        capability = unsafe { (*slot).capability };
         bits += guardBits + radixBits;
 
-        if likely(!(bits < wordBits && cap.get_cap_type() == cap_tag::cap_cnode_cap)) {
+        if likely(!(bits < wordBits && capability.get_tag() == cap_tag::cap_cnode_cap)) {
             break;
         }
     }
     if bits > wordBits {
-        return cap_t::new_null_cap();
+        return cap_null_cap::new().unsplay();
     }
-    return cap;
+    return capability;
 }
 
 #[inline]
@@ -101,9 +104,10 @@ pub fn mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
 
 #[inline]
 #[no_mangle]
-pub fn isValidVTableRoot_fp(cap: &cap_t) -> bool {
+pub fn isValidVTableRoot_fp(capability: &cap_page_table_cap) -> bool {
     // cap_capType_equals(cap, cap_page_table_cap) && cap.get_pt_is_mapped() != 0
-    cap.get_cap_type() == cap_tag::cap_page_table_cap && cap.get_pt_is_mapped() != 0
+    capability.unsplay().get_tag() == cap_tag::cap_page_table_cap
+        && capability.get_capPTIsMapped() != 0
 }
 
 #[inline]
@@ -200,20 +204,24 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     if fastpath_mi_check(msgInfo) || current.tcbFault.get_fault_type() != FaultType::NullFault {
         slowpath(SysCall as usize);
     }
-    let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).cap, cptr);
+    let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).capability, cptr);
+    let ep_cap = unsafe { core::mem::transmute::<cap, cap_endpoint_cap>(ep_cap) };
     if unlikely(
-        !(ep_cap.get_cap_type() == cap_tag::cap_endpoint_cap) || (ep_cap.get_ep_can_send() == 0),
+        !(ep_cap.unsplay().get_tag() == cap_tag::cap_endpoint_cap)
+            || (ep_cap.get_capCanSend() == 0),
     ) {
         slowpath(SysCall as usize);
     }
-    let ep = convert_to_mut_type_ref::<endpoint_t>(ep_cap.get_ep_ptr());
+    let ep = convert_to_mut_type_ref::<endpoint_t>(ep_cap.get_capEPPtr() as usize);
 
     if unlikely(ep.get_state() != EPState::Recv) {
         slowpath(SysCall as usize);
     }
 
     let dest = convert_to_mut_type_ref::<tcb_t>(ep.get_queue_head());
-    let new_vtable = dest.get_cspace(tcbVTable).cap;
+    let new_vtable = unsafe {
+        core::mem::transmute::<cap, cap_page_table_cap>(dest.get_cspace(tcbVTable).capability)
+    };
 
     if unlikely(!isValidVTableRoot_fp(&new_vtable)) {
         slowpath(SysCall as usize);
@@ -223,7 +231,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     if unlikely(dest.tcbPriority < current.tcbPriority && !isHighestPrio(dom, dest.tcbPriority)) {
         slowpath(SysCall as usize);
     }
-    if unlikely((ep_cap.get_ep_can_grant() == 0) && (ep_cap.get_ep_can_grant_reply() == 0)) {
+    if unlikely((ep_cap.get_capCanGrant() == 0) && (ep_cap.get_capCanGrantReply() == 0)) {
         slowpath(SysCall as usize);
     }
     #[cfg(feature = "ENABLE_SMP")]
@@ -247,7 +255,8 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     let caller_slot = dest.get_cspace_mut_ref(tcbCaller);
     let reply_can_grant = dest.tcbState.get_blocking_ipc_can_grant();
 
-    caller_slot.cap = cap_t::new_reply_cap(reply_can_grant, 0, current.get_ptr());
+    caller_slot.capability =
+        cap_reply_cap::new(reply_can_grant as u64, 0, current.get_ptr() as u64).unsplay();
     caller_slot.cteMDBNode.words[0] = reply_slot.get_ptr();
     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
         &mut reply_slot.cteMDBNode,
@@ -257,13 +266,13 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     );
     fastpath_copy_mrs(length, current, dest);
     dest.tcbState.words[0] = ThreadState::ThreadStateRunning as usize;
-    let cap_pd = new_vtable.get_pt_base_ptr() as *mut PTE;
-    let stored_hw_asid: PTE = PTE(new_vtable.get_pt_mapped_asid());
+    let cap_pd = new_vtable.get_capPTBasePtr() as *mut PTE;
+    let stored_hw_asid: PTE = PTE(new_vtable.get_capPTMappedASID() as usize);
     switchToThread_fp(dest as *mut tcb_t, cap_pd, stored_hw_asid);
     info.set_caps_unwrapped(0);
     let msgInfo1 = info.to_word();
-    let badge = ep_cap.get_ep_badge();
-    fastpath_restore(badge, msgInfo1, get_currenct_thread());
+    let badge = ep_cap.get_capEPBadge();
+    fastpath_restore(badge as usize, msgInfo1, get_currenct_thread());
 }
 
 #[inline]
@@ -279,10 +288,11 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         slowpath(SysReplyRecv as usize);
     }
 
-    let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).cap, cptr);
-
-    if unlikely(ep_cap.get_cap_type() != cap_tag::cap_endpoint_cap || ep_cap.get_ep_can_send() == 0)
-    {
+    let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).capability, cptr);
+    let ep_cap = unsafe { core::mem::transmute::<cap, cap_endpoint_cap>(ep_cap) };
+    if unlikely(
+        ep_cap.unsplay().get_tag() != cap_tag::cap_endpoint_cap || ep_cap.get_capCanSend() == 0,
+    ) {
         slowpath(SysReplyRecv as usize);
     }
 
@@ -294,24 +304,28 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         }
     }
 
-    let ep = convert_to_mut_type_ref::<endpoint_t>(ep_cap.get_ep_ptr());
+    let ep = convert_to_mut_type_ref::<endpoint_t>(ep_cap.get_capEPPtr() as usize);
     if unlikely(ep.get_state() == EPState::Send) {
         slowpath(SysReplyRecv as usize);
     }
 
     let caller_slot = current.get_cspace_mut_ref(tcbCaller);
-    let caller_cap = &caller_slot.cap;
+    let caller_cap = &caller_slot.capability;
 
-    if unlikely(caller_cap.get_cap_type() != cap_tag::cap_reply_cap) {
+    if unlikely(caller_cap.get_tag() != cap_tag::cap_reply_cap) {
         slowpath(SysReplyRecv as usize);
     }
 
-    let caller = convert_to_mut_type_ref::<tcb_t>(caller_cap.get_reply_tcb_ptr());
+    let caller = convert_to_mut_type_ref::<tcb_t>(
+        unsafe { core::mem::transmute::<cap, cap_reply_cap>(*caller_cap) }.get_capTCBPtr() as usize,
+    );
     if unlikely(caller.tcbFault.get_fault_type() != FaultType::NullFault) {
         slowpath(SysReplyRecv as usize);
     }
 
-    let new_vtable = &caller.get_cspace(tcbVTable).cap;
+    let new_vtable = &unsafe {
+        core::mem::transmute::<cap, cap_page_table_cap>(caller.get_cspace(tcbVTable).capability)
+    };
 
     if unlikely(!isValidVTableRoot_fp(new_vtable)) {
         slowpath(SysReplyRecv as usize);
@@ -328,7 +342,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     );
     current
         .tcbState
-        .set_blocking_ipc_can_grant(ep_cap.get_ep_can_grant());
+        .set_blocking_ipc_can_grant(ep_cap.get_capCanGrant() as usize);
 
     if let Some(ep_tail_tcb) = convert_to_option_mut_type_ref::<tcb_t>(ep.get_queue_tail()) {
         ep_tail_tcb.tcbEPNext = current.get_ptr();
@@ -348,13 +362,13 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     // unsafe {
     let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_prev());
     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
-    caller_slot.cap = cap_t::new_null_cap();
+    caller_slot.capability = cap_null_cap::new().unsplay();
     caller_slot.cteMDBNode = mdb_node_t::new(0, 0, 0, 0);
     fastpath_copy_mrs(length, current, caller);
 
     caller.tcbState.words[0] = ThreadState::ThreadStateRunning as usize;
-    let cap_pd = new_vtable.get_pt_base_ptr() as *mut PTE;
-    let stored_hw_asid: PTE = PTE(new_vtable.get_pt_mapped_asid());
+    let cap_pd = new_vtable.get_capPTBasePtr() as *mut PTE;
+    let stored_hw_asid: PTE = PTE(new_vtable.get_capPTMappedASID() as usize);
     switchToThread_fp(caller, cap_pd, stored_hw_asid);
     info.set_caps_unwrapped(0);
     let msg_info1 = info.to_word();

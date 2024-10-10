@@ -6,8 +6,11 @@ use crate::{
 
 use crate::{BIT, IS_ALIGNED, MASK};
 use log::debug;
-use sel4_common::{sel4_config::{seL4_MaxUntypedBits, seL4_MinUntypedBits}, structures_gen::{cap, cap_untyped_cap}};
 use sel4_common::utils::MAX_FREE_INDEX;
+use sel4_common::{
+    sel4_config::{seL4_MaxUntypedBits, seL4_MinUntypedBits},
+    structures_gen::{cap, cap_untyped_cap},
+};
 use sel4_cspace::interface::*;
 use sel4_vspace::*;
 
@@ -161,7 +164,8 @@ fn provide_untyped_cap(
                 device_memory as u64,
                 size_bits as u64,
                 pptr as u64,
-            ).unsplay();
+            )
+            .unsplay();
             ret = provide_cap(root_cnode_cap, ut_cap.clone());
         } else {
             debug!("Kernel init: Too many untyped regions for boot info");

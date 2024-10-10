@@ -19,7 +19,10 @@ use sel4_common::sel4_config::{
     IT_ASID, PAGE_BITS, TCB_OFFSET,
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
-use sel4_common::structures_gen::{cap, cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap, cap_irq_control_cap, cap_tag, cap_thread_cap};
+use sel4_common::structures_gen::{
+    cap, cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap,
+    cap_irq_control_cap, cap_tag, cap_thread_cap,
+};
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::*;
@@ -212,11 +215,17 @@ fn create_it_asid_pool(root_cnode_cap: &cap) -> cap {
     log::debug!("root_server.asid_pool: {:#x}", unsafe {
         rootserver.asid_pool
     });
-    let ap_cap = unsafe { cap_asid_pool_cap::new((IT_ASID >> asidLowBits) as u64, rootserver.asid_pool as u64).unsplay() };
+    let ap_cap = unsafe {
+        cap_asid_pool_cap::new((IT_ASID >> asidLowBits) as u64, rootserver.asid_pool as u64)
+            .unsplay()
+    };
     unsafe {
         let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
         write_slot(ptr.add(seL4_CapInitThreadASIDPool), ap_cap.clone());
-        write_slot(ptr.add(seL4_CapASIDControl), cap_asid_control_cap::new().unsplay());
+        write_slot(
+            ptr.add(seL4_CapASIDControl),
+            cap_asid_control_cap::new().unsplay(),
+        );
     }
     log::debug!(
         "asid_init needed to create: {:p} {:#x}",
@@ -294,7 +303,8 @@ unsafe fn create_root_cnode() -> cap {
         (wordBits - CONFIG_ROOT_CNODE_SIZE_BITS) as u64,
         0,
         rootserver.cnode as u64,
-    ).unsplay();
+    )
+    .unsplay();
     let ptr = rootserver.cnode as *mut cte_t;
     write_slot(ptr.add(seL4_CapInitThreadCNode), capability.clone());
     capability
@@ -408,7 +418,10 @@ fn init_irqs(root_cnode_cap: &cap) {
     }
     unsafe {
         let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
-        write_slot(ptr.add(seL4_CapIRQControl), cap_irq_control_cap::new().unsplay());
+        write_slot(
+            ptr.add(seL4_CapIRQControl),
+            cap_irq_control_cap::new().unsplay(),
+        );
     }
 }
 
@@ -579,7 +592,8 @@ fn rust_create_frames_of_region(
 }
 
 unsafe fn create_bi_frame_cap(root_cnode_cap: &cap, pd_cap: &cap, vptr: usize) {
-    let capability = create_mapped_it_frame_cap(pd_cap, rootserver.boot_info, vptr, IT_ASID, false, false);
+    let capability =
+        create_mapped_it_frame_cap(pd_cap, rootserver.boot_info, vptr, IT_ASID, false, false);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapBootInfoFrame), capability);
 }
@@ -612,7 +626,8 @@ unsafe fn rust_populate_bi_frame(
 
 unsafe fn create_ipcbuf_frame_cap(root_cnode_cap: &cap, pd_cap: &cap, vptr: usize) -> cap {
     clear_memory(rootserver.ipc_buf as *mut u8, PAGE_BITS);
-    let capability = create_mapped_it_frame_cap(pd_cap, rootserver.ipc_buf, vptr, IT_ASID, false, false);
+    let capability =
+        create_mapped_it_frame_cap(pd_cap, rootserver.ipc_buf, vptr, IT_ASID, false, false);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapInitThreadIPCBuffer), capability.clone());
     return capability;

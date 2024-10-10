@@ -51,7 +51,7 @@ pub fn handleInvocation(isCall: bool, isBlocking: bool) -> exception_t {
         length = msgRegisterNum;
     }
 
-    let cap = unsafe { (*(lu_ret.slot)).cap };
+    let cap = unsafe { (*(lu_ret.slot)).capability };
     let status = decode_invocation(
         info.get_label(),
         length,

@@ -1,6 +1,6 @@
 #[cfg(target_arch = "aarch64")]
 use core::intrinsics::unlikely;
-use sel4_common::arch::ArchReg;
+use sel4_common::{arch::ArchReg, structures_gen::{cap_frame_cap, cap_page_table_cap}};
 #[cfg(target_arch = "aarch64")]
 use sel4_common::BIT;
 
@@ -19,7 +19,8 @@ use sel4_common::{
 };
 #[cfg(target_arch = "riscv64")]
 use sel4_cspace::interface::cte_insert;
-use sel4_cspace::interface::{cap_t, cte_t};
+use sel4_cspace::interface::cte_t;
+use sel4_common::structures_gen::cap;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 #[cfg(target_arch = "riscv64")]
 use sel4_vspace::{
@@ -32,13 +33,13 @@ use sel4_vspace::{pptr_to_paddr, unmapPage, unmap_page_table, PTE};
 
 use crate::{kernel::boot::current_lookup_fault, utils::clear_memory};
 
-pub fn invoke_page_table_unmap(cap: &mut cap_t) -> exception_t {
-    if cap.get_pt_is_mapped() != 0 {
-        let pt = convert_to_mut_type_ref::<PTE>(cap.get_pt_base_ptr());
-        unmap_page_table(cap.get_pt_mapped_asid(), cap.get_pt_mapped_address(), pt);
+pub fn invoke_page_table_unmap(capability: &mut cap_page_table_cap) -> exception_t {
+    if capability.get_capPTIsMapped() != 0 {
+        let pt = convert_to_mut_type_ref::<PTE>(capability.get_capPTBasePtr() as usize);
+        unmap_page_table(capability.get_capPTMappedASID() as usize, capability.get_capPTMappedAddress() as usize, pt);
         clear_memory(pt.get_mut_ptr() as *mut u8, seL4_PageTableBits)
     }
-    cap.set_pt_is_mapped(0);
+    capability.set_capPTIsMapped(0);
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "riscv64")]
@@ -96,13 +97,13 @@ pub fn invoke_page_get_address(vbase_ptr: usize, call: bool) -> exception_t {
 }
 
 pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
-    if frame_slot.cap.get_pt_mapped_asid() != asidInvalid {
+    if unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.get_capFMappedASID() as usize != asidInvalid {
         match unmapPage(
-            frame_slot.cap.get_frame_size(),
-            frame_slot.cap.get_frame_mapped_asid(),
+            unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.get_capFSize() as usize,
+            unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.get_capFMappedASID() as usize,
             // FIXME: here should be frame_mapped_address.
-            frame_slot.cap.get_frame_mapped_address(),
-            frame_slot.cap.get_frame_base_ptr(),
+            unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.get_capFMappedAddress() as usize,
+            unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.get_capFBasePtr() as usize,
         ) {
             Err(lookup_fault) => unsafe {
                 current_lookup_fault = lookup_fault;
@@ -110,8 +111,8 @@ pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
             _ => {}
         }
     }
-    frame_slot.cap.set_frame_mapped_address(0);
-    frame_slot.cap.set_frame_mapped_asid(asidInvalid);
+    unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.set_capFMappedAddress(0);
+    unsafe { core::mem::transmute::<cap, cap_frame_cap>(frame_slot.capability) }.set_capFMappedASID(asidInvalid as u64);
     exception_t::EXCEPTION_NONE
 }
 
@@ -141,7 +142,7 @@ pub fn invoke_page_map(
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_page_map(asid: usize, cap: cap_t, pte: PTE, pt_slot: &mut PTE) -> exception_t {
+pub fn invoke_page_map(asid: usize, capability: cap, pte: PTE, pt_slot: &mut PTE) -> exception_t {
     let tlbflush_required: bool = pt_slot.get_type() != (pte_tag_t::pte_invalid) as usize;
     pt_slot.update(pte);
 
@@ -151,7 +152,7 @@ pub fn invoke_page_map(asid: usize, cap: cap_t, pte: PTE, pt_slot: &mut PTE) -> 
     );
     if unlikely(tlbflush_required) {
         assert!(asid < BIT!(16));
-        invalidate_tlb_by_asid_va(asid, cap.get_frame_mapped_address());
+        invalidate_tlb_by_asid_va(asid, unsafe { core::mem::transmute::<cap, cap_frame_cap>(capability) }.get_capFMappedAddress() as usize);
     }
     exception_t::EXCEPTION_NONE
 }

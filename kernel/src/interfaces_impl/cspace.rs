@@ -7,6 +7,10 @@ use sel4_common::sel4_config::{tcbCNodeEntries, tcbCTable, tcbVTable};
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{cap_Splayed, cap_tag};
 use sel4_common::utils::convert_to_mut_type_ref;
+use sel4_common::{
+    structures_gen::{cap, cap_null_cap},
+    utils::ptr_to_mut,
+};
 use sel4_cspace::capability::cap_pub_func;
 use sel4_cspace::compatibility::{ZombieType_ZombieTCB, Zombie_new};
 use sel4_cspace::interface::finaliseCap_ret;
@@ -17,7 +21,6 @@ use sel4_vspace::find_vspace_for_asid;
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::unmap_page_table;
 use sel4_vspace::{asid_pool_t, asid_t, delete_asid, delete_asid_pool, unmapPage, PTE};
-use sel4_common::{structures_gen::{cap, cap_null_cap}, utils::ptr_to_mut};
 
 #[cfg(target_arch = "riscv64")]
 #[no_mangle]
@@ -61,7 +64,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
 
         cap_tag::cap_asid_pool_cap => {
             if final_ {
-                deleteASIDPool(capability.get_asid_base(), capability.get_asid_pool() as *mut asid_pool_t);
+                deleteASIDPool(
+                    capability.get_asid_base(),
+                    capability.get_asid_pool() as *mut asid_pool_t,
+                );
             }
         }
         _ => {}
@@ -75,7 +81,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
 pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
     use sel4_common::structures_gen::cap_Splayed;
 
-    let mut fc_ret = finaliseCap_ret { remainder: cap_null_cap::new().unsplay(), cleanupInfo: cap_null_cap::new().unsplay() };
+    let mut fc_ret = finaliseCap_ret {
+        remainder: cap_null_cap::new().unsplay(),
+        cleanupInfo: cap_null_cap::new().unsplay(),
+    };
     match capability.splay() {
         cap_Splayed::frame_cap(data) => {
             if data.get_capFMappedASID() != 0 {
@@ -92,7 +101,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         }
         cap_Splayed::vspace_cap(data) => {
             if final_ && data.get_capVSIsMapped() == 1 {
-                deleteASID(data.get_capVSIsMapped() as usize, data.get_capVSBasePtr() as _);
+                deleteASID(
+                    data.get_capVSIsMapped() as usize,
+                    data.get_capVSBasePtr() as _,
+                );
             }
         }
         // cap_tag::CapPageGlobalDirectoryCap => {
@@ -119,12 +131,19 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         cap_Splayed::page_table_cap(data) => {
             if final_ && data.get_capPTIsMapped() == 1 {
                 let pte = ptr_to_mut(data.get_capPTBasePtr() as *mut PTE);
-                unmap_page_table(data.get_capPTMappedASID() as usize, data.get_capPTMappedAddress() as usize, pte);
+                unmap_page_table(
+                    data.get_capPTMappedASID() as usize,
+                    data.get_capPTMappedAddress() as usize,
+                    pte,
+                );
             }
         }
         cap_Splayed::asid_pool_cap(data) => {
             if final_ {
-                deleteASIDPool(data.get_capASIDBase() as usize, data.get_capASIDPool() as *mut asid_pool_t);
+                deleteASIDPool(
+                    data.get_capASIDBase() as usize,
+                    data.get_capASIDPool() as *mut asid_pool_t,
+                );
             }
         }
         cap_Splayed::asid_control_cap(_) => {}
@@ -137,7 +156,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
 
 #[no_mangle]
 pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCap_ret {
-    let mut fc_ret = finaliseCap_ret { remainder: cap_null_cap::new().unsplay(), cleanupInfo: cap_null_cap::new().unsplay() };
+    let mut fc_ret = finaliseCap_ret {
+        remainder: cap_null_cap::new().unsplay(),
+        cleanupInfo: cap_null_cap::new().unsplay(),
+    };
 
     if capability.isArchCap() {
         // For Removing Warnings
@@ -160,7 +182,8 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         }
         cap_Splayed::notification_cap(data) => {
             if _final {
-                let ntfn = convert_to_mut_type_ref::<notification_t>(data.get_capNtfnPtr() as usize);
+                let ntfn =
+                    convert_to_mut_type_ref::<notification_t>(data.get_capNtfnPtr() as usize);
                 ntfn.safe_unbind_tcb();
                 ntfn.cacncel_all_signal();
             }
@@ -244,13 +267,13 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
 
 #[no_mangle]
 pub fn post_cap_deletion(capability: &cap) {
-	match capability.splay() {
-		cap_Splayed::irq_handler_cap(data)=>{
-			let irq = data.get_capIRQ() as usize;
-        	setIRQState(IRQState::IRQInactive, irq);
-		}
-		_=>{}
-	}
+    match capability.splay() {
+        cap_Splayed::irq_handler_cap(data) => {
+            let irq = data.get_capIRQ() as usize;
+            setIRQState(IRQState::IRQInactive, irq);
+        }
+        _ => {}
+    }
 }
 
 #[no_mangle]

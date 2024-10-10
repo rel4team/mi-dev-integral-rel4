@@ -42,15 +42,17 @@ pub fn handleInterrupt(irq: usize) {
             debug!("IRQSignal");
             let handler_slot = get_irq_handler_slot(irq);
             let handler_cap = &handler_slot.capability;
-			match handler_cap.splay() {
-				cap_Splayed::notification_cap(data)=>{
-					if data.get_capNtfnCanSend() !=0{
-						let nf = convert_to_mut_type_ref::<notification_t>(data.get_capNtfnPtr() as usize);
-						nf.send_signal(data.get_capNtfnBadge() as usize);
-					}
-				}
-				_=>{}
-			}
+            match handler_cap.splay() {
+                cap_Splayed::notification_cap(data) => {
+                    if data.get_capNtfnCanSend() != 0 {
+                        let nf = convert_to_mut_type_ref::<notification_t>(
+                            data.get_capNtfnPtr() as usize
+                        );
+                        nf.send_signal(data.get_capNtfnBadge() as usize);
+                    }
+                }
+                _ => {}
+            }
         }
         IRQState::IRQTimer => {
             timerTick();
