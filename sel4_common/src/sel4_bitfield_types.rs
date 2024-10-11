@@ -1,5 +1,3 @@
-#![no_std]
-
 use core::mem;
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Range, Shl, Shr};
 

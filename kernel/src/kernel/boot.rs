@@ -1,6 +1,6 @@
 extern crate core;
 
-use sel4_bitfield_types::Bitfield;
+use sel4_common::sel4_bitfield_types::Bitfield;
 use sel4_common::{
     fault::seL4_Fault_t, sel4_config::seL4_MsgMaxExtraCaps, structures_gen::lookup_fault,
     utils::convert_to_option_mut_type_ref,

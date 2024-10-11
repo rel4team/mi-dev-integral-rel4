@@ -15,6 +15,7 @@ pub mod ffi;
 pub mod logging;
 pub mod message_info;
 pub mod object;
+pub mod sel4_bitfield_types;
 pub mod sel4_config;
 pub mod shared_types_bf_gen;
 pub mod shared_types_gen;
