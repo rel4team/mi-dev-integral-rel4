@@ -9,9 +9,10 @@ use crate::{
 use log::debug;
 use sel4_common::arch::{maskVMRights, msgRegisterNum, ArchReg};
 use sel4_common::cap_rights::seL4_CapRights_t;
-use sel4_common::fault::*;
 use sel4_common::sel4_config::seL4_MinUntypedBits;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{
+    cap_tag, lookup_fault_depth_mismatch, lookup_fault_invalid_root,
+};
 use sel4_common::{
     sel4_config::*,
     structures::{exception_t, seL4_IPCBuffer},
@@ -168,7 +169,7 @@ pub fn lookup_slot_for_cnode_op(
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = is_source as usize;
-            current_lookup_fault = lookup_fault_t::new_root_invalid();
+            current_lookup_fault = lookup_fault_invalid_root::new().unsplay();
         }
         ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
         return ret;
@@ -198,7 +199,8 @@ pub fn lookup_slot_for_cnode_op(
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = is_source as usize;
-            current_lookup_fault = lookup_fault_t::new_depth_mismatch(0, res_ret.bitsRemaining);
+            current_lookup_fault =
+                lookup_fault_depth_mismatch::new(0, res_ret.bitsRemaining as u64).unsplay();
         }
         ret.status = exception_t::EXCEPTION_SYSCALL_ERROR;
         return ret;

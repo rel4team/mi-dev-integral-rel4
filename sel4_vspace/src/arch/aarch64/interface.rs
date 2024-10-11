@@ -10,8 +10,8 @@ use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::{pageBitsForSize, ptr_to_mut};
 use sel4_common::{
-    fault::lookup_fault_t,
     sel4_config::{seL4_PageBits, PT_INDEX_BITS},
+    structures_gen::lookup_fault,
     BIT,
 };
 use sel4_cspace::interface::cap_t;
@@ -119,7 +119,7 @@ pub fn set_kernel_page_table_by_index(idx: usize, pte: PTE) {
 /// 根据给定的`vspace_root`设置相应的页表，会检查`vspace_root`是否合法，如果不合法默认设置为内核页表
 ///
 /// Use page table in vspace_root to set the satp register.
-pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
+pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault> {
     setCurrentUserVSpaceRoot(pptr_to_paddr(vspace_root.get_vs_base_ptr()));
     Ok(())
 }
@@ -336,7 +336,7 @@ pub fn unmapPage(
     asid: asid_t,
     vptr: vptr_t,
     pptr: pptr_t,
-) -> Result<(), lookup_fault_t> {
+) -> Result<(), lookup_fault> {
     let addr = pptr_to_paddr(pptr);
     let find_ret = find_vspace_for_asid(asid);
     if unlikely(find_ret.status != exception_t::EXCEPTION_NONE) {

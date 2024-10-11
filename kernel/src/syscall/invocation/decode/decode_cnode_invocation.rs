@@ -1,7 +1,7 @@
 use log::debug;
 use sel4_common::cap_rights::seL4_CapRights_t;
-use sel4_common::fault::lookup_fault_t;
 use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::lookup_fault_missing_capability;
 use sel4_common::{
     arch::MessageLabel,
     sel4_config::{
@@ -98,7 +98,7 @@ fn decode_cnode_invoke_with_two_slot(
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 1;
-            current_lookup_fault = lookup_fault_t::new_missing_cap(src_depth);
+            current_lookup_fault = lookup_fault_missing_capability::new(src_depth as u64).unsplay();
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
@@ -205,7 +205,7 @@ fn decode_cnode_rotate(
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 1;
-            current_lookup_fault = lookup_fault_t::new_missing_cap(src_depth);
+            current_lookup_fault = lookup_fault_missing_capability::new(src_depth as u64).unsplay();
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
@@ -214,7 +214,8 @@ fn decode_cnode_rotate(
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
-            current_lookup_fault = lookup_fault_t::new_missing_cap(pivot_depth);
+            current_lookup_fault =
+                lookup_fault_missing_capability::new(pivot_depth as u64).unsplay();
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }

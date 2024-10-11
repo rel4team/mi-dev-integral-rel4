@@ -23,6 +23,7 @@ sel4_vspace = { git = "https://github.com/rel4team/sel4_vspace.git", branch = "m
 sel4_task = { git = "https://github.com/rel4team/sel4_task.git", branch = "mi_dev" }
 sel4_ipc = { git = "https://github.com/rel4team/sel4_ipc.git", branch = "mi_dev" }
 driver-collect = { git = "https://github.com/rel4team/driver-collect.git", branch = "mi_dev" }
+sel4-bitfield-types = { path = "../sel4_common/bitfield-types" }
 
 [features]
 ENABLE_SMP = ["sel4_common/ENABLE_SMP", "sel4_task/ENABLE_SMP", "sel4_vspace/ENABLE_SMP"]

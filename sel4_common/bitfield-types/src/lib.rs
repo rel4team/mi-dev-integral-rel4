@@ -6,7 +6,7 @@ use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Range, Shl, Shr};
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Bitfield<T, const N: usize> {
-    arr: [T; N],
+    pub arr: [T; N],
 }
 
 impl<T, const N: usize> Bitfield<T, N>

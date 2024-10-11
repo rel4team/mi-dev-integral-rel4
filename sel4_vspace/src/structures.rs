@@ -3,7 +3,7 @@ use core::{
     fmt::{Debug, Display},
 };
 
-use sel4_common::{arch::config::PPTR_BASE, fault::lookup_fault_t, structures::exception_t};
+use sel4_common::{arch::config::PPTR_BASE, structures::exception_t, structures_gen::lookup_fault};
 
 use crate::PTE;
 
@@ -25,7 +25,7 @@ pub type asid_t = usize;
 pub struct findVSpaceForASID_ret {
     pub status: exception_t,
     pub vspace_root: Option<*mut PTE>,
-    pub lookup_fault: Option<lookup_fault_t>,
+    pub lookup_fault: Option<lookup_fault>,
 }
 #[cfg(target_arch = "aarch64")]
 #[repr(C)]
@@ -33,7 +33,7 @@ pub struct findVSpaceForASID_ret {
 pub struct findVSpaceForASID_ret {
     pub status: exception_t,
     pub vspace_root: Option<*mut PTE>,
-    pub lookup_fault: Option<lookup_fault_t>,
+    pub lookup_fault: Option<lookup_fault>,
 }
 
 /// 进行系统调用时，应用程序向内核传递信息的消息格式

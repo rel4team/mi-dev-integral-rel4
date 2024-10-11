@@ -8,7 +8,6 @@ use crate::syscall::{ensure_empty_slot, get_currenct_thread, lookup_slot_for_cno
 use log::debug;
 use sel4_common::arch::maskVMRights;
 use sel4_common::cap_rights::seL4_CapRights_t;
-use sel4_common::fault::lookup_fault_t;
 use sel4_common::sel4_config::{
     asidInvalid, asidLowBits, nASIDPools, seL4_AlignmentError, seL4_FailedLookup, seL4_PageBits,
     seL4_RangeError,
@@ -18,6 +17,7 @@ use sel4_common::sel4_config::{
     seL4_IllegalOperation, seL4_InvalidCapability, seL4_RevokeFirst, seL4_TruncatedMessage,
 };
 use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{lookup_fault_invalid_root, lookup_fault_missing_capability};
 use sel4_common::utils::{
     convert_ref_type_to_usize, convert_to_mut_type_ref, global_ops, pageBitsForSize, ptr_to_mut,
     ptr_to_ref, MAX_FREE_INDEX,
@@ -380,7 +380,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
         global_ops!(current_syscall_error._type = seL4_FailedLookup);
         global_ops!(current_syscall_error.failedLookupWasSource = 0);
         unsafe {
-            current_lookup_fault = lookup_fault_t::new_root_invalid();
+            current_lookup_fault = lookup_fault_invalid_root::new().unsplay();
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
@@ -482,7 +482,8 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     let lu_ret = vspace_root_pte.lookup_pt_slot(vaddr);
     if unlikely(lu_ret.ptBitsLeft != pageBitsForSize(frame_size)) {
         unsafe {
-            current_lookup_fault = lookup_fault_t::new_missing_cap(lu_ret.ptBitsLeft);
+            current_lookup_fault =
+                lookup_fault_missing_capability::new(lu_ret.ptBitsLeft as u64).unsplay();
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
             return exception_t::EXCEPTION_SYSCALL_ERROR;

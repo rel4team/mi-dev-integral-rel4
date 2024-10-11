@@ -1,8 +1,8 @@
 use crate::PTE;
 use sel4_common::{
-    fault::lookup_fault_t,
     sel4_config::{asidHighBits, asidLowBits, IT_ASID},
     structures::exception_t,
+    structures_gen::{lookup_fault, lookup_fault_invalid_root},
     utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
     BIT, MASK,
 };
@@ -50,7 +50,7 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
     let mut ret: findVSpaceForASID_ret = findVSpaceForASID_ret {
         status: exception_t::EXCEPTION_LOOKUP_FAULT,
         vspace_root: None,
-        lookup_fault: Some(lookup_fault_t::new_root_invalid()),
+        lookup_fault: Some(lookup_fault_invalid_root::new().unsplay()),
     };
     match find_map_for_asid(asid) {
         Some(asid_map) => {
@@ -65,7 +65,7 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
 }
 
 #[no_mangle]
-pub fn delete_asid(asid: usize, vspace: *mut PTE, cap: &cap_t) -> Result<(), lookup_fault_t> {
+pub fn delete_asid(asid: usize, vspace: *mut PTE, cap: &cap_t) -> Result<(), lookup_fault> {
     let ptr = convert_to_option_mut_type_ref::<asid_pool_t>(get_asid_table()[asid >> asidLowBits]);
     if let Some(pool) = ptr {
         let asid_map: asid_map_t = pool[asid & MASK!(asidLowBits)];
@@ -85,7 +85,7 @@ pub fn delete_asid_pool(
     asid_base: asid_t,
     pool: *mut asid_pool_t,
     default_vspace_cap: &cap_t,
-) -> Result<(), lookup_fault_t> {
+) -> Result<(), lookup_fault> {
     let pool_in_table = get_asid_pool_by_index(asid_base >> asidLowBits);
     if pool as usize == pool_in_table {
         // clear all asid in target asid pool

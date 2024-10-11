@@ -4,7 +4,7 @@ use sel4_common::arch::{
 };
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_t;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap_tag, lookup_fault, lookup_fault_Splayed};
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::BIT;
@@ -42,7 +42,7 @@ pub struct tcb_t {
     /// The fault of the TCB
     pub tcbFault: seL4_Fault_t,
     /// The lookup fault of the TCB
-    pub tcbLookupFailure: lookup_fault_t,
+    pub tcbLookupFailure: lookup_fault,
     /// The domain of the TCB
     pub domain: usize,
     /// The maximum controlled priority of the TCB
@@ -305,7 +305,7 @@ impl tcb_t {
     }
 
     /// Set the VM root of the TCB
-    pub fn set_vm_root(&mut self) -> Result<(), lookup_fault_t> {
+    pub fn set_vm_root(&mut self) -> Result<(), lookup_fault> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
         let thread_root = self.get_cspace(tcbVTable).cap;
         #[cfg(target_arch = "aarch64")]
@@ -588,8 +588,8 @@ impl tcb_t {
     /// * `fault` - The lookup fault to set
     /// # Returns
     /// The next offset
-    pub fn set_lookup_fault_mrs(&mut self, offset: usize, fault: &lookup_fault_t) -> usize {
-        let luf_type = fault.get_type();
+    pub fn set_lookup_fault_mrs(&mut self, offset: usize, fault: &lookup_fault) -> usize {
+        let luf_type = fault.get_tag() as usize;
         let i = self.set_mr(offset, luf_type + 1);
         if offset == seL4_CapFault_LookupFailureType {
             assert_eq!(offset + 1, seL4_CapFault_BitsLeft);
@@ -599,19 +599,19 @@ impl tcb_t {
         } else {
             assert_eq!(offset, 1);
         }
-        match fault.get_lookup_fault_type() {
-            LookupFaultType::InvaildRoot => i,
-            LookupFaultType::MissingCap => {
-                self.set_mr(offset + 1, fault.missing_cap_get_bits_left())
+        match fault.splay() {
+            lookup_fault_Splayed::invalid_root(_) => i,
+            lookup_fault_Splayed::missing_capability(data) => {
+                self.set_mr(offset + 1, data.get_bitsLeft() as usize)
             }
-            LookupFaultType::DepthMismatch => {
-                self.set_mr(offset + 1, fault.depth_mismatch_get_bits_left());
-                self.set_mr(offset + 2, fault.depth_mismatch_get_bits_found())
+            lookup_fault_Splayed::depth_mismatch(data) => {
+                self.set_mr(offset + 1, data.get_bitsLeft() as usize);
+                self.set_mr(offset + 2, data.get_bitsFound() as usize)
             }
-            LookupFaultType::GuardMismatch => {
-                self.set_mr(offset + 1, fault.guard_mismatch_get_bits_left());
-                self.set_mr(offset + 2, fault.guard_mismatch_get_guard_found());
-                self.set_mr(offset + 3, fault.guard_mismatch_get_bits_found())
+            lookup_fault_Splayed::guard_mismatch(data) => {
+                self.set_mr(offset + 1, data.get_bitsLeft() as usize);
+                self.set_mr(offset + 2, data.get_guardFound() as usize);
+                self.set_mr(offset + 3, data.get_bitsFound() as usize)
             }
         }
     }

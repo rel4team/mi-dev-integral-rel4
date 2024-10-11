@@ -1,9 +1,9 @@
 use core::{arch::asm, intrinsics::unlikely};
 
 use sel4_common::{
-    fault::lookup_fault_t,
     sel4_config::{asidHighBits, asidLowBits, IT_ASID},
     structures::exception_t,
+    structures_gen::{lookup_fault, lookup_fault_invalid_root},
     utils::convert_to_option_mut_type_ref,
     BIT, MASK,
 };
@@ -34,7 +34,7 @@ pub fn delete_asid(
     asid: asid_t,
     vspace: *mut PTE,
     default_vspace_cap: &cap_t,
-) -> Result<(), lookup_fault_t> {
+) -> Result<(), lookup_fault> {
     unsafe {
         let poolPtr = riscvKSASIDTable[asid >> asidLowBits];
         if poolPtr as usize != 0 && (*poolPtr).array[asid & MASK!(asidLowBits)] == vspace {
@@ -84,14 +84,14 @@ pub fn find_vspace_for_asid(asid: asid_t) -> findVSpaceForASID_ret {
 
     let poolPtr = unsafe { riscvKSASIDTable[asid >> asidLowBits] };
     if poolPtr as usize == 0 {
-        ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
+        ret.lookup_fault = Some(lookup_fault_invalid_root::new().unsplay());
         ret.vspace_root = None;
         ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
         return ret;
     }
     let vspace_root = unsafe { (*poolPtr).array[asid & MASK!(asidLowBits)] };
     if vspace_root as usize == 0 {
-        ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
+        ret.lookup_fault = Some(lookup_fault_invalid_root::new().unsplay());
         ret.vspace_root = None;
         ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
         return ret;
@@ -110,7 +110,7 @@ pub fn delete_asid_pool(
     asid_base: asid_t,
     pool: *mut asid_pool_t,
     default_vspace_cap: &cap_t,
-) -> Result<(), lookup_fault_t> {
+) -> Result<(), lookup_fault> {
     unsafe {
         if riscvKSASIDTable[asid_base >> asidLowBits] == pool {
             riscvKSASIDTable[asid_base >> asidLowBits] = 0 as *mut asid_pool_t;

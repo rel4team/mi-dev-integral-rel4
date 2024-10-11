@@ -1,7 +1,7 @@
 use crate::BIT;
 use log::debug;
-use sel4_common::fault::lookup_fault_t;
 use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::lookup_fault_missing_capability;
 use sel4_common::{
     arch::{MessageLabel, ObjectType},
     sel4_config::*,
@@ -189,7 +189,8 @@ fn get_target_cnode(node_index: usize, node_depth: usize, node_cap: &mut cap_t) 
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
-            current_lookup_fault = lookup_fault_t::new_missing_cap(node_depth);
+            current_lookup_fault =
+                lookup_fault_missing_capability::new(node_depth as u64).unsplay();
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }

@@ -7,7 +7,6 @@ use core::intrinsics::unlikely;
 
 use log::debug;
 use sel4_common::arch::MessageLabel;
-use sel4_common::fault::lookup_fault_t;
 use sel4_common::sel4_config::{
     asidInvalid, asidLowBits, nASIDPools, seL4_AlignmentError, seL4_DeleteFirst, seL4_FailedLookup,
     seL4_IllegalOperation, seL4_InvalidArgument, seL4_InvalidCapability, seL4_PageBits,
@@ -15,6 +14,7 @@ use sel4_common::sel4_config::{
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{lookup_fault_invalid_root, lookup_fault_missing_capability};
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 use sel4_common::{BIT, MASK};
 use sel4_cspace::interface::{cap_t, cte_t};
@@ -241,7 +241,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
-            current_lookup_fault = lookup_fault_t::new_root_invalid();
+            current_lookup_fault = lookup_fault_invalid_root::new().unsplay();
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
@@ -281,7 +281,8 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
         let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
         if lu_ret.ptBitsLeft != pageBitsForSize(frame_size) {
             unsafe {
-                current_lookup_fault = lookup_fault_t::new_missing_cap(lu_ret.ptBitsLeft);
+                current_lookup_fault =
+                    lookup_fault_missing_capability::new(lu_ret.ptBitsLeft as u64).unsplay();
                 current_syscall_error._type = seL4_FailedLookup;
                 current_syscall_error.failedLookupWasSource = false as usize;
             }
