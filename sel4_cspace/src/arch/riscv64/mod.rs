@@ -96,7 +96,7 @@ impl cte_t {
     pub fn arch_derive_cap(&mut self, cap: &cap_t) -> deriveCap_ret {
         let mut ret = deriveCap_ret {
             status: exception_t::EXCEPTION_NONE,
-            cap: cap_t::default(),
+            cap: cap_null_cap::new().unsplay(),
         };
         match cap.get_cap_type() {
             cap_tag::cap_page_table_cap => {

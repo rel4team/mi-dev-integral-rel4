@@ -5,7 +5,7 @@ use crate::{
 };
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag};
 use sel4_common::{
     fault::*,
     message_info::*,
@@ -19,8 +19,8 @@ use sel4_vspace::*;
 
 #[inline]
 #[no_mangle]
-pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
-    let mut cap = _cap.clone();
+pub fn lookup_fp(_cap: &cap, cptr: usize) -> cap {
+    let mut capability = _cap.clone();
     let mut bits = 0;
     let mut guardBits: usize;
     let mut radixBits: usize;
@@ -28,31 +28,31 @@ pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
     let mut capGuard: usize;
     let mut radix: usize;
     let mut slot: *mut cte_t;
-    if unlikely(!(cap.get_cap_type() == cap_tag::cap_cnode_cap)) {
-        return cap_t::new_null_cap();
+    if unlikely(!(capability.get_tag() == cap_tag::cap_cnode_cap)) {
+        return cap_null_cap::new().unsplay();
     }
     loop {
-        guardBits = cap.get_cnode_guard_size();
-        radixBits = cap.get_cnode_radix();
+        guardBits = capability.get_cnode_guard_size();
+        radixBits = capability.get_cnode_radix();
         cptr2 = cptr << bits;
-        capGuard = cap.get_cnode_guard();
+        capGuard = capability.get_cnode_guard();
         if likely(guardBits != 0) && unlikely(cptr2 >> (wordBits - guardBits) != capGuard) {
-            return cap_t::new_null_cap();
+            return cap_null_cap::new().unsplay();
         }
 
         radix = cptr2 << guardBits >> (wordBits - radixBits);
-        slot = unsafe { (cap.get_cnode_ptr() as *mut cte_t).add(radix) };
-        cap = unsafe { (*slot).cap };
+        slot = unsafe { (capability.get_cnode_ptr() as *mut cte_t).add(radix) };
+        capability = unsafe { (*slot).capability };
         bits += guardBits + radixBits;
 
-        if likely(!(bits < wordBits && cap.get_cap_type() == cap_tag::cap_cnode_cap)) {
+        if likely(!(bits < wordBits && capability.get_tag() == cap_tag::cap_cnode_cap)) {
             break;
         }
     }
     if bits > wordBits {
-        return cap_t::new_null_cap();
+        return cap_null_cap::new().unsplay();
     }
-    return cap;
+    return capability;
 }
 
 #[inline]
@@ -101,9 +101,9 @@ pub fn mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
 
 #[inline]
 #[no_mangle]
-pub fn isValidVTableRoot_fp(cap: &cap_t) -> bool {
+pub fn isValidVTableRoot_fp(capability: &cap) -> bool {
     // cap_capType_equals(cap, cap_page_table_cap) && cap.get_pt_is_mapped() != 0
-    cap.get_cap_type() == cap_tag::cap_page_table_cap && cap.get_pt_is_mapped() != 0
+    capability.get_cap_type() == cap_tag::cap_page_table_cap && capability.get_pt_is_mapped() != 0
 }
 
 #[inline]
@@ -200,7 +200,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     if fastpath_mi_check(msgInfo) || current.tcbFault.get_fault_type() != FaultType::NullFault {
         slowpath(SysCall as usize);
     }
-    let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).cap, cptr);
+    let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).capability, cptr);
     if unlikely(
         !(ep_cap.get_cap_type() == cap_tag::cap_endpoint_cap) || (ep_cap.get_ep_can_send() == 0),
     ) {
@@ -348,7 +348,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     // unsafe {
     let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_prev());
     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
-    caller_slot.cap = cap_t::new_null_cap();
+    caller_slot.cap = cap_null_cap::new().unsplay();
     caller_slot.cteMDBNode = mdb_node_t::new(0, 0, 0, 0);
     fastpath_copy_mrs(length, current, caller);
 

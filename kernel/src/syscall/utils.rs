@@ -11,7 +11,8 @@ use sel4_common::arch::{maskVMRights, msgRegisterNum, ArchReg};
 use sel4_common::cap_rights::seL4_CapRights_t;
 use sel4_common::sel4_config::seL4_MinUntypedBits;
 use sel4_common::structures_gen::{
-    cap_tag, lookup_fault_depth_mismatch, lookup_fault_invalid_root,
+    cap, cap_Splayed, cap_frame_cap, cap_tag, lookup_fault_depth_mismatch,
+    lookup_fault_invalid_root,
 };
 use sel4_common::{
     sel4_config::*,
@@ -23,8 +24,9 @@ use sel4_common::{
     },
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::arch::arch_mask_cap_rights;
-use sel4_cspace::interface::{cap_t, cte_t, resolve_address_bits};
+use sel4_cspace::arch::{arch_mask_cap_rights, cap_trans};
+use sel4_cspace::capability::cap_func;
+use sel4_cspace::interface::{cte_t, resolve_address_bits};
 use sel4_ipc::notification_t;
 use sel4_task::{get_currenct_thread, lookupSlot_ret_t, tcb_t};
 
@@ -100,8 +102,8 @@ pub fn check_prio(prio: usize, auth_tcb: &tcb_t) -> exception_t {
 }
 
 #[inline]
-pub fn check_ipc_buffer_vaild(vptr: usize, cap: &cap_t) -> exception_t {
-    if cap.get_cap_type() != cap_tag::cap_frame_cap {
+pub fn check_ipc_buffer_vaild(vptr: usize, capability: &cap_frame_cap) -> exception_t {
+    if capability.unsplay().get_tag() != cap_tag::cap_frame_cap {
         debug!("Requested IPC Buffer is not a frame cap.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -109,7 +111,7 @@ pub fn check_ipc_buffer_vaild(vptr: usize, cap: &cap_t) -> exception_t {
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    if cap.get_frame_is_device() != 0 {
+    if capability.get_capFIsDevice() != 0 {
         debug!("Specifying a device frame as an IPC buffer is not permitted.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -154,18 +156,18 @@ pub fn is_valid_vtable_root(cap: &cap_t) -> bool {
 }
 
 #[no_mangle]
-pub fn isValidVTableRoot(_cap: &cap_t) -> bool {
+pub fn isValidVTableRoot(_cap: &cap) -> bool {
     panic!("should not be invoked!")
 }
 
 pub fn lookup_slot_for_cnode_op(
     is_source: bool,
-    root: &cap_t,
+    root: &cap,
     cap_ptr: usize,
     depth: usize,
 ) -> lookupSlot_ret_t {
     let mut ret: lookupSlot_ret_t = lookupSlot_ret_t::default();
-    if unlikely(root.get_cap_type() != cap_tag::cap_cnode_cap) {
+    if unlikely(root.get_tag() != cap_tag::cap_cnode_cap) {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = is_source as usize;
@@ -212,7 +214,7 @@ pub fn lookup_slot_for_cnode_op(
 
 pub fn lookupSlotForCNodeOp(
     isSource: bool,
-    root: &cap_t,
+    root: &cap,
     capptr: usize,
     depth: usize,
 ) -> lookupSlot_ret_t {
@@ -221,7 +223,7 @@ pub fn lookupSlotForCNodeOp(
 
 #[inline]
 pub fn ensure_empty_slot(slot: &cte_t) -> exception_t {
-    if slot.cap.get_cap_type() != cap_tag::cap_null_cap {
+    if slot.capability.get_tag() != cap_tag::cap_null_cap {
         unsafe {
             current_syscall_error._type = seL4_DeleteFirst;
         }
@@ -235,31 +237,39 @@ pub fn ensureEmptySlot(slot: *mut cte_t) -> exception_t {
     unsafe { ensure_empty_slot(&*slot) }
 }
 
-pub fn mask_cap_rights(rights: seL4_CapRights_t, cap: &cap_t) -> cap_t {
-    if cap.isArchCap() {
-        return arch_mask_cap_rights(rights, cap);
+pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
+    if capability.isArchCap() {
+        return arch_mask_cap_rights(rights, capability);
     }
-    let mut new_cap = cap.clone();
-    match cap.get_cap_type() {
-        cap_tag::cap_endpoint_cap => {
-            new_cap.set_ep_can_send(cap.get_ep_can_send() & rights.get_allow_write());
-            new_cap.set_ep_can_receive(cap.get_ep_can_receive() & rights.get_allow_read());
-            new_cap.set_ep_can_grant(cap.get_ep_can_grant() & rights.get_allow_grant());
-            new_cap.set_ep_can_grant_reply(
-                cap.get_ep_can_grant_reply() & rights.get_allow_grant_reply(),
+    let mut new_cap = capability.clone();
+    match capability.splay() {
+        cap_Splayed::endpoint_cap(data) => {
+            cap::to_cap_endpoint_cap(new_cap)
+                .set_capCanSend(data.get_capCanSend() & rights.get_allow_write() as u64);
+            cap::to_cap_endpoint_cap(new_cap)
+                .set_capCanReceive(data.get_capCanReceive() & rights.get_allow_read() as u64);
+            cap::to_cap_endpoint_cap(new_cap)
+                .set_capCanGrant(data.get_capCanGrant() & rights.get_allow_grant() as u64);
+            cap::to_cap_endpoint_cap(new_cap).set_capCanGrantReply(
+                data.get_capCanGrantReply() & rights.get_allow_grant_reply() as u64,
             );
         }
-        cap_tag::cap_notification_cap => {
-            new_cap.set_nf_can_send(cap.get_nf_can_send() & rights.get_allow_write());
-            new_cap.set_nf_can_receive(cap.get_nf_can_receive() & rights.get_allow_read());
+        cap_Splayed::notification_cap(data) => {
+            cap::to_cap_notification_cap(new_cap)
+                .set_capNtfnCanSend(data.get_capNtfnCanSend() & rights.get_allow_write() as u64);
+            cap::to_cap_notification_cap(new_cap).set_capNtfnCanReceive(
+                data.get_capNtfnCanReceive() & rights.get_allow_read() as u64,
+            );
         }
-        cap_tag::cap_reply_cap => {
-            new_cap.set_reply_can_grant(cap.get_reply_can_grant() & rights.get_allow_grant());
+        cap_Splayed::reply_cap(data) => {
+            cap::to_cap_reply_cap(new_cap).set_capReplyCanGrant(
+                data.get_capReplyCanGrant() & rights.get_allow_grant() as u64,
+            );
         }
-        cap_tag::cap_frame_cap => {
-            let mut vm_rights = unsafe { core::mem::transmute(cap.get_frame_vm_rights()) };
+        cap_Splayed::frame_cap(data) => {
+            let mut vm_rights = unsafe { core::mem::transmute(data.get_capFVMRights()) };
             vm_rights = maskVMRights(vm_rights, rights);
-            new_cap.set_frame_vm_rights(vm_rights as usize);
+            cap::to_cap_frame_cap(new_cap).set_capFVMRights(vm_rights as u64);
         }
         _ => {}
     }

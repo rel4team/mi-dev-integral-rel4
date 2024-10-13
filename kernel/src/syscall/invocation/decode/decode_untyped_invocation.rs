@@ -80,7 +80,7 @@ pub fn decode_untyed_invocation(
     if status != exception_t::EXCEPTION_NONE {
         return status;
     }
-    let mut node_cap = cap_t::default();
+    let mut node_cap = cap_null_cap::new().unsplay();
     let status = get_target_cnode(node_index, node_depth, &mut node_cap);
     if status != exception_t::EXCEPTION_NONE {
         return status;

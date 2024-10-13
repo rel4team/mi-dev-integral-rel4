@@ -1,5 +1,5 @@
 use crate::{map_it_pud_cap, pptr_t, vptr_t, PageTable};
-use sel4_common::structures_gen::{cap, cap_page_table_cap};
+use sel4_common::structures_gen::{cap, cap_page_table_cap, cap_vspace_cap};
 
 impl PageTable {
     pub(crate) const PTE_NUM_IN_PAGE: usize = 0x200;
@@ -12,7 +12,7 @@ impl PageTable {
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn create_it_pud_cap(
-    vspace_cap: &cap,
+    vspace_cap: &cap_vspace_cap,
     pptr: pptr_t,
     vptr: vptr_t,
     asid: usize,
