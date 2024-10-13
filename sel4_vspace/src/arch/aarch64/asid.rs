@@ -9,7 +9,7 @@ use sel4_common::{
     utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
     BIT, MASK,
 };
-use sel4_cspace::{arch::cap_trans, capability::cap_arch_func};
+use sel4_cspace::capability::cap_arch_func;
 
 use crate::{asid_pool_t, asid_t, findVSpaceForASID_ret, set_vm_root};
 use sel4_common::structures_gen::asid_map;

@@ -1,4 +1,4 @@
-use sel4_common::structures_gen::{cap, cap_page_table_cap, cap_vspace_cap};
+use sel4_common::structures_gen::{cap_page_table_cap, cap_vspace_cap};
 
 use crate::{map_it_pt_cap, pptr_t, vptr_t};
 

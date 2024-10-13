@@ -21,10 +21,10 @@ use sel4_common::sel4_config::{
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 use sel4_common::structures_gen::{
     cap, cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap, cap_frame_cap,
-    cap_irq_control_cap, cap_page_table_cap, cap_tag, cap_thread_cap, cap_vspace_cap,
+    cap_irq_control_cap, cap_tag, cap_thread_cap, cap_vspace_cap,
 };
 use sel4_common::utils::convert_to_mut_type_ref;
-use sel4_cspace::capability::{self, cap_arch_func};
+use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::*;
 
 use crate::config::*;

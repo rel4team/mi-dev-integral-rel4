@@ -7,7 +7,7 @@ use sel4_common::{
     utils::convert_to_mut_type_ref,
 };
 use sel4_cspace::arch::cap_trans;
-use sel4_cspace::capability::{self, cap_func};
+use sel4_cspace::capability::cap_func;
 use sel4_cspace::interface::{cte_insert, cte_move, cte_swap, cte_t};
 use sel4_ipc::endpoint_t;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};

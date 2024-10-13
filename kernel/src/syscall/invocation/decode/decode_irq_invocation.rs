@@ -1,11 +1,12 @@
 use log::debug;
-use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::{cap, cap_Splayed, cap_tag};
 use sel4_common::{
     arch::MessageLabel,
     sel4_config::*,
     structures::{exception_t, seL4_IPCBuffer},
     utils::convert_to_mut_type_ref,
 };
+use sel4_cspace::arch::cap_trans;
 use sel4_cspace::interface::cte_t;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 
@@ -34,7 +35,7 @@ pub fn decode_irq_control_invocation(
         let index = get_syscall_arg(1, buffer);
         let depth = get_syscall_arg(2, buffer);
 
-        let cnode_cap = get_extra_cap_by_index(0).unwrap().cap;
+        let cnode_cap = cap::to_cap_cnode_cap(get_extra_cap_by_index(0).unwrap().capability);
         let status = check_irq(irq);
         if status != exception_t::EXCEPTION_NONE {
             return status;
@@ -52,7 +53,7 @@ pub fn decode_irq_control_invocation(
             return lu_ret.status;
         }
         let dest_slot = convert_to_mut_type_ref::<cte_t>(lu_ret.slot as usize);
-        if dest_slot.cap.get_cap_type() != cap_tag::cap_null_cap {
+        if dest_slot.capability.get_tag() != cap_tag::cap_null_cap {
             unsafe {
                 current_syscall_error._type = seL4_DeleteFirst;
             }
@@ -85,15 +86,18 @@ pub fn decode_irq_handler_invocation(label: MessageLabel, irq: usize) -> excepti
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
             let slot = get_extra_cap_by_index(0).unwrap();
-            let ntfn_cap = slot.cap;
-            if ntfn_cap.get_cap_type() != cap_tag::cap_notification_cap
-                || ntfn_cap.get_nf_can_send() == 0
-            {
-                unsafe {
-                    current_syscall_error._type = seL4_InvalidCapability;
-                    current_syscall_error.invalidCapNumber = 0;
+            let ntfn_cap = slot.capability;
+            match ntfn_cap.splay() {
+                cap_Splayed::notification_cap(data) => {
+                    if data.get_capNtfnCanSend() == 0 {
+                        unsafe {
+                            current_syscall_error._type = seL4_InvalidCapability;
+                            current_syscall_error.invalidCapNumber = 0;
+                        }
+                        return exception_t::EXCEPTION_SYSCALL_ERROR;
+                    }
                 }
-                return exception_t::EXCEPTION_SYSCALL_ERROR;
+                _ => {}
             }
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             invoke_set_irq_handler(irq, &ntfn_cap, slot);

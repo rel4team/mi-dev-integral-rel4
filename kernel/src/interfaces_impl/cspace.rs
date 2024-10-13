@@ -73,7 +73,7 @@ pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
 
 #[cfg(target_arch = "aarch64")]
 pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
-    use sel4_common::{structures_gen::cap_Splayed, utils::ptr_to_mut};
+    use sel4_common::utils::ptr_to_mut;
 
     let mut fc_ret = finaliseCap_ret {
         remainder: cap_null_cap::new().unsplay(),

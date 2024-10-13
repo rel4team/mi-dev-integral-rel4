@@ -1,5 +1,6 @@
 use log::debug;
 use sel4_common::arch::config::KERNEL_ELF_BASE;
+use sel4_common::println;
 use sel4_common::{sel4_config::PAGE_BITS, BIT};
 use sel4_task::create_idle_thread;
 use sel4_vspace::{kpptr_to_paddr, rust_map_kernel_window};
@@ -88,6 +89,7 @@ pub fn try_init_kernel(
         debug!("ERROR: free memory management initialization failed\n");
         return false;
     }
+    println!("start init thread");
     if let Some((initial_thread, root_cnode_cap)) = root_server_init(
         it_v_reg,
         extra_bi_size_bits,
@@ -99,6 +101,7 @@ pub fn try_init_kernel(
         pv_offset,
         v_entry,
     ) {
+        println!("finish root server init");
         create_idle_thread();
         cleanInvalidateL1Caches();
         init_core_state(initial_thread);
@@ -123,8 +126,8 @@ pub fn try_init_kernel(
             }
         }
 
-        debug!("Booting all finished, dropped to user space");
-        debug!("\n");
+        println!("Booting all finished, dropped to user space");
+        println!("\n");
     } else {
         return false;
     }

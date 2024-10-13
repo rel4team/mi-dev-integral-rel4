@@ -12,7 +12,7 @@ use crate::capability::{
 };
 use core::intrinsics::{likely, unlikely};
 use core::ptr;
-use sel4_common::structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag};
+use sel4_common::structures_gen::{cap, cap_Splayed, cap_cnode_cap, cap_null_cap, cap_tag};
 use sel4_common::utils::{convert_to_option_mut_type_ref, MAX_FREE_INDEX};
 use sel4_common::{
     sel4_config::wordRadix,
@@ -511,7 +511,7 @@ fn setUntypedCapAsFull(srcCap: &cap, newCap: &cap, srcSlot: &mut cte_t) {
 /// Parse cap_ptr ,get a capbility from cnode.
 #[allow(unreachable_code)]
 pub fn resolve_address_bits(
-    node_cap: &cap,
+    node_cap: &cap_cnode_cap,
     cap_ptr: usize,
     _n_bits: usize,
 ) -> resolveAddressBits_ret_t {
@@ -520,17 +520,17 @@ pub fn resolve_address_bits(
     ret.bitsRemaining = n_bits;
     let mut nodeCap = node_cap.clone();
 
-    if unlikely(nodeCap.get_tag() != cap_tag::cap_cnode_cap) {
+    if unlikely(nodeCap.unsplay().get_tag() != cap_tag::cap_cnode_cap) {
         ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
         return ret;
     }
 
     loop {
-        let radixBits = cap::to_cap_cnode_cap(nodeCap).get_capCNodeRadix() as usize;
-        let guardBits = cap::to_cap_cnode_cap(nodeCap).get_capCNodeGuardSize() as usize;
+        let radixBits = nodeCap.get_capCNodeRadix() as usize;
+        let guardBits = nodeCap.get_capCNodeGuardSize() as usize;
         let levelBits = radixBits + guardBits;
         assert_ne!(levelBits, 0);
-        let capGuard = cap::to_cap_cnode_cap(nodeCap).get_capCNodeGuard() as usize;
+        let capGuard = nodeCap.get_capCNodeGuard() as usize;
         let guard = (cap_ptr >> ((n_bits - guardBits) & MASK!(wordRadix))) & MASK!(guardBits);
         if unlikely(guardBits > n_bits || guard != capGuard) {
             ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
@@ -541,8 +541,7 @@ pub fn resolve_address_bits(
             return ret;
         }
         let offset = (cap_ptr >> (n_bits - levelBits)) & MASK!(radixBits);
-        let slot =
-            unsafe { (cap::to_cap_cnode_cap(nodeCap).get_capCNodePtr() as *mut cte_t).add(offset) };
+        let slot = unsafe { (nodeCap.get_capCNodePtr() as *mut cte_t).add(offset) };
 
         if likely(n_bits == levelBits) {
             ret.slot = slot;
@@ -550,8 +549,8 @@ pub fn resolve_address_bits(
             return ret;
         }
         n_bits -= levelBits;
-        nodeCap = unsafe { (*slot).capability.clone() };
-        if unlikely(nodeCap.get_tag() != cap_tag::cap_cnode_cap) {
+        nodeCap = unsafe { cap::to_cap_cnode_cap((*slot).capability.clone()) };
+        if unlikely(nodeCap.unsplay().get_tag() != cap_tag::cap_cnode_cap) {
             ret.slot = slot;
             ret.bitsRemaining = n_bits;
             return ret;

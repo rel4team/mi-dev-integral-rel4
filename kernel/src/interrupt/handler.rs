@@ -4,7 +4,7 @@ use crate::interrupt::*;
 use core::intrinsics::unlikely;
 use log::debug;
 use sel4_common::structures::exception_t;
-use sel4_common::structures_gen::{cap_Splayed, cap_tag};
+use sel4_common::structures_gen::cap_Splayed;
 use sel4_ipc::notification_t;
 use sel4_task::{activateThread, schedule, timerTick};
 

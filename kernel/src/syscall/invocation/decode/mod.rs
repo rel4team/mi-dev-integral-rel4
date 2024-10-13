@@ -9,7 +9,7 @@ mod decode_untyped_invocation;
 use core::intrinsics::unlikely;
 
 use log::debug;
-use sel4_common::structures_gen::{cap, cap_Splayed, cap_tag};
+use sel4_common::structures_gen::{cap, cap_Splayed};
 use sel4_common::{
     arch::MessageLabel,
     sel4_config::seL4_InvalidCapability,
@@ -114,13 +114,13 @@ pub fn decode_invocation(
             );
             exception_t::EXCEPTION_NONE
         }
-        cap_Splayed::thread_cap(_) => {
-            decode_tcb_invocation(label, length, capability, slot, call, buffer)
+        cap_Splayed::thread_cap(data) => {
+            decode_tcb_invocation(label, length, &data, slot, call, buffer)
         }
         cap_Splayed::domain_cap(_) => decode_domain_invocation(label, length, buffer),
-        cap_Splayed::cnode_cap(_) => decode_cnode_invocation(label, length, capability, buffer),
-        cap_Splayed::untyped_cap(_) => {
-            decode_untyed_invocation(label, length, slot, capability, buffer)
+        cap_Splayed::cnode_cap(data) => decode_cnode_invocation(label, length, &data, buffer),
+        cap_Splayed::untyped_cap(data) => {
+            decode_untyed_invocation(label, length, slot, &data, buffer)
         }
         cap_Splayed::irq_control_cap(_) => {
             decode_irq_control_invocation(label, length, slot, buffer)
