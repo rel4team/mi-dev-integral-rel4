@@ -259,12 +259,12 @@ pub fn create_it_frame_cap(
         frame_size = ARM_Small_Page;
     }
     cap_frame_cap::new(
-        0,
-        vm_rights_t::VMReadWrite as u64,
-        vptr as u64,
-        frame_size as u64,
         asid as u64,
         pptr as u64,
+        frame_size as u64,
+        vptr as u64,
+        vm_rights_t::VMReadWrite as u64,
+        0,
     )
 }
 

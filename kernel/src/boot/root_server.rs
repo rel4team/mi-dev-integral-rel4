@@ -401,7 +401,7 @@ fn create_domain_cap(root_cnode_cap: &cap_cnode_cap) {
     }
     let capability = cap_domain_cap::new().unsplay();
     unsafe {
-        let pos = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+        let pos = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
         write_slot(pos.add(seL4_CapDomain), capability);
     }
 }

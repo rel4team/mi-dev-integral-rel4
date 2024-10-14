@@ -14,30 +14,30 @@ pub fn arch_create_object(
 ) -> cap {
     match obj_type {
         ObjectType::seL4_ARM_SmallPageObject => cap_frame_cap::new(
-            device_mem as u64,
-            vm_rights_t::VMReadWrite as _,
-            0,
-            ARM_Small_Page as u64,
             asidInvalid as u64,
             region_base as u64,
+            ARM_Small_Page as u64,
+            0,
+            vm_rights_t::VMReadWrite as _,
+            device_mem as u64,
         )
         .unsplay(),
         ObjectType::seL4_ARM_LargePageObject => cap_frame_cap::new(
-            device_mem as u64,
-            vm_rights_t::VMReadWrite as _,
-            0,
-            ARM_Large_Page as u64,
             asidInvalid as u64,
             region_base as u64,
+            ARM_Large_Page as u64,
+            0,
+            vm_rights_t::VMReadWrite as _,
+            device_mem as u64,
         )
         .unsplay(),
         ObjectType::seL4_ARM_HugePageObject => cap_frame_cap::new(
-            device_mem as u64,
-            vm_rights_t::VMReadWrite as _,
-            0,
-            ARM_Huge_Page as u64,
             asidInvalid as u64,
             region_base as u64,
+            ARM_Huge_Page as u64,
+            0,
+            vm_rights_t::VMReadWrite as _,
+            device_mem as u64,
         )
         .unsplay(),
         ObjectType::seL4_ARM_VSpaceObject => {
