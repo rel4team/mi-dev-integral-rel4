@@ -50,7 +50,7 @@ mod tests {
         println!("-----------------------------------");
         println!("Entering same_object_as_test case");
         let cap1 = cap_cnode_cap::new(1, 1, 1, 1).unsplay();
-        let cap3 = cap_cnode_cap::new(2, 1, 1, 1).unsplay();
+        let cap3 = cap_cnode_cap::new(1, 1, 2, 1).unsplay();
         let mdb = mdb_node_t::new(0, 0, 0, 0);
         let mut cte1 = cte_t {
             capability: cap1,
@@ -227,8 +227,8 @@ mod tests {
         let guardSize = 2;
         let guard1 = 2;
         let guard2 = 3;
-        let cap1 = cap_cnode_cap::new(3, guardSize, guard1, buffer.as_ptr() as u64);
-        let cap2 = cap_cnode_cap::new(3, guardSize, guard2, buffer.as_ptr() as u64);
+        let cap1 = cap_cnode_cap::new(guard1, guardSize, 3, buffer.as_ptr() as u64);
+        let cap2 = cap_cnode_cap::new(guard2, guardSize, 3, buffer.as_ptr() as u64);
         let mut cte1 = cte_t {
             capability: cap_null_cap::new().unsplay(),
             cteMDBNode: mdb_node_t::new(0, 0, 0, 0),

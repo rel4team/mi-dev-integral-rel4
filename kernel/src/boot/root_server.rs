@@ -299,9 +299,9 @@ unsafe fn root_server_mem_init(it_v_reg: v_region_t, extra_bi_size_bits: usize) 
 
 unsafe fn create_root_cnode() -> cap_cnode_cap {
     let capability = cap_cnode_cap::new(
-        CONFIG_ROOT_CNODE_SIZE_BITS as u64,
-        (wordBits - CONFIG_ROOT_CNODE_SIZE_BITS) as u64,
         0,
+        (wordBits - CONFIG_ROOT_CNODE_SIZE_BITS) as u64,
+        CONFIG_ROOT_CNODE_SIZE_BITS as u64,
         rootserver.cnode as u64,
     );
     let ptr = rootserver.cnode as *mut cte_t;

@@ -258,7 +258,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     let reply_can_grant = dest.tcbState.get_blocking_ipc_can_grant();
 
     caller_slot.capability =
-        cap_reply_cap::new(reply_can_grant as u64, 0, current.get_ptr() as u64).unsplay();
+        cap_reply_cap::new(current.get_ptr() as u64, reply_can_grant as u64, 0).unsplay();
     caller_slot.cteMDBNode.words[0] = reply_slot.get_ptr();
     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
         &mut reply_slot.cteMDBNode,

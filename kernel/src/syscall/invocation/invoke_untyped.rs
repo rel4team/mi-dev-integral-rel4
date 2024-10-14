@@ -92,7 +92,7 @@ fn create_object(
             return cap_thread_cap::new(tcb.get_ptr() as u64).unsplay();
         }
         ObjectType::CapTableObject => {
-            cap_cnode_cap::new(user_size as u64, 0, 0, region_base as u64).unsplay()
+            cap_cnode_cap::new(0, 0, user_size as u64, region_base as u64).unsplay()
         }
         ObjectType::NotificationObject => {
             cap_notification_cap::new(0, 1, 1, region_base as u64).unsplay()

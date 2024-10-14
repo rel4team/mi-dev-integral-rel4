@@ -387,7 +387,7 @@ impl tcb_t {
     pub fn setup_reply_master(&mut self) {
         let slot = self.get_cspace_mut_ref(tcbReply);
         if slot.capability.get_tag() == cap_tag::cap_null_cap {
-            slot.capability = cap_reply_cap::new(1, 1, self.get_ptr() as u64).unsplay();
+            slot.capability = cap_reply_cap::new(self.get_ptr() as u64, 1, 1).unsplay();
             slot.cteMDBNode = mdb_node_t::new(0, 1, 1, 0);
         }
     }
