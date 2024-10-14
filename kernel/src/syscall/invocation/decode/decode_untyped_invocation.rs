@@ -85,7 +85,7 @@ pub fn decode_untyed_invocation(
     if status != exception_t::EXCEPTION_NONE {
         return status;
     }
-    let mut node_cap = cap::to_cap_cnode_cap(cap_null_cap::new().unsplay());
+    let mut node_cap = cap::to_cap_cnode_cap(&cap_null_cap::new().unsplay());
     let status = get_target_cnode(node_index, node_depth, &mut node_cap);
     if status != exception_t::EXCEPTION_NONE {
         return status;
@@ -183,7 +183,7 @@ fn get_target_cnode(
     let target_node_cap = if node_depth == 0 {
         get_extra_cap_by_index(0).unwrap().capability
     } else {
-        let root_cap = cap::to_cap_cnode_cap(get_extra_cap_by_index(0).unwrap().capability);
+        let root_cap = cap::to_cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
         let lu_ret = lookup_slot_for_cnode_op(false, &root_cap, node_index, node_depth);
         if lu_ret.status != exception_t::EXCEPTION_NONE {
             debug!("Untyped Retype: Invalid destination address.");
@@ -202,7 +202,7 @@ fn get_target_cnode(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    *node_cap = cap::to_cap_cnode_cap(target_node_cap);
+    *node_cap = cap::to_cap_cnode_cap(&target_node_cap);
     exception_t::EXCEPTION_NONE
 }
 

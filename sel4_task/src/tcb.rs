@@ -312,7 +312,7 @@ impl tcb_t {
     pub fn set_vm_root(&mut self) -> Result<(), lookup_fault> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
         let thread_root = self.get_cspace(tcbVTable).capability;
-        let thread_root_vspace = cap::to_cap_vspace_cap(thread_root);
+        let thread_root_vspace = cap::to_cap_vspace_cap(&thread_root);
         #[cfg(target_arch = "aarch64")]
         {
             if !thread_root.is_valid_native_root() {
@@ -374,7 +374,7 @@ impl tcb_t {
     /// # Returns
     /// The lookup result structure
     pub fn lookup_slot(&mut self, cap_ptr: usize) -> lookupSlot_raw_ret_t {
-        let thread_root = cap::to_cap_cnode_cap(self.get_cspace(tcbCTable).capability);
+        let thread_root = cap::to_cap_cnode_cap(&self.get_cspace(tcbCTable).capability);
         let res_ret = resolve_address_bits(&thread_root, cap_ptr, wordBits);
         lookupSlot_raw_ret_t {
             status: res_ret.status,
@@ -426,7 +426,7 @@ impl tcb_t {
     pub fn setup_caller_cap(&mut self, sender: &mut Self, can_grant: bool) {
         set_thread_state(sender, ThreadState::ThreadStateBlockedOnReply);
         let reply_slot = sender.get_cspace_mut_ref(tcbReply);
-        let master_cap = cap::to_cap_reply_cap(reply_slot.capability);
+        let master_cap = cap::to_cap_reply_cap(&reply_slot.capability);
 
         assert_eq!(master_cap.unsplay().get_tag(), cap_tag::cap_reply_cap);
         assert_eq!(master_cap.get_capReplyMaster(), 1);
@@ -456,7 +456,7 @@ impl tcb_t {
     /// The IPC buffer of the TCB
     pub fn lookup_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
-        let buffer_cap = cap::to_cap_frame_cap(self.get_cspace(tcbBuffer).capability);
+        let buffer_cap = cap::to_cap_frame_cap(&self.get_cspace(tcbBuffer).capability);
         if unlikely(buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap) {
             return None;
         }
@@ -547,7 +547,7 @@ impl tcb_t {
         is_receiver: bool,
     ) -> Option<&'static mut seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
-        let buffer_cap = cap::to_cap_frame_cap(self.get_cspace(tcbBuffer).capability);
+        let buffer_cap = cap::to_cap_frame_cap(&self.get_cspace(tcbBuffer).capability);
         if buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap {
             return None;
         }
@@ -630,7 +630,7 @@ impl tcb_t {
             if lu_ret.status != exception_t::EXCEPTION_NONE {
                 return None;
             }
-            let cnode_cap = unsafe { &cap::to_cap_cnode_cap((*lu_ret.slot).capability) };
+            let cnode_cap = unsafe { &cap::to_cap_cnode_cap(&(*lu_ret.slot).capability) };
             let lus_ret = resolve_address_bits(cnode_cap, buffer.receiveIndex, buffer.receiveDepth);
             if unlikely(lus_ret.status != exception_t::EXCEPTION_NONE || lus_ret.bitsRemaining != 0)
             {

@@ -35,7 +35,7 @@ pub fn decode_irq_control_invocation(
         let index = get_syscall_arg(1, buffer);
         let depth = get_syscall_arg(2, buffer);
 
-        let cnode_cap = cap::to_cap_cnode_cap(get_extra_cap_by_index(0).unwrap().capability);
+        let cnode_cap = cap::to_cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
         let status = check_irq(irq);
         if status != exception_t::EXCEPTION_NONE {
             return status;

@@ -104,7 +104,7 @@ impl Transfer for tcb_t {
         let mut i = 0;
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
-            let capability = &cap::to_cap_endpoint_cap(slot.capability.clone());
+            let capability = &cap::to_cap_endpoint_cap(&slot.capability.clone());
             if capability.unsplay().get_tag() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()
@@ -148,7 +148,7 @@ impl Transfer for tcb_t {
         let mut i = 0;
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
-            let capability = &cap::to_cap_endpoint_cap(slot.capability.clone());
+            let capability = &cap::to_cap_endpoint_cap(&slot.capability.clone());
             if capability.unsplay().get_tag() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()

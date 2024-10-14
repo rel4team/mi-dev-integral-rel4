@@ -246,7 +246,7 @@ mod tests {
             convert_to_mut_type_ref((cap2.get_capCNodePtr() + idx * 32) as usize),
             &cap3,
         );
-        let res_ret = resolve_address_bits(&cap1.unsplay(), cap_ptr as usize, 10);
+        let res_ret = resolve_address_bits(&cap1, cap_ptr as usize, 10);
 
         let ret_cap = unsafe { (*(res_ret.slot)).capability };
         assert_eq!(ret_cap.get_tag(), cap_tag::cap_domain_cap);

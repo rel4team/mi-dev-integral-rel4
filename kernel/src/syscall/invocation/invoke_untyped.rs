@@ -109,7 +109,7 @@ fn create_object(
 }
 
 pub fn reset_untyped_cap(srcSlot: &mut cte_t) -> exception_t {
-    let prev_cap = &mut cap::to_cap_untyped_cap((*srcSlot).capability);
+    let prev_cap = &mut cap::to_cap_untyped_cap(&(*srcSlot).capability);
     let block_size = prev_cap.get_capBlockSize() as usize;
     let region_base = prev_cap.get_capPtr() as usize;
     let chunk = CONFIG_RESET_CHUNK_BITS;
@@ -149,7 +149,7 @@ pub fn invoke_untyped_retype(
     dest_length: usize,
     device_mem: usize,
 ) -> exception_t {
-    let region_base = cap::to_cap_untyped_cap(src_slot.capability).get_capPtr() as usize;
+    let region_base = cap::to_cap_untyped_cap(&src_slot.capability).get_capPtr() as usize;
     if reset {
         let status = reset_untyped_cap(src_slot);
         if status != exception_t::EXCEPTION_NONE {
@@ -158,7 +158,7 @@ pub fn invoke_untyped_retype(
     }
     let total_object_size = dest_length << new_type.get_object_size(user_size);
     let free_ref = retype_base + total_object_size;
-    cap::to_cap_untyped_cap(src_slot.capability)
+    cap::to_cap_untyped_cap(&src_slot.capability)
         .set_capFreeIndex(GET_FREE_INDEX(region_base, free_ref) as u64);
     create_new_objects(
         new_type,

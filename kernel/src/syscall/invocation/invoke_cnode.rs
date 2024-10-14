@@ -174,10 +174,10 @@ pub fn invoke_cnode_cancel_badged_sends(dest_slot: &mut cte_t) -> exception_t {
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-    let badge = cap::to_cap_endpoint_cap(dest_cap).get_capEPBadge() as usize;
+    let badge = cap::to_cap_endpoint_cap(&dest_cap).get_capEPBadge() as usize;
     if badge != 0 {
         convert_to_mut_type_ref::<endpoint_t>(
-            cap::to_cap_endpoint_cap(dest_cap).get_capEPPtr() as usize
+            cap::to_cap_endpoint_cap(&dest_cap).get_capEPPtr() as usize
         )
         .cancel_badged_sends(badge);
     }

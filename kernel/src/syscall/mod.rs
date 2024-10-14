@@ -116,7 +116,7 @@ fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
         }
         return exception_t::EXCEPTION_FAULT;
     }
-    let handler_cap = &mut cap::to_cap_endpoint_cap(ptr_to_mut(lu_ret.slot).capability);
+    let handler_cap = &mut cap::to_cap_endpoint_cap(&ptr_to_mut(lu_ret.slot).capability);
     if handler_cap.unsplay().get_tag() == cap_tag::cap_endpoint_cap
         && (handler_cap.get_capCanGrant() != 0 || handler_cap.get_capCanGrantReply() != 0)
     {
@@ -152,7 +152,7 @@ pub fn handle_fault(thread: &mut tcb_t) {
 fn handle_reply() {
     let current_thread = get_currenct_thread();
     let caller_slot = current_thread.get_cspace_mut_ref(tcbCaller);
-    let caller_cap = &cap::to_cap_reply_cap(caller_slot.capability);
+    let caller_cap = &cap::to_cap_reply_cap(&caller_slot.capability);
     if caller_cap.unsplay().get_tag() == cap_tag::cap_reply_cap {
         if caller_cap.get_capReplyMaster() != 0 {
             return;

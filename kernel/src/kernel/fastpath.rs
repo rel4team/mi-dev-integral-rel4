@@ -45,7 +45,7 @@ pub fn lookup_fp(_cap: &cap_cnode_cap, cptr: usize) -> cap {
 
         radix = cptr2 << guardBits >> (wordBits - radixBits);
         slot = unsafe { (capability.get_capCNodePtr() as *mut cte_t).add(radix) };
-        capability = unsafe { cap::to_cap_cnode_cap((*slot).capability) };
+        capability = unsafe { cap::to_cap_cnode_cap(&(*slot).capability) };
         bits += guardBits + radixBits;
 
         if likely(!(bits < wordBits && capability.unsplay().get_tag() == cap_tag::cap_cnode_cap)) {
@@ -206,8 +206,8 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     if fastpath_mi_check(msgInfo) || current.tcbFault.get_fault_type() != FaultType::NullFault {
         slowpath(SysCall as usize);
     }
-    let ep_cap = cap::to_cap_endpoint_cap(lookup_fp(
-        &cap::to_cap_cnode_cap(current.get_cspace(tcbCTable).capability),
+    let ep_cap = cap::to_cap_endpoint_cap(&lookup_fp(
+        &cap::to_cap_cnode_cap(&current.get_cspace(tcbCTable).capability),
         cptr,
     ));
     if unlikely(
@@ -223,7 +223,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     }
 
     let dest = convert_to_mut_type_ref::<tcb_t>(ep.get_queue_head());
-    let new_vtable = cap::to_cap_page_table_cap(dest.get_cspace(tcbVTable).capability);
+    let new_vtable = cap::to_cap_page_table_cap(&dest.get_cspace(tcbVTable).capability);
 
     if unlikely(!isValidVTableRoot_fp(&new_vtable.unsplay())) {
         slowpath(SysCall as usize);
@@ -290,8 +290,8 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         slowpath(SysReplyRecv as usize);
     }
 
-    let ep_cap = cap::to_cap_endpoint_cap(lookup_fp(
-        &cap::to_cap_cnode_cap(current.get_cspace(tcbCTable).capability),
+    let ep_cap = cap::to_cap_endpoint_cap(&lookup_fp(
+        &cap::to_cap_cnode_cap(&current.get_cspace(tcbCTable).capability),
         cptr,
     ));
 
@@ -315,7 +315,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     }
 
     let caller_slot = current.get_cspace_mut_ref(tcbCaller);
-    let caller_cap = &cap::to_cap_reply_cap(caller_slot.capability);
+    let caller_cap = &cap::to_cap_reply_cap(&caller_slot.capability);
 
     if unlikely(caller_cap.unsplay().get_tag() != cap_tag::cap_reply_cap) {
         slowpath(SysReplyRecv as usize);
@@ -326,7 +326,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         slowpath(SysReplyRecv as usize);
     }
 
-    let new_vtable = &cap::to_cap_page_table_cap(caller.get_cspace(tcbVTable).capability);
+    let new_vtable = &cap::to_cap_page_table_cap(&caller.get_cspace(tcbVTable).capability);
 
     if unlikely(!isValidVTableRoot_fp(&new_vtable.unsplay())) {
         slowpath(SysReplyRecv as usize);

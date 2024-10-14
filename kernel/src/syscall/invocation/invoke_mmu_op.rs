@@ -105,13 +105,13 @@ pub fn invoke_page_get_address(vbase_ptr: usize, call: bool) -> exception_t {
 }
 
 pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
-    if cap::to_cap_frame_cap(frame_slot.capability).get_capFMappedASID() as usize != asidInvalid {
+    if cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedASID() as usize != asidInvalid {
         match unmapPage(
-            cap::to_cap_frame_cap(frame_slot.capability).get_capFSize() as usize,
-            cap::to_cap_frame_cap(frame_slot.capability).get_capFMappedASID() as usize,
+            cap::to_cap_frame_cap(&frame_slot.capability).get_capFSize() as usize,
+            cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedASID() as usize,
             // FIXME: here should be frame_mapped_address.
-            cap::to_cap_frame_cap(frame_slot.capability).get_capFMappedAddress() as usize,
-            cap::to_cap_frame_cap(frame_slot.capability).get_capFBasePtr() as usize,
+            cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedAddress() as usize,
+            cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize,
         ) {
             Err(lookup_fault) => unsafe {
                 current_lookup_fault = lookup_fault;
@@ -119,8 +119,8 @@ pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
             _ => {}
         }
     }
-    cap::to_cap_frame_cap(frame_slot.capability).set_capFMappedAddress(0);
-    cap::to_cap_frame_cap(frame_slot.capability).set_capFMappedASID(asidInvalid as u64);
+    cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedAddress(0);
+    cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedASID(asidInvalid as u64);
     exception_t::EXCEPTION_NONE
 }
 

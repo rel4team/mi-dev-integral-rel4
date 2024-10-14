@@ -494,7 +494,7 @@ fn setUntypedCapAsFull(srcCap: &cap, newCap: &cap, srcSlot: &mut cte_t) {
                 if data1.get_capPtr() == data2.get_capPtr()
                     && data1.get_capBlockSize() == data2.get_capBlockSize()
                 {
-                    cap::to_cap_untyped_cap(srcSlot.capability)
+                    cap::to_cap_untyped_cap(&srcSlot.capability)
                         .set_capFreeIndex(MAX_FREE_INDEX(data1.get_capBlockSize() as usize) as u64);
                 }
             }
@@ -549,7 +549,7 @@ pub fn resolve_address_bits(
             return ret;
         }
         n_bits -= levelBits;
-        nodeCap = unsafe { cap::to_cap_cnode_cap((*slot).capability.clone()) };
+        nodeCap = unsafe { cap::to_cap_cnode_cap(&(*slot).capability.clone()) };
         if unlikely(nodeCap.unsplay().get_tag() != cap_tag::cap_cnode_cap) {
             ret.slot = slot;
             ret.bitsRemaining = n_bits;

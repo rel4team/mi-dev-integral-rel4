@@ -50,7 +50,7 @@ pub fn decode_domain_invocation(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let thread_cap = cap::to_cap_thread_cap(get_extra_cap_by_index(0).unwrap().capability);
+    let thread_cap = cap::to_cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
     if unlikely(thread_cap.unsplay().get_tag() != cap_tag::cap_thread_cap) {
         debug!("Domain Configure: thread cap required.");
         unsafe {
