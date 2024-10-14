@@ -108,8 +108,7 @@ pub fn decode_untyed_invocation(
     };
 
     let free_ref = GET_FREE_REF(capability.get_capPtr() as usize, free_index);
-    let untyped_free_bytes = BIT!(capability.get_capFreeIndex()) - FREE_INDEX_TO_OFFSET(free_index);
-
+    let untyped_free_bytes = BIT!(capability.get_capBlockSize()) - FREE_INDEX_TO_OFFSET(free_index);
     if (untyped_free_bytes >> obj_size) < node_window {
         debug!(
             "Untyped Retype: Insufficient memory({} * {} bytes needed, {} bytes available)",
