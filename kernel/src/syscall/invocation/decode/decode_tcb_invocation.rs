@@ -370,8 +370,9 @@ fn decode_set_priority(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let auth_tcb =
-        convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(&auth_cap).get_capTCBPtr() as usize);
+    let auth_tcb = convert_to_mut_type_ref::<tcb_t>(
+        cap::to_cap_thread_cap(&auth_cap).get_capTCBPtr() as usize,
+    );
     let status = check_prio(new_prio, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
         return status;
@@ -406,8 +407,9 @@ fn decode_set_mc_priority(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let auth_tcb =
-        convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(&auth_cap).get_capTCBPtr() as usize);
+    let auth_tcb = convert_to_mut_type_ref::<tcb_t>(
+        cap::to_cap_thread_cap(&auth_cap).get_capTCBPtr() as usize,
+    );
     let status = check_prio(new_mcp, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
         debug!(
@@ -498,7 +500,8 @@ fn decode_set_ipc_buffer(
             }
             return dc_ret.status;
         }
-        let status = check_ipc_buffer_vaild(buffer_addr, &cap::to_cap_frame_cap(&dc_ret.capability));
+        let status =
+            check_ipc_buffer_vaild(buffer_addr, &cap::to_cap_frame_cap(&dc_ret.capability));
         if status != exception_t::EXCEPTION_NONE {
             return status;
         }

@@ -515,7 +515,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedAddress(vaddr as u64);
     return invoke_page_map(
         asid,
-        cap::to_cap_frame_cap(&frame_slot.capability.clone()),
+        *cap::to_cap_frame_cap(&frame_slot.capability.clone()),
         PTE::make_user_pte(base, vm_rights, attr, frame_size),
         pt_slot,
     );
@@ -780,7 +780,8 @@ fn decode_vspace_root_invocation(
                 };
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
-            let vspace_root = cap::to_cap_vspace_cap(&cte.capability).get_capVSBasePtr() as *mut PTE;
+            let vspace_root =
+                cap::to_cap_vspace_cap(&cte.capability).get_capVSBasePtr() as *mut PTE;
             let asid = cap::to_cap_asid_pool_cap(&cte.capability).get_capASIDBase() as usize;
             let find_ret = find_vspace_for_asid(asid);
             if find_ret.status != exception_t::EXCEPTION_NONE {

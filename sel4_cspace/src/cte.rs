@@ -549,7 +549,7 @@ pub fn resolve_address_bits(
             return ret;
         }
         n_bits -= levelBits;
-        nodeCap = unsafe { cap::to_cap_cnode_cap(&(*slot).capability.clone()) };
+        nodeCap = unsafe { *cap::to_cap_cnode_cap(&(*slot).capability) };
         if unlikely(nodeCap.unsplay().get_tag() != cap_tag::cap_cnode_cap) {
             ret.slot = slot;
             ret.bitsRemaining = n_bits;

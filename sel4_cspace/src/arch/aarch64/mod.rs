@@ -3,7 +3,7 @@ use sel4_common::{
     cap_rights::seL4_CapRights_t,
     structures::exception_t,
     structures_gen::{cap_Splayed, cap_tag},
-    utils::pageBitsForSize,
+    utils::{pageBitsForSize, ptr_to_mut},
     vm_rights::vm_rights_from_word,
     MASK,
 };
@@ -279,70 +279,70 @@ pub fn arch_same_object_as(cap1: &cap, cap2: &cap) -> bool {
 }
 
 pub trait cap_trans {
-    fn to_cap_null_cap(capability: &Self) -> cap_null_cap;
-    fn to_cap_untyped_cap(capability: &Self) -> cap_untyped_cap;
-    fn to_cap_endpoint_cap(capability: &Self) -> cap_endpoint_cap;
-    fn to_cap_notification_cap(capability: &Self) -> cap_notification_cap;
-    fn to_cap_reply_cap(capability: &Self) -> cap_reply_cap;
-    fn to_cap_cnode_cap(capability: &Self) -> cap_cnode_cap;
-    fn to_cap_thread_cap(capability: &Self) -> cap_thread_cap;
-    fn to_cap_irq_control_cap(capability: &Self) -> cap_irq_control_cap;
-    fn to_cap_irq_handler_cap(capability: &Self) -> cap_irq_handler_cap;
-    fn to_cap_zombie_cap(capability: &Self) -> cap_zombie_cap;
-    fn to_cap_domain_cap(capability: &Self) -> cap_domain_cap;
-    fn to_cap_frame_cap(capability: &Self) -> cap_frame_cap;
-    fn to_cap_page_table_cap(capability: &Self) -> cap_page_table_cap;
-    fn to_cap_vspace_cap(capability: &Self) -> cap_vspace_cap;
-    fn to_cap_asid_control_cap(capability: &Self) -> cap_asid_control_cap;
-    fn to_cap_asid_pool_cap(capability: &Self) -> cap_asid_pool_cap;
+    fn to_cap_null_cap(capability: &Self) -> &mut cap_null_cap;
+    fn to_cap_untyped_cap(capability: &Self) -> &mut cap_untyped_cap;
+    fn to_cap_endpoint_cap(capability: &Self) -> &mut cap_endpoint_cap;
+    fn to_cap_notification_cap(capability: &Self) -> &mut cap_notification_cap;
+    fn to_cap_reply_cap(capability: &Self) -> &mut cap_reply_cap;
+    fn to_cap_cnode_cap(capability: &Self) -> &mut cap_cnode_cap;
+    fn to_cap_thread_cap(capability: &Self) -> &mut cap_thread_cap;
+    fn to_cap_irq_control_cap(capability: &Self) -> &mut cap_irq_control_cap;
+    fn to_cap_irq_handler_cap(capability: &Self) -> &mut cap_irq_handler_cap;
+    fn to_cap_zombie_cap(capability: &Self) -> &mut cap_zombie_cap;
+    fn to_cap_domain_cap(capability: &Self) -> &mut cap_domain_cap;
+    fn to_cap_frame_cap(capability: &Self) -> &mut cap_frame_cap;
+    fn to_cap_page_table_cap(capability: &Self) -> &mut cap_page_table_cap;
+    fn to_cap_vspace_cap(capability: &Self) -> &mut cap_vspace_cap;
+    fn to_cap_asid_control_cap(capability: &Self) -> &mut cap_asid_control_cap;
+    fn to_cap_asid_pool_cap(capability: &Self) -> &mut cap_asid_pool_cap;
 }
 impl cap_trans for cap {
-    fn to_cap_null_cap(capability: &Self) -> cap_null_cap {
-        unsafe { core::mem::transmute::<cap, cap_null_cap>(*capability) }
+    fn to_cap_null_cap(capability: &Self) -> &mut cap_null_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_null_cap)
     }
-    fn to_cap_untyped_cap(capability: &Self) -> cap_untyped_cap {
-        unsafe { core::mem::transmute::<cap, cap_untyped_cap>(*capability) }
+    fn to_cap_untyped_cap(capability: &Self) -> &mut cap_untyped_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_untyped_cap)
     }
-    fn to_cap_endpoint_cap(capability: &Self) -> cap_endpoint_cap {
-        unsafe { core::mem::transmute::<cap, cap_endpoint_cap>(*capability) }
+    fn to_cap_endpoint_cap(capability: &Self) -> &mut cap_endpoint_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_endpoint_cap)
     }
-    fn to_cap_notification_cap(capability: &Self) -> cap_notification_cap {
-        unsafe { core::mem::transmute::<cap, cap_notification_cap>(*capability) }
+    fn to_cap_notification_cap(capability: &Self) -> &mut cap_notification_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_notification_cap)
     }
-    fn to_cap_reply_cap(capability: &Self) -> cap_reply_cap {
-        unsafe { core::mem::transmute::<cap, cap_reply_cap>(*capability) }
+    fn to_cap_reply_cap(capability: &Self) -> &mut cap_reply_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_reply_cap)
     }
-    fn to_cap_cnode_cap(capability: &Self) -> cap_cnode_cap {
-        unsafe { core::mem::transmute::<cap, cap_cnode_cap>(*capability) }
+    fn to_cap_cnode_cap(capability: &Self) -> &mut cap_cnode_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_cnode_cap)
     }
-    fn to_cap_thread_cap(capability: &Self) -> cap_thread_cap {
-        unsafe { core::mem::transmute::<cap, cap_thread_cap>(*capability) }
+    fn to_cap_thread_cap(capability: &Self) -> &mut cap_thread_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_thread_cap)
     }
-    fn to_cap_irq_control_cap(capability: &Self) -> cap_irq_control_cap {
-        unsafe { core::mem::transmute::<cap, cap_irq_control_cap>(*capability) }
+    fn to_cap_irq_control_cap(capability: &Self) -> &mut cap_irq_control_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_irq_control_cap)
     }
-    fn to_cap_irq_handler_cap(capability: &Self) -> cap_irq_handler_cap {
-        unsafe { core::mem::transmute::<cap, cap_irq_handler_cap>(*capability) }
+    fn to_cap_irq_handler_cap(capability: &Self) -> &mut cap_irq_handler_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_irq_handler_cap)
     }
-    fn to_cap_zombie_cap(capability: &Self) -> cap_zombie_cap {
-        unsafe { core::mem::transmute::<cap, cap_zombie_cap>(*capability) }
+    fn to_cap_zombie_cap(capability: &Self) -> &mut cap_zombie_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_zombie_cap)
     }
-    fn to_cap_domain_cap(capability: &Self) -> cap_domain_cap {
-        unsafe { core::mem::transmute::<cap, cap_domain_cap>(*capability) }
+    fn to_cap_domain_cap(capability: &Self) -> &mut cap_domain_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_domain_cap)
     }
-    fn to_cap_frame_cap(capability: &Self) -> cap_frame_cap {
-        unsafe { core::mem::transmute::<cap, cap_frame_cap>(*capability) }
+    fn to_cap_frame_cap(capability: &Self) -> &mut cap_frame_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_frame_cap)
     }
-    fn to_cap_page_table_cap(capability: &Self) -> cap_page_table_cap {
-        unsafe { core::mem::transmute::<cap, cap_page_table_cap>(*capability) }
+    fn to_cap_page_table_cap(capability: &Self) -> &mut cap_page_table_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_page_table_cap)
     }
-    fn to_cap_vspace_cap(capability: &Self) -> cap_vspace_cap {
-        unsafe { core::mem::transmute::<cap, cap_vspace_cap>(*capability) }
+    fn to_cap_vspace_cap(capability: &Self) -> &mut cap_vspace_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_vspace_cap)
     }
-    fn to_cap_asid_control_cap(capability: &Self) -> cap_asid_control_cap {
-        unsafe { core::mem::transmute::<cap, cap_asid_control_cap>(*capability) }
+    fn to_cap_asid_control_cap(capability: &Self) -> &mut cap_asid_control_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_asid_control_cap)
     }
-    fn to_cap_asid_pool_cap(capability: &Self) -> cap_asid_pool_cap {
-        unsafe { core::mem::transmute::<cap, cap_asid_pool_cap>(*capability) }
+    fn to_cap_asid_pool_cap(capability: &Self) -> &mut cap_asid_pool_cap {
+        ptr_to_mut(capability as *const _ as *mut cap_asid_pool_cap)
     }
 }

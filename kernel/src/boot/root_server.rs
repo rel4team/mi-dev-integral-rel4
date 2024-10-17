@@ -483,7 +483,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pud_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID).unsplay(),
         ) {
-            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
+            return *cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
         }
         vptr += BIT!(PGD_INDEX_OFFSET);
     }
@@ -495,7 +495,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pd_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
         ) {
-            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
+            return *cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
         }
         vptr += BIT!(PUD_INDEX_OFFSET);
     }
@@ -507,7 +507,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pt_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID).unsplay(),
         ) {
-            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
+            return *cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
         }
         vptr += BIT!(PD_INDEX_OFFSET);
     }
