@@ -273,14 +273,14 @@ impl cte_t {
                         cap_Splayed::null_cap(_) => {
                             return exception_t::EXCEPTION_NONE;
                         }
-                        cap_Splayed::zombie_cap(mut data2) => {
+                        cap_Splayed::zombie_cap(data2) => {
                             let ptr2 = data2.get_zombie_ptr();
                             if ptr == ptr2
                                 && data2.get_zombie_number() == n
                                 && data2.get_capZombieType() == zombie_type
                             {
                                 assert_eq!(end_slot.capability.get_tag(), cap_tag::cap_null_cap);
-                                data2.set_zombie_number(n - 1);
+                                cap::to_cap_zombie_cap(&self.capability).set_zombie_number(n - 1);
                             } else {
                                 assert!(ptr2 == self_ptr && ptr != self_ptr);
                             }

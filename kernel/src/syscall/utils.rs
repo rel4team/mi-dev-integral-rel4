@@ -264,7 +264,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
         }
         cap_Splayed::reply_cap(data) => {
             let capability_copy = &capability.clone();
-            let mut new_cap = cap::to_cap_reply_cap(capability_copy);
+            let new_cap = cap::to_cap_reply_cap(capability_copy);
             new_cap.set_capReplyCanGrant(
                 data.get_capReplyCanGrant() & rights.get_allow_grant() as u64,
             );

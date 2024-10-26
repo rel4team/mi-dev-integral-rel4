@@ -406,8 +406,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let mut asid = cap::to_cap_asid_pool_cap(&cte.capability).get_capASIDPool() as usize;
-
+    let mut asid = cap::to_cap_asid_pool_cap(&cte.capability).get_capASIDBase() as usize;
     let pool = convert_to_mut_type_ref::<asid_pool_t>(pool);
     let mut i = 0;
 
