@@ -311,7 +311,7 @@ impl tcb_t {
     /// Set the VM root of the TCB
     pub fn set_vm_root(&mut self) -> Result<(), lookup_fault> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
-        let thread_root = self.get_cspace(tcbVTable).capability;
+        let thread_root = &self.get_cspace(tcbVTable).capability;
         let thread_root_vspace = cap::to_cap_vspace_cap(&thread_root);
         #[cfg(target_arch = "aarch64")]
         {
@@ -428,7 +428,7 @@ impl tcb_t {
         let reply_slot = sender.get_cspace_mut_ref(tcbReply);
         let master_cap = cap::to_cap_reply_cap(&reply_slot.capability);
 
-        assert_eq!(master_cap.unsplay().get_tag(), cap_tag::cap_reply_cap);
+        assert_eq!(master_cap.clone().unsplay().get_tag(), cap_tag::cap_reply_cap);
         assert_eq!(master_cap.get_capReplyMaster(), 1);
         assert_eq!(master_cap.get_capReplyCanGrant(), 1);
         assert_eq!(master_cap.get_capTCBPtr() as usize, sender.get_ptr());
@@ -457,7 +457,7 @@ impl tcb_t {
     pub fn lookup_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = cap::to_cap_frame_cap(&self.get_cspace(tcbBuffer).capability);
-        if unlikely(buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap) {
+        if unlikely(buffer_cap.clone().unsplay().get_tag() != cap_tag::cap_frame_cap) {
             return None;
         }
 
@@ -548,7 +548,7 @@ impl tcb_t {
     ) -> Option<&'static mut seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = cap::to_cap_frame_cap(&self.get_cspace(tcbBuffer).capability);
-        if buffer_cap.unsplay().get_tag() != cap_tag::cap_frame_cap {
+        if buffer_cap.clone().unsplay().get_tag() != cap_tag::cap_frame_cap {
             return None;
         }
 
@@ -603,7 +603,7 @@ impl tcb_t {
         } else {
             assert_eq!(offset, 1);
         }
-        match fault.splay() {
+        match fault.clone().splay() {
             lookup_fault_Splayed::invalid_root(_) => i,
             lookup_fault_Splayed::missing_capability(data) => {
                 self.set_mr(offset + 1, data.get_bitsLeft() as usize)

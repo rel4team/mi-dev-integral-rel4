@@ -67,7 +67,7 @@ pub fn root_server_init(
         root_server_mem_init(it_v_reg, extra_bi_size_bits);
     }
     let root_cnode_cap = unsafe { create_root_cnode() };
-    if root_cnode_cap.unsplay().get_tag() == cap_tag::cap_null_cap {
+    if root_cnode_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: root c-node creation failed\n");
         return None;
     }
@@ -78,14 +78,14 @@ pub fn root_server_init(
         rust_populate_bi_frame(0, CONFIG_MAX_NUM_NODES, ipcbuf_vptr, extra_bi_size);
     }
     let it_pd_cap = unsafe { rust_create_it_address_space(&root_cnode_cap, it_v_reg) };
-    if it_pd_cap.unsplay().get_tag() == cap_tag::cap_null_cap {
+    if it_pd_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: address space creation for initial thread failed");
         return None;
     }
 
     if !init_bi_frame_cap(
-        root_cnode_cap,
-        it_pd_cap,
+        &root_cnode_cap,
+        &it_pd_cap,
         bi_frame_vptr,
         extra_bi_size,
         extra_bi_frame_vptr,
@@ -93,20 +93,20 @@ pub fn root_server_init(
         return None;
     }
     let ipcbuf_cap = unsafe { create_ipcbuf_frame_cap(&root_cnode_cap, &it_pd_cap, ipcbuf_vptr) };
-    if ipcbuf_cap.unsplay().get_tag() == cap_tag::cap_null_cap {
+    if ipcbuf_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create IPC buffer for initial thread");
         return None;
     }
 
-    if ipcbuf_cap.unsplay().get_tag() == cap_tag::cap_null_cap {
+    if ipcbuf_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create IPC buffer for initial thread");
         return None;
     }
-    if !create_frame_ui_frames(root_cnode_cap, it_pd_cap, ui_reg, pv_offset) {
+    if !create_frame_ui_frames(&root_cnode_cap, &it_pd_cap, ui_reg, pv_offset) {
         return None;
     }
 
-    if !asid_init(root_cnode_cap, it_pd_cap) {
+    if !asid_init(&root_cnode_cap, &it_pd_cap) {
         return None;
     }
 
@@ -140,7 +140,7 @@ unsafe fn create_initial_thread(
     tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
     tcb.tcbArch = ArchTCB::default();
 
-    let cnode = convert_to_mut_type_ref::<cte_t>(root_cnode_cap.unsplay().get_cap_ptr());
+    let cnode = convert_to_mut_type_ref::<cte_t>(root_cnode_cap.get_capCNodePtr() as usize);
     let ipc_buf_slot = cnode.get_offset_slot(seL4_CapInitThreadIPCBuffer);
     let dc_ret = ipc_buf_slot.derive_cap(&ipcbuf_cap.unsplay().clone());
     if dc_ret.status != exception_t::EXCEPTION_NONE {
@@ -149,13 +149,13 @@ unsafe fn create_initial_thread(
     }
 
     cte_insert(
-        &root_cnode_cap.unsplay(),
+        &root_cnode_cap.clone().unsplay(),
         cnode.get_offset_slot(seL4_CapInitThreadCNode),
         tcb.get_cspace_mut_ref(tcbCTable),
     );
 
     cte_insert(
-        &it_pd_cap.unsplay(),
+        &it_pd_cap.clone().unsplay(),
         cnode.get_offset_slot(seL4_CapInitThreadVspace),
         tcb.get_cspace_mut_ref(tcbVTable),
     );
@@ -191,8 +191,8 @@ unsafe fn create_initial_thread(
     tcb as *mut tcb_t
 }
 
-fn asid_init(root_cnode_cap: cap_cnode_cap, it_pd_cap: cap_vspace_cap) -> bool {
-    let it_ap_cap = create_it_asid_pool(&root_cnode_cap);
+fn asid_init(root_cnode_cap: &cap_cnode_cap, it_pd_cap: &cap_vspace_cap) -> bool {
+    let it_ap_cap = create_it_asid_pool(root_cnode_cap);
     if it_ap_cap.get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create ASID pool for initial thread");
         return false;
@@ -206,7 +206,7 @@ fn asid_init(root_cnode_cap: cap_cnode_cap, it_pd_cap: cap_vspace_cap) -> bool {
     }
     #[cfg(target_arch = "aarch64")]
     {
-        write_it_asid_pool(&it_ap_cap, &it_pd_cap);
+        write_it_asid_pool(&it_ap_cap, it_pd_cap);
     }
     true
 }
@@ -220,7 +220,7 @@ fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap {
             .unsplay()
     };
     unsafe {
-        let ptr = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+        let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
         write_slot(ptr.add(seL4_CapInitThreadASIDPool), ap_cap.clone());
         write_slot(
             ptr.add(seL4_CapASIDControl),
@@ -236,8 +236,8 @@ fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap {
 }
 
 fn create_frame_ui_frames(
-    root_cnode_cap: cap_cnode_cap,
-    it_pd_cap: cap_vspace_cap,
+    root_cnode_cap: &cap_cnode_cap,
+    it_pd_cap: &cap_vspace_cap,
     ui_reg: region_t,
     pv_offset: isize,
 ) -> bool {
@@ -419,7 +419,7 @@ fn init_irqs(root_cnode_cap: &cap_cnode_cap) {
         setIRQState(IRQState::IRQIPI, INTERRUPT_IPI_1);
     }
     unsafe {
-        let ptr = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+        let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
         write_slot(
             ptr.add(seL4_CapIRQControl),
             cap_irq_control_cap::new().unsplay(),
@@ -466,7 +466,7 @@ unsafe fn rust_create_it_address_space(
     use sel4_common::structures_gen::cap_null_cap;
     use sel4_cspace::arch::cap_trans;
     let vspace_cap = cap_vspace_cap::new(IT_ASID as u64, rootserver.vspace as u64, 1);
-    let ptr = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+    let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     let slot_pos_before = ndks_boot.slot_pos_cur;
     write_slot(
         ptr.add(seL4_CapInitThreadVspace),
@@ -483,7 +483,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pud_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID).unsplay(),
         ) {
-            return *cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
+            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
         }
         vptr += BIT!(PGD_INDEX_OFFSET);
     }
@@ -495,7 +495,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pd_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
         ) {
-            return *cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
+            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
         }
         vptr += BIT!(PUD_INDEX_OFFSET);
     }
@@ -507,7 +507,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pt_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID).unsplay(),
         ) {
-            return *cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay());
+            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
         }
         vptr += BIT!(PD_INDEX_OFFSET);
     }
@@ -521,14 +521,14 @@ unsafe fn rust_create_it_address_space(
 }
 
 fn init_bi_frame_cap(
-    root_cnode_cap: cap_cnode_cap,
-    it_pd_cap: cap_vspace_cap,
+    root_cnode_cap: &cap_cnode_cap,
+    it_pd_cap: &cap_vspace_cap,
     bi_frame_vptr: usize,
     extra_bi_size: usize,
     extra_bi_frame_vptr: usize,
 ) -> bool {
     unsafe {
-        create_bi_frame_cap(&root_cnode_cap, &it_pd_cap, bi_frame_vptr);
+        create_bi_frame_cap(root_cnode_cap, it_pd_cap, bi_frame_vptr);
     }
     if extra_bi_size > 0 {
         let extra_bi_region = unsafe {
@@ -538,8 +538,8 @@ fn init_bi_frame_cap(
             }
         };
         let extra_bi_ret = rust_create_frames_of_region(
-            &root_cnode_cap,
-            &it_pd_cap,
+            root_cnode_cap,
+            it_pd_cap,
             extra_bi_region,
             true,
             pptr_to_paddr(extra_bi_region.start) as isize - extra_bi_frame_vptr as isize,
@@ -607,7 +607,7 @@ unsafe fn create_bi_frame_cap(
 ) {
     let capability =
         create_mapped_it_frame_cap(pd_cap, rootserver.boot_info, vptr, IT_ASID, false, false);
-    let ptr = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+    let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapBootInfoFrame), capability.unsplay());
 }
 
@@ -645,7 +645,7 @@ unsafe fn create_ipcbuf_frame_cap(
     clear_memory(rootserver.ipc_buf as *mut u8, PAGE_BITS);
     let capability =
         create_mapped_it_frame_cap(pd_cap, rootserver.ipc_buf, vptr, IT_ASID, false, false);
-    let ptr = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+    let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     write_slot(
         ptr.add(seL4_CapInitThreadIPCBuffer),
         capability.clone().unsplay(),

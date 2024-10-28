@@ -55,7 +55,7 @@ pub fn decode_mmu_invocation(
     call: bool,
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
-    match slot.capability.splay() {
+    match slot.capability.clone().splay() {
         cap_Splayed::vspace_cap(_) => decode_vspace_root_invocation(label, length, slot, buffer),
         cap_Splayed::page_table_cap(_) => decode_page_table_invocation(label, length, slot, buffer),
         cap_Splayed::frame_cap(_) => decode_frame_invocation(label, length, slot, call, buffer),
@@ -113,7 +113,7 @@ fn decode_page_table_invocation(
     let vspace_root_cap =
         convert_to_mut_type_ref::<cap_vspace_cap>(global_ops!(current_extra_caps.excaprefs[0]));
 
-    if unlikely(!vspace_root_cap.unsplay().is_valid_native_root()) {
+    if unlikely(!vspace_root_cap.clone().unsplay().is_valid_native_root()) {
         global_ops!(current_syscall_error._type = seL4_InvalidCapability);
         global_ops!(current_syscall_error.invalidCapNumber = 1);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -329,7 +329,7 @@ fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuff
     }
     let asid_base = i << asidLowBits;
     if unlikely(
-        untyped.unsplay().get_tag() != cap_tag::cap_untyped_cap
+        untyped.clone().unsplay().get_tag() != cap_tag::cap_untyped_cap
             || untyped.get_capBlockSize() as usize != seL4_ASIDPoolBits
             || untyped.get_capIsDevice() == 1,
     ) {
@@ -381,7 +381,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     let vspace_cap_slot = global_ops!(current_extra_caps.excaprefs[0]);
     let vspace_cap = convert_to_mut_type_ref::<cap_vspace_cap>(vspace_cap_slot);
 
-    if unlikely(!vspace_cap.unsplay().is_vtable_root() || vspace_cap.get_capVSIsMapped() == 1) {
+    if unlikely(!vspace_cap.clone().unsplay().is_vtable_root() || vspace_cap.get_capVSIsMapped() == 1) {
         log::debug!("is not a valid vtable root");
         global_ops!(current_syscall_error._type = seL4_InvalidCapability);
         global_ops!(current_syscall_error.invalidArgumentNumber = 1);
@@ -449,7 +449,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
         frame_vm_rights,
         seL4_CapRights_t::from_word(get_syscall_arg(1, buffer)),
     );
-    if unlikely(!vspace_root_cap.unsplay().is_valid_native_root()) {
+    if unlikely(!vspace_root_cap.clone().unsplay().is_valid_native_root()) {
         global_ops!(current_syscall_error._type = seL4_InvalidCapability);
         global_ops!(current_syscall_error.invalidCapNumber = 1);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
@@ -514,7 +514,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedAddress(vaddr as u64);
     return invoke_page_map(
         asid,
-        *cap::to_cap_frame_cap(&frame_slot.capability.clone()),
+        cap::to_cap_frame_cap(&frame_slot.capability.clone()).clone(),
         PTE::make_user_pte(base, vm_rights, attr, frame_size),
         pt_slot,
     );

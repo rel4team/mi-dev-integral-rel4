@@ -86,8 +86,8 @@ pub fn decode_irq_handler_invocation(label: MessageLabel, irq: usize) -> excepti
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
             let slot = get_extra_cap_by_index(0).unwrap();
-            let ntfn_cap = slot.capability;
-            match ntfn_cap.splay() {
+            let ntfn_cap = slot.capability.clone();
+            match ntfn_cap.clone().splay() {
                 cap_Splayed::notification_cap(data) => {
                     if data.get_capNtfnCanSend() == 0 {
                         unsafe {

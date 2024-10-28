@@ -68,7 +68,7 @@ extern "C" fn decodeARMMMUInvocation(
 
 /// Set VMRoot and flush if necessary
 pub fn set_vm_root_for_flush(vspace: usize, asid: asid_t) -> bool {
-    let thread_root = get_currenct_thread().get_cspace(tcbVTable).capability;
+    let thread_root = &get_currenct_thread().get_cspace(tcbVTable).capability;
 
     if thread_root.is_valid_native_root()
         && cap::to_cap_vspace_cap(&thread_root).get_capVSBasePtr() == vspace as u64

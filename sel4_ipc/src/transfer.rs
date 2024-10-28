@@ -105,8 +105,8 @@ impl Transfer for tcb_t {
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
             let capability_cpy = &slot.capability.clone();
-            let capability = &cap::to_cap_endpoint_cap(capability_cpy);
-            if capability.unsplay().get_tag() == cap_tag::cap_endpoint_cap
+            let capability = cap::to_cap_endpoint_cap(capability_cpy);
+            if capability.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()
             {
@@ -117,7 +117,7 @@ impl Transfer for tcb_t {
                     break;
                 } else {
                     let dest = dest_slot.take();
-                    let dc_ret = slot.derive_cap(&capability.unsplay());
+                    let dc_ret = slot.derive_cap(&capability.clone().unsplay());
                     if dc_ret.status != exception_t::EXCEPTION_NONE
                         || dc_ret.capability.get_tag() == cap_tag::cap_null_cap
                     {
@@ -150,8 +150,8 @@ impl Transfer for tcb_t {
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
             let capability_cpy = &slot.capability.clone();
-            let capability = &cap::to_cap_endpoint_cap(capability_cpy);
-            if capability.unsplay().get_tag() == cap_tag::cap_endpoint_cap
+            let capability = cap::to_cap_endpoint_cap(capability_cpy);
+            if capability.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()
             {
@@ -162,7 +162,7 @@ impl Transfer for tcb_t {
                     break;
                 } else {
                     let dest = dest_slot.take();
-                    let dc_ret = slot.derive_cap(&capability.unsplay());
+                    let dc_ret = slot.derive_cap(&capability.clone().unsplay());
                     if dc_ret.status != exception_t::EXCEPTION_NONE
                         || dc_ret.capability.get_tag() == cap_tag::cap_null_cap
                     {

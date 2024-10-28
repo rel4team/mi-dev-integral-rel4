@@ -182,7 +182,7 @@ fn get_target_cnode(
     node_cap: &mut cap_cnode_cap,
 ) -> exception_t {
     let target_node_cap = if node_depth == 0 {
-        get_extra_cap_by_index(0).unwrap().capability
+        &get_extra_cap_by_index(0).unwrap().capability
     } else {
         let root_cap = cap::to_cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
         let lu_ret = lookup_slot_for_cnode_op(false, &root_cap, node_index, node_depth);
@@ -190,7 +190,7 @@ fn get_target_cnode(
             debug!("Untyped Retype: Invalid destination address.");
             return lu_ret.status;
         }
-        unsafe { (*lu_ret.slot).capability }
+        unsafe { &(*lu_ret.slot).capability }
     };
 
     if target_node_cap.get_tag() != cap_tag::cap_cnode_cap {
@@ -203,7 +203,7 @@ fn get_target_cnode(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    *node_cap = *cap::to_cap_cnode_cap(&target_node_cap);
+    *node_cap = cap::to_cap_cnode_cap(&target_node_cap).clone();
     exception_t::EXCEPTION_NONE
 }
 

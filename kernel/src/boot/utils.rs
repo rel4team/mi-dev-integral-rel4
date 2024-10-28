@@ -8,7 +8,6 @@ use log::debug;
 use sel4_common::arch::config::{PADDR_TOP, PPTR_BASE, PPTR_TOP};
 use sel4_common::sel4_config::*;
 use sel4_common::structures_gen::{cap, cap_cnode_cap};
-use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::*;
 use sel4_vspace::*;
 // #[cfg(target_arch="riscv64")]
@@ -89,7 +88,7 @@ pub fn provide_cap(root_cnode_cap: &cap_cnode_cap, capability: cap) -> bool {
             );
             return false;
         }
-        let ptr = root_cnode_cap.unsplay().get_cap_ptr() as *mut cte_t;
+        let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
         write_slot(ptr.add(ndks_boot.slot_pos_cur), capability);
         ndks_boot.slot_pos_cur += 1;
         return true;

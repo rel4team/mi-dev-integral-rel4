@@ -29,7 +29,7 @@ pub struct findVSpaceForASID_ret {
 }
 #[cfg(target_arch = "aarch64")]
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct findVSpaceForASID_ret {
     pub status: exception_t,
     pub vspace_root: Option<*mut PTE>,

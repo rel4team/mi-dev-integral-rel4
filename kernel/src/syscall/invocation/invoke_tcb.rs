@@ -169,9 +169,9 @@ pub fn invoke_tcb_set_space(
     target: &mut tcb_t,
     slot: &mut cte_t,
     fault_ep: usize,
-    croot_new_cap: cap,
+    croot_new_cap: &cap,
     croot_src_slot: &mut cte_t,
-    vroot_new_cap: cap,
+    vroot_new_cap: &cap,
     vroot_src_slot: &mut cte_t,
 ) -> exception_t {
     let target_cap = cap_thread_cap::new(target.get_ptr() as u64).unsplay();
@@ -181,10 +181,10 @@ pub fn invoke_tcb_set_space(
     if status != exception_t::EXCEPTION_NONE {
         return status;
     }
-    if same_object_as(&croot_new_cap, &croot_src_slot.capability)
+    if same_object_as(croot_new_cap, &croot_src_slot.capability)
         && same_object_as(&target_cap, &slot.capability)
     {
-        cte_insert(&croot_new_cap, croot_src_slot, root_slot);
+        cte_insert(croot_new_cap, croot_src_slot, root_slot);
     }
 
     let root_vslot = target.get_cspace_mut_ref(tcbVTable);
@@ -192,10 +192,10 @@ pub fn invoke_tcb_set_space(
     if status != exception_t::EXCEPTION_NONE {
         return status;
     }
-    if same_object_as(&vroot_new_cap, &vroot_src_slot.capability)
+    if same_object_as(vroot_new_cap, &vroot_src_slot.capability)
         && same_object_as(&target_cap, &slot.capability)
     {
-        cte_insert(&vroot_new_cap, vroot_src_slot, root_vslot);
+        cte_insert(vroot_new_cap, vroot_src_slot, root_vslot);
     }
     exception_t::EXCEPTION_NONE
 }

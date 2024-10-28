@@ -239,7 +239,7 @@ mod tests {
         insert_new_cap(
             &mut cte1,
             convert_to_mut_type_ref((cap1.get_capCNodePtr() + idx * 32) as usize),
-            &cap2.unsplay(),
+            &cap2.clone().unsplay(),
         );
         insert_new_cap(
             &mut cte1,
@@ -248,7 +248,7 @@ mod tests {
         );
         let res_ret = resolve_address_bits(&cap1, cap_ptr as usize, 10);
 
-        let ret_cap = unsafe { (*(res_ret.slot)).capability };
+        let ret_cap = unsafe { &(*(res_ret.slot)).capability };
         assert_eq!(ret_cap.get_tag(), cap_tag::cap_domain_cap);
         println!("Test resolve_address_bits_test passed");
     }
@@ -260,7 +260,7 @@ mod tests {
         println!("-----------------------------------");
         println!("Entering cap_t_create_happy_test case");
         let cap1 = cap_cnode_cap::new(1, 1, 1, 1);
-        assert_eq!(cap1.unsplay().get_tag(), cap_tag::cap_cnode_cap);
+        assert_eq!(cap1.clone().unsplay().get_tag(), cap_tag::cap_cnode_cap);
         assert_eq!(cap1.get_capCNodeGuardSize(), 1);
         println!("Test cap_t_create_happy_test passed");
     }

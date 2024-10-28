@@ -103,7 +103,7 @@ pub struct create_frames_of_region_ret_t {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct lookupCap_ret_t {
     pub status: exception_t,
     pub capability: cap,
@@ -119,7 +119,7 @@ impl Default for lookupCap_ret_t {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct lookupCapAndSlot_ret_t {
     pub status: exception_t,
     pub capability: cap,

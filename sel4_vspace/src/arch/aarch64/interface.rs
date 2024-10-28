@@ -190,7 +190,7 @@ pub fn set_vm_root_for_flush_with_thread_root(
     asid: asid_t,
     thread_root: &cap_vspace_cap,
 ) -> bool {
-    if thread_root.unsplay().get_tag() == cap_tag::cap_vspace_cap
+    if thread_root.clone().unsplay().get_tag() == cap_tag::cap_vspace_cap
         && thread_root.get_capVSIsMapped() != 0
         && thread_root.get_capVSBasePtr() == vspace as u64
     {

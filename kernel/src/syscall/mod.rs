@@ -64,7 +64,6 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
     match syscall {
         SysSend => {
             let ret = handleInvocation(false, true);
-
             if unlikely(ret != exception_t::EXCEPTION_NONE) {
                 let irq = getActiveIRQ();
                 if irq != irqInvalid {
@@ -108,7 +107,7 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
 }
 
 fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
-    let origin_lookup_fault = unsafe { current_lookup_fault };
+    let origin_lookup_fault = unsafe { current_lookup_fault.clone() };
     let lu_ret = thread.lookup_slot(thread.tcbFaultHandler);
     if lu_ret.status != exception_t::EXCEPTION_NONE {
         unsafe {
@@ -116,8 +115,8 @@ fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
         }
         return exception_t::EXCEPTION_FAULT;
     }
-    let handler_cap = &mut cap::to_cap_endpoint_cap(&ptr_to_mut(lu_ret.slot).capability);
-    if handler_cap.unsplay().get_tag() == cap_tag::cap_endpoint_cap
+    let handler_cap = cap::to_cap_endpoint_cap(&ptr_to_mut(lu_ret.slot).capability);
+    if handler_cap.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
         && (handler_cap.get_capCanGrant() != 0 || handler_cap.get_capCanGrantReply() != 0)
     {
         thread.tcbFault = unsafe { current_fault };
@@ -152,8 +151,8 @@ pub fn handle_fault(thread: &mut tcb_t) {
 fn handle_reply() {
     let current_thread = get_currenct_thread();
     let caller_slot = current_thread.get_cspace_mut_ref(tcbCaller);
-    let caller_cap = &cap::to_cap_reply_cap(&caller_slot.capability);
-    if caller_cap.unsplay().get_tag() == cap_tag::cap_reply_cap {
+    let caller_cap = cap::to_cap_reply_cap(&caller_slot.capability);
+    if caller_cap.clone().unsplay().get_tag() == cap_tag::cap_reply_cap {
         if caller_cap.get_capReplyMaster() != 0 {
             return;
         }
@@ -172,7 +171,7 @@ fn handle_recv(block: bool) {
         }
         return handle_fault(current_thread);
     }
-    let ipc_cap = unsafe { (*lu_ret.slot).capability };
+    let ipc_cap = unsafe { (*lu_ret.slot).capability.clone() };
     match ipc_cap.splay() {
         cap_Splayed::endpoint_cap(data) => {
             if unlikely(data.get_capCanReceive() == 0) {

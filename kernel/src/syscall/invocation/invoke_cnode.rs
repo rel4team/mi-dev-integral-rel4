@@ -1,5 +1,5 @@
 use log::debug;
-use sel4_common::structures_gen::{cap, cap_Splayed, cap_tag};
+use sel4_common::structures_gen::{cap, cap_tag};
 use sel4_common::{
     cap_rights::seL4_CapRights_t,
     sel4_config::{seL4_DeleteFirst, seL4_IllegalOperation, tcbCaller},
@@ -96,12 +96,12 @@ pub fn invoke_cnode_save_caller(dest_slot: &mut cte_t) -> exception_t {
     }
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
     let src_slot = get_currenct_thread().get_cspace_mut_ref(tcbCaller);
-    let capability = src_slot.capability;
-    match capability.splay() {
-        cap_Splayed::null_cap(_) => debug!("CNode SaveCaller: Reply cap not present."),
-        cap_Splayed::reply_cap(data) => {
-            if data.get_capReplyMaster() == 0 {
-                cte_move(&capability, src_slot, dest_slot);
+    let capability = &src_slot.clone().capability;
+    match capability.get_tag() {
+        cap_tag::cap_null_cap => debug!("CNode SaveCaller: Reply cap not present."),
+        cap_tag::cap_reply_cap => {
+            if cap::to_cap_reply_cap(capability).get_capReplyMaster() == 0 {
+                cte_move(capability, src_slot, dest_slot);
             }
         }
         _ => panic!("caller capability must be null or reply"),
@@ -150,7 +150,7 @@ pub fn invoke_cnode_rotate(
 
 #[inline]
 pub fn invoke_cnode_move(src_slot: &mut cte_t, dest_slot: &mut cte_t) -> exception_t {
-    let src_cap = src_slot.capability;
+    let src_cap = &src_slot.clone().capability;
     if src_cap.get_tag() == cap_tag::cap_null_cap {
         debug!("CNode Copy/Mint/Move/Mutate: Mutated cap would be invalid.");
         unsafe {
@@ -165,7 +165,7 @@ pub fn invoke_cnode_move(src_slot: &mut cte_t, dest_slot: &mut cte_t) -> excepti
 
 #[inline]
 pub fn invoke_cnode_cancel_badged_sends(dest_slot: &mut cte_t) -> exception_t {
-    let dest_cap = dest_slot.capability;
+    let dest_cap = &dest_slot.capability;
     if !hasCancelSendRight(&dest_cap) {
         debug!("CNode CancelBadgedSends: Target cap invalid.");
         unsafe {
@@ -197,12 +197,12 @@ pub fn invoke_cnode_delete(dest_slot: &mut cte_t) -> exception_t {
 }
 
 fn hasCancelSendRight(capability: &cap) -> bool {
-    match capability.splay() {
-        cap_Splayed::endpoint_cap(data) => {
-            data.get_capCanSend() != 0
-                && data.get_capCanReceive() != 0
-                && data.get_capCanGrant() != 0
-                && data.get_capCanGrantReply() != 0
+    match capability.get_tag() {
+        cap_tag::cap_endpoint_cap => {
+            cap::to_cap_endpoint_cap(capability).get_capCanSend() != 0
+                && cap::to_cap_endpoint_cap(capability).get_capCanReceive() != 0
+                && cap::to_cap_endpoint_cap(capability).get_capCanGrant() != 0
+                && cap::to_cap_endpoint_cap(capability).get_capCanGrantReply() != 0
         }
         _ => false,
     }

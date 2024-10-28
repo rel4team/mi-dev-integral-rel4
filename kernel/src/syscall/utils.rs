@@ -103,7 +103,7 @@ pub fn check_prio(prio: usize, auth_tcb: &tcb_t) -> exception_t {
 
 #[inline]
 pub fn check_ipc_buffer_vaild(vptr: usize, capability: &cap_frame_cap) -> exception_t {
-    if capability.unsplay().get_tag() != cap_tag::cap_frame_cap {
+    if capability.clone().unsplay().get_tag() != cap_tag::cap_frame_cap {
         debug!("Requested IPC Buffer is not a frame cap.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -167,7 +167,7 @@ pub fn lookup_slot_for_cnode_op(
     depth: usize,
 ) -> lookupSlot_ret_t {
     let mut ret: lookupSlot_ret_t = lookupSlot_ret_t::default();
-    if unlikely(root.unsplay().get_tag() != cap_tag::cap_cnode_cap) {
+    if unlikely(root.clone().unsplay().get_tag() != cap_tag::cap_cnode_cap) {
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = is_source as usize;
@@ -241,7 +241,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
     if capability.isArchCap() {
         return arch_mask_cap_rights(rights, capability);
     }
-    match capability.splay() {
+    match capability.clone().splay() {
         cap_Splayed::endpoint_cap(data) => {
             let capability_copy = &capability.clone();
             let new_cap = cap::to_cap_endpoint_cap(capability_copy);
@@ -251,7 +251,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
             new_cap.set_capCanGrantReply(
                 data.get_capCanGrantReply() & rights.get_allow_grant_reply() as u64,
             );
-            new_cap.unsplay()
+            capability_copy.clone()
         }
         cap_Splayed::notification_cap(data) => {
             let capability_copy = &capability.clone();
@@ -260,7 +260,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
             new_cap.set_capNtfnCanReceive(
                 data.get_capNtfnCanReceive() & rights.get_allow_read() as u64,
             );
-            new_cap.unsplay()
+            capability_copy.clone()
         }
         cap_Splayed::reply_cap(data) => {
             let capability_copy = &capability.clone();
@@ -268,7 +268,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
             new_cap.set_capReplyCanGrant(
                 data.get_capReplyCanGrant() & rights.get_allow_grant() as u64,
             );
-            new_cap.unsplay()
+            capability_copy.clone()
         }
         cap_Splayed::frame_cap(data) => {
             let capability_copy = &capability.clone();
@@ -276,7 +276,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
             let mut vm_rights = unsafe { core::mem::transmute(data.get_capFVMRights()) };
             vm_rights = maskVMRights(vm_rights, rights);
             new_cap.set_capFVMRights(vm_rights as u64);
-            new_cap.unsplay()
+            capability_copy.clone()
         }
         _ => capability.clone(),
     }

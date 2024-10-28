@@ -14,7 +14,7 @@ use sel4_common::{
 ///
 /// cleanupInfo: When finalise tcb_cap or cnode_cap, cleanupInfo is zombie_cap, otherwise cleanupInfo is null_cap
 #[repr(C)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct finaliseSlot_ret {
     pub status: exception_t,
     pub success: bool,
@@ -32,7 +32,7 @@ impl Default for finaliseSlot_ret {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct finaliseCap_ret {
     pub remainder: cap,
     pub cleanupInfo: cap,

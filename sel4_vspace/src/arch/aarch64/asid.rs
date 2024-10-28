@@ -54,7 +54,7 @@ pub fn find_vspace_for_asid(asid: usize) -> findVSpaceForASID_ret {
         lookup_fault: Some(lookup_fault_invalid_root::new().unsplay()),
     };
     match find_map_for_asid(asid) {
-        Some(asidmap) => match asidmap.splay() {
+        Some(asidmap) => match asidmap.clone().splay() {
             asid_map_Splayed::asid_map_vspace(data) => {
                 ret.vspace_root = Some(data.get_vspace_root() as *mut PTE);
                 ret.status = exception_t::EXCEPTION_NONE;
@@ -74,8 +74,8 @@ pub fn delete_asid(
 ) -> Result<(), lookup_fault> {
     let ptr = convert_to_option_mut_type_ref::<asid_pool_t>(get_asid_table()[asid >> asidLowBits]);
     if let Some(pool) = ptr {
-        let asidmap = pool[asid & MASK!(asidLowBits)];
-        match asidmap.splay() {
+        let asidmap = &pool[asid & MASK!(asidLowBits)];
+        match asidmap.clone().splay() {
             asid_map_Splayed::asid_map_vspace(data) => {
                 if data.get_vspace_root() == vspace as u64 {
                     invalidate_local_tlb_asid(asid);
@@ -100,7 +100,7 @@ pub fn delete_asid_pool(
         // clear all asid in target asid pool
         let pool = convert_to_mut_type_ref::<asid_pool_t>(pool_in_table);
         for offset in 0..BIT!(asidLowBits) {
-            let asidmap = pool[offset];
+            let asidmap = &pool[offset];
             if asidmap.get_tag() == asid_map_tag::asid_map_asid_map_vspace {
                 invalidate_local_tlb_asid(asid_base + offset);
             }

@@ -16,10 +16,10 @@
 
 pub mod zombie;
 
-use sel4_common::structures_gen::{cap, cap_Splayed, cap_null_cap, cap_tag};
+use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag};
 use sel4_common::{sel4_config::*, MASK};
 
-use crate::arch::arch_same_object_as;
+use crate::arch::{arch_same_object_as, cap_trans};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -113,10 +113,10 @@ impl cap_func for cap {
         if self.isArchCap() {
             return self.clone();
         }
-        match self.splay() {
-            cap_Splayed::endpoint_cap(data) => {
-                if !preserve && data.get_capEPBadge() == 0 {
-                    let mut new_cap = data.clone();
+        match self.get_tag() {
+            cap_tag::cap_endpoint_cap => {
+                if !preserve && cap::to_cap_endpoint_cap(self).get_capEPBadge() == 0 {
+                    let mut new_cap = cap::to_cap_endpoint_cap(self).clone();
                     new_cap.set_capEPBadge(new_data);
                     new_cap.unsplay()
                 } else {
@@ -124,9 +124,9 @@ impl cap_func for cap {
                 }
             }
 
-            cap_Splayed::notification_cap(data) => {
-                if !preserve && data.get_capNtfnBadge() == 0 {
-                    let mut new_cap = data.clone();
+            cap_tag::cap_notification_cap => {
+                if !preserve && cap::to_cap_notification_cap(self).get_capNtfnBadge() == 0 {
+                    let mut new_cap = cap::to_cap_notification_cap(self).clone();
                     new_cap.set_capNtfnBadge(new_data);
                     new_cap.unsplay()
                 } else {
@@ -134,14 +134,14 @@ impl cap_func for cap {
                 }
             }
 
-            cap_Splayed::cnode_cap(data) => {
+            cap_tag::cap_cnode_cap => {
                 let w = CNodeCapData::new(new_data as usize);
                 let guard_size = w.get_guard_size();
-                if guard_size + data.get_capCNodeRadix() as usize > wordBits {
+                if guard_size + cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize > wordBits {
                     return cap_null_cap::new().unsplay();
                 }
                 let guard = w.get_guard() & MASK!(guard_size);
-                let mut new_cap = data.clone();
+                let mut new_cap = cap::to_cap_cnode_cap(self).clone();
                 new_cap.set_capCNodeGuard(guard as u64);
                 new_cap.set_capCNodeGuardSize(guard_size as u64);
                 new_cap.unsplay()
@@ -151,13 +151,13 @@ impl cap_func for cap {
     }
 
     fn get_cap_size_bits(&self) -> usize {
-        match self.splay() {
-            cap_Splayed::untyped_cap(data) => data.get_capBlockSize() as usize,
-            cap_Splayed::endpoint_cap(_) => seL4_EndpointBits,
-            cap_Splayed::notification_cap(_) => seL4_NotificationBits,
-            cap_Splayed::cnode_cap(data) => data.get_capCNodeRadix() as usize + seL4_SlotBits,
-            cap_Splayed::page_table_cap(_) => PT_SIZE_BITS,
-            cap_Splayed::reply_cap(_) => seL4_ReplyBits,
+        match self.get_tag() {
+            cap_tag::cap_untyped_cap => cap::to_cap_untyped_cap(self).get_capBlockSize() as usize,
+            cap_tag::cap_endpoint_cap => seL4_EndpointBits,
+            cap_tag::cap_notification_cap => seL4_NotificationBits,
+            cap_tag::cap_cnode_cap => cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize + seL4_SlotBits,
+            cap_tag::cap_page_table_cap => PT_SIZE_BITS,
+            cap_tag::cap_reply_cap => seL4_ReplyBits,
             _ => 0,
         }
     }
@@ -184,53 +184,53 @@ impl cap_func for cap {
 
 /// 判断两个cap指向的内核对象是否是同一个内存区域
 pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
-    match cap1.splay() {
-        cap_Splayed::untyped_cap(data1) => {
+    match cap1.get_tag() {
+        cap_tag::cap_untyped_cap => {
             if cap2.get_cap_is_physical() {
-                let aBase = data1.get_capPtr() as usize;
+                let aBase = cap::to_cap_untyped_cap(cap1).get_capPtr() as usize;
                 let bBase = cap2.get_cap_ptr();
 
-                let aTop = aBase + MASK!(data1.get_capBlockSize());
+                let aTop = aBase + MASK!(cap::to_cap_untyped_cap(cap1).get_capBlockSize());
                 let bTop = bBase + MASK!(cap2.get_cap_size_bits());
                 return (aBase <= bBase) && (bTop <= aTop) && (bBase <= bTop);
             }
 
             false
         }
-        cap_Splayed::endpoint_cap(_)
-        | cap_Splayed::notification_cap(_)
-        | cap_Splayed::page_table_cap(_)
-        | cap_Splayed::asid_pool_cap(_)
-        | cap_Splayed::thread_cap(_) => {
+        cap_tag::cap_endpoint_cap
+        | cap_tag::cap_notification_cap
+        | cap_tag::cap_page_table_cap
+        | cap_tag::cap_asid_pool_cap
+        | cap_tag::cap_thread_cap => {
             if cap2.get_tag() == cap1.get_tag() {
                 return cap1.get_cap_ptr() == cap2.get_cap_ptr();
             }
             false
         }
-        cap_Splayed::asid_control_cap(_) | cap_Splayed::domain_cap(_) => {
+        cap_tag::cap_asid_control_cap | cap_tag::cap_domain_cap => {
             if cap2.get_tag() == cap1.get_tag() {
                 return true;
             }
             false
         }
-        cap_Splayed::cnode_cap(data1) => match cap2.splay() {
-            cap_Splayed::cnode_cap(data2) => {
-                return (data1.get_capCNodePtr() == data2.get_capCNodePtr())
-                    && (data1.get_capCNodeRadix() == data2.get_capCNodeRadix());
+        cap_tag::cap_cnode_cap => {
+            if cap2.get_tag() == cap_tag::cap_cnode_cap {
+                return (cap::to_cap_cnode_cap(cap1).get_capCNodePtr() == cap::to_cap_cnode_cap(cap2).get_capCNodePtr())
+                    && (cap::to_cap_cnode_cap(cap1).get_capCNodeRadix() == cap::to_cap_cnode_cap(cap2).get_capCNodeRadix());
             }
-            _ => return false,
+            false
         },
-        cap_Splayed::irq_control_cap(_) => {
+        cap_tag::cap_irq_control_cap => {
             matches!(
                 cap2.get_tag(),
                 cap_tag::cap_irq_control_cap | cap_tag::cap_irq_handler_cap
             )
         }
-        cap_Splayed::irq_handler_cap(data1) => match cap2.splay() {
-            cap_Splayed::irq_handler_cap(data2) => {
-                return data1.get_capIRQ() == data2.get_capIRQ();
+        cap_tag::cap_irq_handler_cap =>  {
+            if cap2.get_tag() == cap_tag::cap_irq_handler_cap {
+                return cap::to_cap_irq_handler_cap(cap1).get_capIRQ() == cap::to_cap_irq_handler_cap(cap2).get_capIRQ();
             }
-            _ => return false,
+            false
         },
         _ => false,
     }
@@ -262,30 +262,20 @@ pub fn is_cap_revocable(derived_cap: &cap, src_cap: &cap) -> bool {
         return false;
     }
 
-    match derived_cap.splay() {
-        cap_Splayed::endpoint_cap(data1) => match src_cap.splay() {
-            cap_Splayed::endpoint_cap(data2) => {
-                return data1.get_capEPBadge() != data2.get_capEPBadge()
-            }
-            _ => {
-                assert_eq!(src_cap.get_tag(), cap_tag::cap_endpoint_cap);
-                false
-            }
-        },
+    match derived_cap.get_tag() {
+        cap_tag::cap_endpoint_cap => {
+            assert_eq!(src_cap.get_tag(), cap_tag::cap_endpoint_cap);
+            cap::to_cap_endpoint_cap(derived_cap).get_capEPBadge() != cap::to_cap_endpoint_cap(src_cap).get_capEPBadge()
+        }
 
-        cap_Splayed::notification_cap(data1) => match src_cap.splay() {
-            cap_Splayed::notification_cap(data2) => {
-                return data1.get_capNtfnBadge() != data2.get_capNtfnBadge()
-            }
-            _ => {
-                assert_eq!(src_cap.get_tag(), cap_tag::cap_notification_cap);
-                false
-            }
-        },
+        cap_tag::cap_notification_cap => {
+            assert_eq!(src_cap.get_tag(), cap_tag::cap_notification_cap);
+            cap::to_cap_notification_cap(derived_cap).get_capNtfnBadge() != cap::to_cap_notification_cap(src_cap).get_capNtfnBadge()
+        }
 
-        cap_Splayed::irq_handler_cap(_) => src_cap.get_tag() == cap_tag::cap_irq_control_cap,
+        cap_tag::cap_irq_handler_cap => src_cap.get_tag() == cap_tag::cap_irq_control_cap,
 
-        cap_Splayed::untyped_cap(_) => true,
+        cap_tag::cap_untyped_cap => true,
 
         _ => false,
     }

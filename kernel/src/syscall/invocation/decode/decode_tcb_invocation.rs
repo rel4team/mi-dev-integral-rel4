@@ -212,7 +212,7 @@ fn decode_copy_registers(
 
     let source_cap = cap::to_cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
 
-    if capability.unsplay().get_tag() != cap_tag::cap_thread_cap {
+    if capability.clone().unsplay().get_tag() != cap_tag::cap_thread_cap {
         debug!("TCB CopyRegisters: Truncated message.");
         unsafe {
             current_syscall_error._type = seL4_TruncatedMessage;
@@ -255,33 +255,27 @@ fn decode_tcb_configure(
     let vroot_data = get_syscall_arg(2, buffer);
     let new_buffer_addr = get_syscall_arg(3, buffer);
     let croot_slot = get_extra_cap_by_index(0).unwrap();
-    let mut croot_cap = croot_slot.capability;
+    let mut croot_cap = &croot_slot.clone().capability;
     let vroot_slot = get_extra_cap_by_index(1).unwrap();
-    let mut vroot_cap = vroot_slot.capability;
+    let mut vroot_cap = &vroot_slot.clone().capability;
 
-    let (buffer_slot, buffer_cap) = {
-        let mut capability = get_extra_cap_by_index(2).unwrap().capability;
-        let mut buffer_slot_inner = if new_buffer_addr == 0 {
-            None
-        } else {
-            get_extra_cap_by_index(2)
-        };
-        if let Some(buffer_slot) = buffer_slot_inner.as_deref_mut() {
-            let dc_ret = buffer_slot.derive_cap(&capability);
-            if dc_ret.status != exception_t::EXCEPTION_NONE {
-                unsafe {
-                    current_syscall_error._type = seL4_IllegalOperation;
-                }
-                return dc_ret.status;
+	let (buffer_slot, buffer_cap) = if new_buffer_addr == 0 {
+        (None, cap_null_cap::new().unsplay())
+    } else {
+        let slot = get_extra_cap_by_index(2).unwrap();
+        let capability = &slot.capability;
+        let dc_ret = slot.derive_cap(&capability);
+        if dc_ret.status != exception_t::EXCEPTION_NONE {
+            unsafe {
+                current_syscall_error._type = seL4_IllegalOperation;
             }
-            capability = dc_ret.capability;
-            let status =
-                check_ipc_buffer_vaild(new_buffer_addr, &cap::to_cap_frame_cap(&capability));
-            if status != exception_t::EXCEPTION_NONE {
-                return status;
-            }
+            return dc_ret.status;
         }
-        (buffer_slot_inner, capability)
+        let status = check_ipc_buffer_vaild(new_buffer_addr, cap::to_cap_frame_cap(&dc_ret.capability));
+        if status != exception_t::EXCEPTION_NONE {
+            return status;
+        }
+        (Some(slot), dc_ret.capability)
     };
     let target_thread =
         convert_to_mut_type_ref::<tcb_t>(target_thread_cap.get_capTCBPtr() as usize);
@@ -294,9 +288,10 @@ fn decode_tcb_configure(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-
-    match decode_set_space_args(croot_data, croot_cap, croot_slot) {
-        Ok(capability) => croot_cap = capability,
+	let decode_croot_cap =decode_set_space_args(croot_data, croot_cap, croot_slot);
+    let binding = decode_croot_cap.clone().unwrap();
+    match decode_croot_cap {
+        Ok(_) => croot_cap = &binding,
         Err(status) => return status,
     }
     if croot_cap.get_tag() != cap_tag::cap_cnode_cap {
@@ -306,8 +301,10 @@ fn decode_tcb_configure(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    match decode_set_space_args(vroot_data, vroot_cap, vroot_slot) {
-        Ok(capability) => vroot_cap = capability,
+	let decode_vroot_cap_ret = decode_set_space_args(vroot_data, vroot_cap, vroot_slot);
+    let binding = decode_vroot_cap_ret.clone().unwrap();
+    match decode_vroot_cap_ret {
+        Ok(_) => vroot_cap = &binding,
         Err(status) => return status,
     }
     #[cfg(target_arch = "riscv64")]
@@ -343,7 +340,7 @@ fn decode_tcb_configure(
         target_thread,
         target_thread_slot,
         new_buffer_addr,
-        buffer_cap,
+        buffer_cap.clone(),
         buffer_slot,
     )
 }
@@ -361,7 +358,7 @@ fn decode_set_priority(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     let new_prio = get_syscall_arg(0, buffer);
-    let auth_cap = get_extra_cap_by_index(0).unwrap().capability;
+    let auth_cap = &get_extra_cap_by_index(0).unwrap().capability;
     if auth_cap.get_tag() != cap_tag::cap_thread_cap {
         debug!("Set priority: authority cap not a TCB.");
         unsafe {
@@ -371,7 +368,7 @@ fn decode_set_priority(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     let auth_tcb = convert_to_mut_type_ref::<tcb_t>(
-        cap::to_cap_thread_cap(&auth_cap).get_capTCBPtr() as usize,
+        cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize,
     );
     let status = check_prio(new_prio, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
@@ -397,7 +394,7 @@ fn decode_set_mc_priority(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     let new_mcp = get_syscall_arg(0, buffer);
-    let auth_cap = get_extra_cap_by_index(0).unwrap().capability;
+    let auth_cap = &get_extra_cap_by_index(0).unwrap().capability;
     if auth_cap.get_tag() != cap_tag::cap_thread_cap {
         debug!("SetMCPriority: authority cap not a TCB.");
         unsafe {
@@ -408,7 +405,7 @@ fn decode_set_mc_priority(
     }
 
     let auth_tcb = convert_to_mut_type_ref::<tcb_t>(
-        cap::to_cap_thread_cap(&auth_cap).get_capTCBPtr() as usize,
+        cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize,
     );
     let status = check_prio(new_mcp, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
@@ -440,7 +437,7 @@ fn decode_set_sched_params(
     let new_mcp = get_syscall_arg(0, buffer);
     let new_prio = get_syscall_arg(1, buffer);
     let auth_cap = cap::to_cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
-    if auth_cap.unsplay().get_tag() != cap_tag::cap_thread_cap {
+    if auth_cap.clone().unsplay().get_tag() != cap_tag::cap_thread_cap {
         debug!("SetSchedParams: authority cap not a TCB.");
         unsafe {
             current_syscall_error._type = seL4_InvalidCapability;
@@ -492,8 +489,8 @@ fn decode_set_ipc_buffer(
         (None, cap_null_cap::new().unsplay())
     } else {
         let slot = get_extra_cap_by_index(0).unwrap();
-        let capability = slot.capability;
-        let dc_ret = slot.derive_cap(&capability);
+        let capability = &slot.capability;
+        let dc_ret = slot.derive_cap(capability);
         if dc_ret.status != exception_t::EXCEPTION_NONE {
             unsafe {
                 current_syscall_error._type = seL4_IllegalOperation;
@@ -535,9 +532,9 @@ fn decode_set_space(
     let croot_data = get_syscall_arg(1, buffer);
     let vroot_data = get_syscall_arg(2, buffer);
     let croot_slot = get_extra_cap_by_index(0).unwrap();
-    let mut croot_cap = croot_slot.capability;
+    let mut croot_cap = &croot_slot.capability;
     let vroot_slot = get_extra_cap_by_index(1).unwrap();
-    let mut vroot_cap = vroot_slot.capability;
+    let mut vroot_cap = &vroot_slot.capability;
     let target_thread = convert_to_mut_type_ref::<tcb_t>(capability.get_capTCBPtr() as usize);
     if target_thread.get_cspace(tcbCTable).is_long_running_delete()
         || target_thread.get_cspace(tcbVTable).is_long_running_delete()
@@ -548,9 +545,11 @@ fn decode_set_space(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-
-    match decode_set_space_args(croot_data, croot_cap, croot_slot) {
-        Ok(capability) => croot_cap = capability,
+	
+    let decode_croot_cap =decode_set_space_args(croot_data, croot_cap, croot_slot);
+    let binding = decode_croot_cap.clone().unwrap();
+    match decode_croot_cap {
+        Ok(_) => croot_cap = &binding,
         Err(status) => return status,
     }
     if croot_cap.get_tag() != cap_tag::cap_cnode_cap {
@@ -561,8 +560,10 @@ fn decode_set_space(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    match decode_set_space_args(vroot_data, vroot_cap, vroot_slot) {
-        Ok(capability) => vroot_cap = capability,
+    let decode_vroot_cap_ret = decode_set_space_args(vroot_data, vroot_cap, vroot_slot);
+    let binding = decode_vroot_cap_ret.clone().unwrap();
+    match decode_vroot_cap_ret {
+        Ok(_) => vroot_cap = &binding,
         Err(status) => return status,
     }
     #[cfg(target_arch = "riscv64")]
@@ -585,9 +586,9 @@ fn decode_set_space(
         target_thread,
         slot,
         fault_ep,
-        croot_cap,
+        &croot_cap,
         croot_slot,
-        vroot_cap,
+        &vroot_cap,
         vroot_slot,
     )
 }
@@ -611,7 +612,7 @@ fn decode_bind_notification(capability: &cap_thread_cap) -> exception_t {
     }
 
     let ntfn_cap = cap::to_cap_notification_cap(&get_extra_cap_by_index(0).unwrap().capability);
-    if ntfn_cap.unsplay().get_tag() != cap_tag::cap_notification_cap {
+    if ntfn_cap.clone().unsplay().get_tag() != cap_tag::cap_notification_cap {
         debug!("TCB BindNotification: Notification is invalid.");
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -702,10 +703,10 @@ fn decode_set_tls_base(
 #[inline]
 fn decode_set_space_args(
     root_data: usize,
-    root_cap: cap,
-    root_slot: &mut cte_t,
+    root_cap: &cap,
+    root_slot: &cte_t,
 ) -> Result<cap, exception_t> {
-    let mut ret_root_cap = root_cap;
+    let mut ret_root_cap = root_cap.clone();
     if root_data != 0 {
         ret_root_cap = root_cap.update_data(false, root_data as u64);
     }

@@ -71,7 +71,7 @@ pub struct lookupPTSlot_ret_t {
 
 /// 用于存放`asid`对应的根页表基址，是一个`usize`的数组，其中`asid`按低`asidLowBits`位进行索引
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct asid_pool_t([asid_map; BIT!(asidLowBits)]);
 
 /// Dereference for asid_pool_t.

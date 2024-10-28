@@ -163,7 +163,7 @@ pub fn map_kernel_frame(
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn map_it_pt_cap(vspace_cap: &cap_vspace_cap, pt_cap: &cap_page_table_cap) {
-    let vspace_root = vspace_cap.unsplay().get_cap_ptr();
+    let vspace_root = vspace_cap.clone().unsplay().get_cap_ptr();
     let vptr = pt_cap.get_capPTMappedAddress() as usize;
     let pt = pt_cap.get_capPTBasePtr() as usize;
     let target_pte =
@@ -177,7 +177,7 @@ pub fn map_it_pt_cap(vspace_cap: &cap_vspace_cap, pt_cap: &cap_page_table_cap) {
 #[no_mangle]
 #[link_section = ".boot.text"]
 pub fn map_it_pd_cap(vspace_cap: &cap_vspace_cap, pd_cap: &cap_page_table_cap) {
-    let pgd = page_slice::<PTE>(vspace_cap.unsplay().get_cap_ptr());
+    let pgd = page_slice::<PTE>(vspace_cap.clone().unsplay().get_cap_ptr());
     let pd_addr = pd_cap.get_capPTBasePtr() as usize;
     let vptr: VAddr = (pd_cap.get_capPTMappedAddress() as usize).into();
     assert_eq!(pd_cap.get_capPTIsMapped(), 1);
@@ -189,7 +189,7 @@ pub fn map_it_pd_cap(vspace_cap: &cap_vspace_cap, pd_cap: &cap_page_table_cap) {
 
 /// TODO: Write the comments.
 pub fn map_it_pud_cap(vspace_cap: &cap_vspace_cap, pud_cap: &cap_page_table_cap) {
-    let pgd = page_slice::<PTE>(vspace_cap.unsplay().get_cap_ptr());
+    let pgd = page_slice::<PTE>(vspace_cap.clone().unsplay().get_cap_ptr());
     let pud_addr = pud_cap.get_capPTBasePtr() as usize;
     let vptr: VAddr = (pud_cap.get_capPTMappedAddress() as usize).into();
     assert_eq!(pud_cap.get_capPTIsMapped(), 1);
@@ -203,7 +203,7 @@ pub fn map_it_pud_cap(vspace_cap: &cap_vspace_cap, pud_cap: &cap_page_table_cap)
 #[link_section = ".boot.text"]
 pub fn map_it_frame_cap(vspace_cap: &cap_vspace_cap, frame_cap: &cap_frame_cap, exec: bool) {
     let pte = convert_to_mut_type_ref::<PTE>(find_pt(
-        vspace_cap.unsplay().get_cap_ptr(),
+        vspace_cap.clone().unsplay().get_cap_ptr(),
         (frame_cap.get_capFMappedAddress() as usize).into(),
         find_type::PTE,
     ));
