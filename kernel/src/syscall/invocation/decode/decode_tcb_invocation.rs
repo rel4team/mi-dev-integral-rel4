@@ -259,7 +259,7 @@ fn decode_tcb_configure(
     let vroot_slot = get_extra_cap_by_index(1).unwrap();
     let mut vroot_cap = &vroot_slot.clone().capability;
 
-	let (buffer_slot, buffer_cap) = if new_buffer_addr == 0 {
+    let (buffer_slot, buffer_cap) = if new_buffer_addr == 0 {
         (None, cap_null_cap::new().unsplay())
     } else {
         let slot = get_extra_cap_by_index(2).unwrap();
@@ -271,7 +271,8 @@ fn decode_tcb_configure(
             }
             return dc_ret.status;
         }
-        let status = check_ipc_buffer_vaild(new_buffer_addr, cap::to_cap_frame_cap(&dc_ret.capability));
+        let status =
+            check_ipc_buffer_vaild(new_buffer_addr, cap::to_cap_frame_cap(&dc_ret.capability));
         if status != exception_t::EXCEPTION_NONE {
             return status;
         }
@@ -288,7 +289,7 @@ fn decode_tcb_configure(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-	let decode_croot_cap =decode_set_space_args(croot_data, croot_cap, croot_slot);
+    let decode_croot_cap = decode_set_space_args(croot_data, croot_cap, croot_slot);
     let binding = decode_croot_cap.clone().unwrap();
     match decode_croot_cap {
         Ok(_) => croot_cap = &binding,
@@ -301,7 +302,7 @@ fn decode_tcb_configure(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-	let decode_vroot_cap_ret = decode_set_space_args(vroot_data, vroot_cap, vroot_slot);
+    let decode_vroot_cap_ret = decode_set_space_args(vroot_data, vroot_cap, vroot_slot);
     let binding = decode_vroot_cap_ret.clone().unwrap();
     match decode_vroot_cap_ret {
         Ok(_) => vroot_cap = &binding,
@@ -367,9 +368,8 @@ fn decode_set_priority(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let auth_tcb = convert_to_mut_type_ref::<tcb_t>(
-        cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize,
-    );
+    let auth_tcb =
+        convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize);
     let status = check_prio(new_prio, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
         return status;
@@ -404,9 +404,8 @@ fn decode_set_mc_priority(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let auth_tcb = convert_to_mut_type_ref::<tcb_t>(
-        cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize,
-    );
+    let auth_tcb =
+        convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize);
     let status = check_prio(new_mcp, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
         debug!(
@@ -545,8 +544,8 @@ fn decode_set_space(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-	
-    let decode_croot_cap =decode_set_space_args(croot_data, croot_cap, croot_slot);
+
+    let decode_croot_cap = decode_set_space_args(croot_data, croot_cap, croot_slot);
     let binding = decode_croot_cap.clone().unwrap();
     match decode_croot_cap {
         Ok(_) => croot_cap = &binding,

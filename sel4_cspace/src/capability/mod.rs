@@ -137,7 +137,8 @@ impl cap_func for cap {
             cap_tag::cap_cnode_cap => {
                 let w = CNodeCapData::new(new_data as usize);
                 let guard_size = w.get_guard_size();
-                if guard_size + cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize > wordBits {
+                if guard_size + cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize > wordBits
+                {
                     return cap_null_cap::new().unsplay();
                 }
                 let guard = w.get_guard() & MASK!(guard_size);
@@ -155,7 +156,9 @@ impl cap_func for cap {
             cap_tag::cap_untyped_cap => cap::to_cap_untyped_cap(self).get_capBlockSize() as usize,
             cap_tag::cap_endpoint_cap => seL4_EndpointBits,
             cap_tag::cap_notification_cap => seL4_NotificationBits,
-            cap_tag::cap_cnode_cap => cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize + seL4_SlotBits,
+            cap_tag::cap_cnode_cap => {
+                cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize + seL4_SlotBits
+            }
             cap_tag::cap_page_table_cap => PT_SIZE_BITS,
             cap_tag::cap_reply_cap => seL4_ReplyBits,
             _ => 0,
@@ -215,23 +218,26 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
         }
         cap_tag::cap_cnode_cap => {
             if cap2.get_tag() == cap_tag::cap_cnode_cap {
-                return (cap::to_cap_cnode_cap(cap1).get_capCNodePtr() == cap::to_cap_cnode_cap(cap2).get_capCNodePtr())
-                    && (cap::to_cap_cnode_cap(cap1).get_capCNodeRadix() == cap::to_cap_cnode_cap(cap2).get_capCNodeRadix());
+                return (cap::to_cap_cnode_cap(cap1).get_capCNodePtr()
+                    == cap::to_cap_cnode_cap(cap2).get_capCNodePtr())
+                    && (cap::to_cap_cnode_cap(cap1).get_capCNodeRadix()
+                        == cap::to_cap_cnode_cap(cap2).get_capCNodeRadix());
             }
             false
-        },
+        }
         cap_tag::cap_irq_control_cap => {
             matches!(
                 cap2.get_tag(),
                 cap_tag::cap_irq_control_cap | cap_tag::cap_irq_handler_cap
             )
         }
-        cap_tag::cap_irq_handler_cap =>  {
+        cap_tag::cap_irq_handler_cap => {
             if cap2.get_tag() == cap_tag::cap_irq_handler_cap {
-                return cap::to_cap_irq_handler_cap(cap1).get_capIRQ() == cap::to_cap_irq_handler_cap(cap2).get_capIRQ();
+                return cap::to_cap_irq_handler_cap(cap1).get_capIRQ()
+                    == cap::to_cap_irq_handler_cap(cap2).get_capIRQ();
             }
             false
-        },
+        }
         _ => false,
     }
 }
@@ -265,12 +271,14 @@ pub fn is_cap_revocable(derived_cap: &cap, src_cap: &cap) -> bool {
     match derived_cap.get_tag() {
         cap_tag::cap_endpoint_cap => {
             assert_eq!(src_cap.get_tag(), cap_tag::cap_endpoint_cap);
-            cap::to_cap_endpoint_cap(derived_cap).get_capEPBadge() != cap::to_cap_endpoint_cap(src_cap).get_capEPBadge()
+            cap::to_cap_endpoint_cap(derived_cap).get_capEPBadge()
+                != cap::to_cap_endpoint_cap(src_cap).get_capEPBadge()
         }
 
         cap_tag::cap_notification_cap => {
             assert_eq!(src_cap.get_tag(), cap_tag::cap_notification_cap);
-            cap::to_cap_notification_cap(derived_cap).get_capNtfnBadge() != cap::to_cap_notification_cap(src_cap).get_capNtfnBadge()
+            cap::to_cap_notification_cap(derived_cap).get_capNtfnBadge()
+                != cap::to_cap_notification_cap(src_cap).get_capNtfnBadge()
         }
 
         cap_tag::cap_irq_handler_cap => src_cap.get_tag() == cap_tag::cap_irq_control_cap,

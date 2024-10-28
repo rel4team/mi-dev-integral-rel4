@@ -428,7 +428,10 @@ impl tcb_t {
         let reply_slot = sender.get_cspace_mut_ref(tcbReply);
         let master_cap = cap::to_cap_reply_cap(&reply_slot.capability);
 
-        assert_eq!(master_cap.clone().unsplay().get_tag(), cap_tag::cap_reply_cap);
+        assert_eq!(
+            master_cap.clone().unsplay().get_tag(),
+            cap_tag::cap_reply_cap
+        );
         assert_eq!(master_cap.get_capReplyMaster(), 1);
         assert_eq!(master_cap.get_capReplyCanGrant(), 1);
         assert_eq!(master_cap.get_capTCBPtr() as usize, sender.get_ptr());

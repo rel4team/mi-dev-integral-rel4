@@ -124,7 +124,9 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         // }
         cap_tag::cap_page_table_cap => {
             if final_ && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() == 1 {
-                let pte = ptr_to_mut(cap::to_cap_page_table_cap(capability).get_capPTBasePtr() as *mut PTE);
+                let pte = ptr_to_mut(
+                    cap::to_cap_page_table_cap(capability).get_capPTBasePtr() as *mut PTE
+                );
                 unmap_page_table(
                     cap::to_cap_page_table_cap(capability).get_capPTMappedASID() as usize,
                     cap::to_cap_page_table_cap(capability).get_capPTMappedAddress() as usize,
@@ -168,7 +170,10 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         cap_tag::cap_endpoint_cap => {
             if _final {
                 // cancelAllIPC(cap.get_ep_ptr() as *mut endpoint_t);
-                convert_to_mut_type_ref::<endpoint_t>(cap::to_cap_endpoint_cap(capability).get_capEPPtr() as usize).cancel_all_ipc()
+                convert_to_mut_type_ref::<endpoint_t>(
+                    cap::to_cap_endpoint_cap(capability).get_capEPPtr() as usize,
+                )
+                .cancel_all_ipc()
             }
             fc_ret.remainder = cap_null_cap::new().unsplay();
             fc_ret.cleanupInfo = cap_null_cap::new().unsplay();
@@ -176,8 +181,9 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         }
         cap_tag::cap_notification_cap => {
             if _final {
-                let ntfn =
-                    convert_to_mut_type_ref::<notification_t>(cap::to_cap_notification_cap(capability).get_capNtfnPtr() as usize);
+                let ntfn = convert_to_mut_type_ref::<notification_t>(
+                    cap::to_cap_notification_cap(capability).get_capNtfnPtr() as usize,
+                );
                 ntfn.safe_unbind_tcb();
                 ntfn.cacncel_all_signal();
             }
@@ -215,7 +221,9 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         }
         cap_tag::cap_thread_cap => {
             if _final {
-                let tcb = convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(capability).get_capTCBPtr() as usize);
+                let tcb = convert_to_mut_type_ref::<tcb_t>(
+                    cap::to_cap_thread_cap(capability).get_capTCBPtr() as usize,
+                );
                 #[cfg(feature = "ENABLE_SMP")]
                 unsafe {
                     crate::ffi::remoteTCBStall(tcb)

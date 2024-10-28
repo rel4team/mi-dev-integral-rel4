@@ -6,7 +6,7 @@ use crate::{
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
 use sel4_common::structures_gen::{
-    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag
+    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag,
 };
 use sel4_common::{
     fault::*,
@@ -48,7 +48,9 @@ pub fn lookup_fp(_cap: &cap_cnode_cap, cptr: usize) -> cap {
         capability = unsafe { cap::to_cap_cnode_cap(&(*slot).capability).clone() };
         bits += guardBits + radixBits;
 
-        if likely(!(bits < wordBits && capability.clone().unsplay().get_tag() == cap_tag::cap_cnode_cap)) {
+        if likely(
+            !(bits < wordBits && capability.clone().unsplay().get_tag() == cap_tag::cap_cnode_cap),
+        ) {
             break;
         }
     }
@@ -106,7 +108,8 @@ pub fn mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
 #[no_mangle]
 pub fn isValidVTableRoot_fp(capability: &cap) -> bool {
     // cap_capType_equals(cap, cap_page_table_cap) && cap.get_pt_is_mapped() != 0
-    capability.get_tag() == cap_tag::cap_page_table_cap && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0
+    capability.get_tag() == cap_tag::cap_page_table_cap
+        && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0
 }
 
 #[inline]
@@ -294,7 +297,8 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     let ep_cap = cap::to_cap_endpoint_cap(lookup_fp_ret);
 
     if unlikely(
-        ep_cap.clone().unsplay().get_tag() != cap_tag::cap_endpoint_cap || ep_cap.get_capCanSend() == 0,
+        ep_cap.clone().unsplay().get_tag() != cap_tag::cap_endpoint_cap
+            || ep_cap.get_capCanSend() == 0,
     ) {
         slowpath(SysReplyRecv as usize);
     }
@@ -315,7 +319,12 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     let caller_slot = current.get_cspace_mut_ref(tcbCaller);
     let caller_cap = &cap::to_cap_reply_cap(&caller_slot.capability);
 
-    if unlikely(<cap_reply_cap as Clone>::clone(&caller_cap).unsplay().get_tag() != cap_tag::cap_reply_cap) {
+    if unlikely(
+        <cap_reply_cap as Clone>::clone(&caller_cap)
+            .unsplay()
+            .get_tag()
+            != cap_tag::cap_reply_cap,
+    ) {
         slowpath(SysReplyRecv as usize);
     }
 
@@ -326,7 +335,9 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
 
     let new_vtable = &cap::to_cap_page_table_cap(&caller.get_cspace(tcbVTable).capability);
 
-    if unlikely(!isValidVTableRoot_fp(&<cap_page_table_cap as Clone>::clone(&new_vtable).unsplay())) {
+    if unlikely(!isValidVTableRoot_fp(
+        &<cap_page_table_cap as Clone>::clone(&new_vtable).unsplay(),
+    )) {
         slowpath(SysReplyRecv as usize);
     }
 

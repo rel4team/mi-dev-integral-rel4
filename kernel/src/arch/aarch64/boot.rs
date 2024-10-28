@@ -89,7 +89,6 @@ pub fn try_init_kernel(
         debug!("ERROR: free memory management initialization failed\n");
         return false;
     }
-    println!("start init thread");
     if let Some((initial_thread, root_cnode_cap)) = root_server_init(
         it_v_reg,
         extra_bi_size_bits,
@@ -101,7 +100,6 @@ pub fn try_init_kernel(
         pv_offset,
         v_entry,
     ) {
-        println!("finish root server init");
         create_idle_thread();
         cleanInvalidateL1Caches();
         init_core_state(initial_thread);
@@ -126,8 +124,8 @@ pub fn try_init_kernel(
             }
         }
 
-        println!("Booting all finished, dropped to user space");
-        println!("\n");
+        debug!("Booting all finished, dropped to user space");
+        debug!("\n");
     } else {
         return false;
     }

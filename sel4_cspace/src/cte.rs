@@ -103,7 +103,8 @@ impl cte_t {
                 if badge == 0 {
                     return true;
                 }
-                badge == cap::to_cap_endpoint_cap(&next.capability).get_capEPBadge() && next.cteMDBNode.get_first_badged() == 0
+                badge == cap::to_cap_endpoint_cap(&next.capability).get_capEPBadge()
+                    && next.cteMDBNode.get_first_badged() == 0
             }
             cap_tag::cap_notification_cap => {
                 assert_eq!(next.capability.get_tag(), cap_tag::cap_notification_cap);
@@ -111,7 +112,8 @@ impl cte_t {
                 if badge == 0 {
                     return true;
                 }
-                badge == cap::to_cap_notification_cap(&next.capability).get_capNtfnBadge() && next.cteMDBNode.get_first_badged() == 0
+                badge == cap::to_cap_notification_cap(&next.capability).get_capNtfnBadge()
+                    && next.cteMDBNode.get_first_badged() == 0
             }
             _ => true,
         }
@@ -266,7 +268,8 @@ impl cte_t {
                     let ptr2 = cap::to_cap_zombie_cap(&self.capability).get_zombie_ptr();
                     if ptr == ptr2
                         && cap::to_cap_zombie_cap(&self.capability).get_zombie_number() == n
-                        && cap::to_cap_zombie_cap(&self.capability).get_capZombieType() == zombie_type
+                        && cap::to_cap_zombie_cap(&self.capability).get_capZombieType()
+                            == zombie_type
                     {
                         assert_eq!(end_slot.capability.get_tag(), cap_tag::cap_null_cap);
                         cap::to_cap_zombie_cap(&self.capability).set_zombie_number(n - 1);
@@ -471,16 +474,17 @@ fn cap_removable(capability: &cap, slot: *mut cte_t) -> bool {
 /// 如果`srcCap`和`newCap`都是`UntypedCap`，并且指向同一块内存，内存大小也相同，就将`srcCap`记录为没有剩余空间。
 /// 自我认为是防止同一块内存空间被分配两次
 fn setUntypedCapAsFull(srcCap: &cap, newCap: &cap, srcSlot: &mut cte_t) {
-    if srcCap.get_tag() == cap_tag::cap_untyped_cap
-        && newCap.get_tag() == cap_tag::cap_untyped_cap
+    if srcCap.get_tag() == cap_tag::cap_untyped_cap && newCap.get_tag() == cap_tag::cap_untyped_cap
     {
         assert_eq!(srcSlot.capability.get_tag(), cap_tag::cap_untyped_cap);
-        if cap::to_cap_untyped_cap(srcCap).get_capPtr() == cap::to_cap_untyped_cap(newCap).get_capPtr()
-            && cap::to_cap_untyped_cap(srcCap).get_capBlockSize() == cap::to_cap_untyped_cap(newCap).get_capBlockSize()
+        if cap::to_cap_untyped_cap(srcCap).get_capPtr()
+            == cap::to_cap_untyped_cap(newCap).get_capPtr()
+            && cap::to_cap_untyped_cap(srcCap).get_capBlockSize()
+                == cap::to_cap_untyped_cap(newCap).get_capBlockSize()
         {
-            cap::to_cap_untyped_cap(&srcSlot
-                .capability)
-                .set_capFreeIndex(MAX_FREE_INDEX(cap::to_cap_untyped_cap(srcCap).get_capBlockSize() as usize) as u64);
+            cap::to_cap_untyped_cap(&srcSlot.capability).set_capFreeIndex(MAX_FREE_INDEX(
+                cap::to_cap_untyped_cap(srcCap).get_capBlockSize() as usize,
+            ) as u64);
         }
     }
 }

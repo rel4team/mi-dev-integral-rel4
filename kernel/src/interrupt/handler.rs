@@ -46,7 +46,9 @@ pub fn handleInterrupt(irq: usize) {
             if handler_cap.get_tag() == cap_tag::cap_notification_cap
                 && cap::to_cap_notification_cap(handler_cap).get_capNtfnCanSend() != 0
             {
-                let nf = convert_to_mut_type_ref::<notification_t>(cap::to_cap_notification_cap(handler_cap).get_capNtfnPtr() as usize);
+                let nf = convert_to_mut_type_ref::<notification_t>(
+                    cap::to_cap_notification_cap(handler_cap).get_capNtfnPtr() as usize,
+                );
                 nf.send_signal(cap::to_cap_notification_cap(handler_cap).get_capNtfnPtr() as usize);
             }
         }

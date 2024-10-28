@@ -381,7 +381,9 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     let vspace_cap_slot = global_ops!(current_extra_caps.excaprefs[0]);
     let vspace_cap = convert_to_mut_type_ref::<cap_vspace_cap>(vspace_cap_slot);
 
-    if unlikely(!vspace_cap.clone().unsplay().is_vtable_root() || vspace_cap.get_capVSIsMapped() == 1) {
+    if unlikely(
+        !vspace_cap.clone().unsplay().is_vtable_root() || vspace_cap.get_capVSIsMapped() == 1,
+    ) {
         log::debug!("is not a valid vtable root");
         global_ops!(current_syscall_error._type = seL4_InvalidCapability);
         global_ops!(current_syscall_error.invalidArgumentNumber = 1);
