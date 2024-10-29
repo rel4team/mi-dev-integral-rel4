@@ -14,7 +14,6 @@ use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag, cap_thread_cap};
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_common::BIT;
-use sel4_cspace::arch::cap_trans;
 #[cfg(target_arch = "aarch64")]
 use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::capability::cap_func;
@@ -212,7 +211,7 @@ fn decode_copy_registers(
 ) -> exception_t {
     let flags = get_syscall_arg(0, buffer);
 
-    let source_cap = cap::to_cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
+    let source_cap = cap::cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
 
     if capability.clone().unsplay().get_tag() != cap_tag::cap_thread_cap {
         debug!("TCB CopyRegisters: Truncated message.");
@@ -274,7 +273,7 @@ fn decode_tcb_configure(
             return dc_ret.status;
         }
         let status =
-            check_ipc_buffer_vaild(new_buffer_addr, cap::to_cap_frame_cap(&dc_ret.capability));
+            check_ipc_buffer_vaild(new_buffer_addr, cap::cap_frame_cap(&dc_ret.capability));
         if status != exception_t::EXCEPTION_NONE {
             return status;
         }
@@ -371,7 +370,7 @@ fn decode_set_priority(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     let auth_tcb =
-        convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize);
+        convert_to_mut_type_ref::<tcb_t>(cap::cap_thread_cap(auth_cap).get_capTCBPtr() as usize);
     let status = check_prio(new_prio, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
         return status;
@@ -407,7 +406,7 @@ fn decode_set_mc_priority(
     }
 
     let auth_tcb =
-        convert_to_mut_type_ref::<tcb_t>(cap::to_cap_thread_cap(auth_cap).get_capTCBPtr() as usize);
+        convert_to_mut_type_ref::<tcb_t>(cap::cap_thread_cap(auth_cap).get_capTCBPtr() as usize);
     let status = check_prio(new_mcp, auth_tcb);
     if status != exception_t::EXCEPTION_NONE {
         debug!(
@@ -437,7 +436,7 @@ fn decode_set_sched_params(
     }
     let new_mcp = get_syscall_arg(0, buffer);
     let new_prio = get_syscall_arg(1, buffer);
-    let auth_cap = cap::to_cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
+    let auth_cap = cap::cap_thread_cap(&get_extra_cap_by_index(0).unwrap().capability);
     if auth_cap.clone().unsplay().get_tag() != cap_tag::cap_thread_cap {
         debug!("SetSchedParams: authority cap not a TCB.");
         unsafe {
@@ -498,8 +497,7 @@ fn decode_set_ipc_buffer(
             }
             return dc_ret.status;
         }
-        let status =
-            check_ipc_buffer_vaild(buffer_addr, &cap::to_cap_frame_cap(&dc_ret.capability));
+        let status = check_ipc_buffer_vaild(buffer_addr, &cap::cap_frame_cap(&dc_ret.capability));
         if status != exception_t::EXCEPTION_NONE {
             return status;
         }
@@ -612,7 +610,7 @@ fn decode_bind_notification(capability: &cap_thread_cap) -> exception_t {
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let ntfn_cap = cap::to_cap_notification_cap(&get_extra_cap_by_index(0).unwrap().capability);
+    let ntfn_cap = cap::cap_notification_cap(&get_extra_cap_by_index(0).unwrap().capability);
     if ntfn_cap.clone().unsplay().get_tag() != cap_tag::cap_notification_cap {
         debug!("TCB BindNotification: Notification is invalid.");
         unsafe {

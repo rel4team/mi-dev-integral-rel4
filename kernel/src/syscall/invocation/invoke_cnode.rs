@@ -6,7 +6,6 @@ use sel4_common::{
     structures::exception_t,
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::arch::cap_trans;
 use sel4_cspace::capability::cap_func;
 use sel4_cspace::interface::{cte_insert, cte_move, cte_swap, cte_t};
 use sel4_ipc::endpoint_t;
@@ -100,7 +99,7 @@ pub fn invoke_cnode_save_caller(dest_slot: &mut cte_t) -> exception_t {
     match capability.get_tag() {
         cap_tag::cap_null_cap => debug!("CNode SaveCaller: Reply cap not present."),
         cap_tag::cap_reply_cap => {
-            if cap::to_cap_reply_cap(capability).get_capReplyMaster() == 0 {
+            if cap::cap_reply_cap(capability).get_capReplyMaster() == 0 {
                 cte_move(capability, src_slot, dest_slot);
             }
         }
@@ -174,10 +173,10 @@ pub fn invoke_cnode_cancel_badged_sends(dest_slot: &mut cte_t) -> exception_t {
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-    let badge = cap::to_cap_endpoint_cap(&dest_cap).get_capEPBadge() as usize;
+    let badge = cap::cap_endpoint_cap(&dest_cap).get_capEPBadge() as usize;
     if badge != 0 {
         convert_to_mut_type_ref::<endpoint_t>(
-            cap::to_cap_endpoint_cap(&dest_cap).get_capEPPtr() as usize
+            cap::cap_endpoint_cap(&dest_cap).get_capEPPtr() as usize
         )
         .cancel_badged_sends(badge);
     }
@@ -199,10 +198,10 @@ pub fn invoke_cnode_delete(dest_slot: &mut cte_t) -> exception_t {
 fn hasCancelSendRight(capability: &cap) -> bool {
     match capability.get_tag() {
         cap_tag::cap_endpoint_cap => {
-            cap::to_cap_endpoint_cap(capability).get_capCanSend() != 0
-                && cap::to_cap_endpoint_cap(capability).get_capCanReceive() != 0
-                && cap::to_cap_endpoint_cap(capability).get_capCanGrant() != 0
-                && cap::to_cap_endpoint_cap(capability).get_capCanGrantReply() != 0
+            cap::cap_endpoint_cap(capability).get_capCanSend() != 0
+                && cap::cap_endpoint_cap(capability).get_capCanReceive() != 0
+                && cap::cap_endpoint_cap(capability).get_capCanGrant() != 0
+                && cap::cap_endpoint_cap(capability).get_capCanGrantReply() != 0
         }
         _ => false,
     }

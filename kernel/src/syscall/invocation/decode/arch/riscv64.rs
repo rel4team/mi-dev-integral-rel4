@@ -17,7 +17,6 @@ use sel4_common::structures_gen::{cap, cap_page_table_cap, cap_tag};
 use sel4_common::structures_gen::{lookup_fault_invalid_root, lookup_fault_missing_capability};
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 use sel4_common::{BIT, MASK};
-use sel4_cspace::arch::cap_trans;
 use sel4_cspace::interface::cte_t;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 use sel4_vspace::{
@@ -99,7 +98,7 @@ fn decode_frame_invocation(
         MessageLabel::RISCVPageGetAddress => {
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             invoke_page_get_address(
-                cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize,
+                cap::cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize,
                 call,
             )
         }
@@ -149,8 +148,8 @@ fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuff
 
     let asid_base = i << asidLowBits;
     if untyped_cap.get_tag() != cap_tag::cap_untyped_cap
-        || cap::to_cap_untyped_cap(&untyped_cap).get_capBlockSize() as usize != seL4_ASIDPoolBits
-        || cap::to_cap_untyped_cap(&untyped_cap).get_capIsDevice() != 0
+        || cap::cap_untyped_cap(&untyped_cap).get_capBlockSize() as usize != seL4_ASIDPoolBits
+        || cap::cap_untyped_cap(&untyped_cap).get_capIsDevice() != 0
     {
         unsafe {
             current_syscall_error._type = seL4_InvalidCapability;
@@ -167,8 +166,8 @@ fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuff
         return status;
     }
 
-    let frame = cap::to_cap_untyped_cap(&untyped_cap).get_capPtr();
-    let lu_ret = lookup_slot_for_cnode_op(false, cap::to_cap_cnode_cap(&root), index, depth);
+    let frame = cap::cap_untyped_cap(&untyped_cap).get_capPtr();
+    let lu_ret = lookup_slot_for_cnode_op(false, cap::cap_cnode_cap(&root), index, depth);
     if lu_ret.status != exception_t::EXCEPTION_NONE {
         return lu_ret.status;
     }
@@ -206,7 +205,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
 
     if unlikely(
         vspace_cap.get_tag() != cap_tag::cap_page_table_cap
-            || cap::to_cap_page_table_cap(&vspace_cap).get_capPTIsMapped() != 0,
+            || cap::cap_page_table_cap(&vspace_cap).get_capPTIsMapped() != 0,
     ) {
         debug!("RISCVASIDPool: Invalid vspace root.");
         unsafe {
@@ -216,9 +215,9 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let asid = cap::to_cap_asid_pool_cap(&cte.capability).get_capASIDBase() as usize;
+    let asid = cap::cap_asid_pool_cap(&cte.capability).get_capASIDBase() as usize;
     if let Some(pool) = get_asid_pool_by_index(asid >> asidLowBits) {
-        if pool.get_ptr() != cap::to_cap_asid_pool_cap(&cte.capability).get_capASIDPool() as usize {
+        if pool.get_ptr() != cap::cap_asid_pool_cap(&cte.capability).get_capASIDPool() as usize {
             unsafe {
                 current_syscall_error._type = seL4_InvalidCapability;
                 current_syscall_error.invalidCapNumber = 0;
@@ -263,9 +262,9 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     let vaddr = get_syscall_arg(0, buffer);
     let w_rights_mask = get_syscall_arg(1, buffer);
     let attr = vm_attributes_t::from_word(get_syscall_arg(2, buffer));
-    let lvl1pt_cap = cap::to_cap_page_table_cap(&get_extra_cap_by_index(0).unwrap().capability);
+    let lvl1pt_cap = cap::cap_page_table_cap(&get_extra_cap_by_index(0).unwrap().capability);
     if let Some((lvl1pt, asid)) = get_vspace(&lvl1pt_cap) {
-        let frame_size = cap::to_cap_frame_cap(&frame_slot.capability).get_capFSize() as usize;
+        let frame_size = cap::cap_frame_cap(&frame_slot.capability).get_capFSize() as usize;
         let vtop = vaddr + BIT!(pageBitsForSize(frame_size)) - 1;
         if unlikely(vtop >= USER_TOP) {
             unsafe {
@@ -294,8 +293,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
         }
 
         let pt_slot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
-        let frame_asid =
-            cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedASID() as usize;
+        let frame_asid = cap::cap_frame_cap(&frame_slot.capability).get_capFMappedASID() as usize;
         if frame_asid != asidInvalid {
             if frame_asid != asid {
                 debug!("RISCVPageMap: Attempting to remap a frame that does not belong to the passed address space");
@@ -306,8 +304,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
 
-            if cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedAddress() as usize
-                != vaddr
+            if cap::cap_frame_cap(&frame_slot.capability).get_capFMappedAddress() as usize != vaddr
             {
                 debug!("RISCVPageMap: attempting to map frame into multiple addresses");
                 unsafe {
@@ -334,7 +331,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
             }
         }
         invoke_page_map(
-            cap::to_cap_frame_cap(&frame_slot.clone().capability),
+            cap::cap_frame_cap(&frame_slot.clone().capability),
             w_rights_mask,
             vaddr,
             asid,
@@ -355,7 +352,7 @@ fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let capability = cap::to_cap_page_table_cap(&pt_cte.capability);
+    let capability = cap::cap_page_table_cap(&pt_cte.capability);
     if capability.get_capPTIsMapped() != 0 {
         let asid = capability.get_capPTMappedASID() as usize;
         let find_ret = find_vspace_for_asid(asid);
@@ -390,7 +387,7 @@ fn decode_page_table_map(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let capability = cap::to_cap_page_table_cap(&pt_cte.capability);
+    let capability = cap::cap_page_table_cap(&pt_cte.capability);
     if unlikely(capability.get_capPTIsMapped() != 0) {
         debug!("RISCVPageTable: PageTable is already mapped.");
         unsafe {
@@ -409,7 +406,7 @@ fn decode_page_table_map(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let lvl1pt_cap = cap::to_cap_page_table_cap(&get_extra_cap_by_index(0).unwrap().capability);
+    let lvl1pt_cap = cap::cap_page_table_cap(&get_extra_cap_by_index(0).unwrap().capability);
 
     if let Some((lvl1pt, asid)) = get_vspace(&lvl1pt_cap) {
         let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
@@ -499,7 +496,7 @@ pub fn arch_decode_irq_control_invocation(
         let _trigger = get_syscall_arg(1, buffer) != 0;
         let index = get_syscall_arg(2, buffer);
         let depth = get_syscall_arg(3, buffer);
-        let cnode_cap = cap::to_cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
+        let cnode_cap = cap::cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
         let status = check_irq(irq);
         if status != exception_t::EXCEPTION_NONE {
             return status;

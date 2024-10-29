@@ -1,6 +1,5 @@
 //! zombie cap相关字段和方法
 //! 当`tcb_cap`和`cnode_cap`删除的过程中会变为`zombie_cap`
-use crate::arch::cap_trans;
 use crate::cte::cte_t;
 use sel4_common::sel4_config::wordRadix;
 use sel4_common::structures_gen::{cap, cap_tag, cap_zombie_cap};
@@ -66,6 +65,6 @@ pub fn ZombieType_ZombieCNode(n: usize) -> usize {
 #[inline]
 #[no_mangle]
 pub fn capCyclicZombie(capability: &cap, slot: *mut cte_t) -> bool {
-    let ptr = cap::to_cap_zombie_cap(capability).get_zombie_ptr() as *mut cte_t;
+    let ptr = cap::cap_zombie_cap(capability).get_zombie_ptr() as *mut cte_t;
     (capability.get_tag() == cap_tag::cap_zombie_cap) && (ptr == slot)
 }

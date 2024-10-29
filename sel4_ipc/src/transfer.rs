@@ -12,7 +12,6 @@ use sel4_common::structures::*;
 use sel4_common::structures_gen::cap;
 use sel4_common::structures_gen::cap_tag;
 use sel4_common::utils::*;
-use sel4_cspace::arch::cap_trans;
 use sel4_cspace::interface::*;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
 use sel4_vspace::pptr_t;
@@ -105,7 +104,7 @@ impl Transfer for tcb_t {
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
             let capability_cpy = &slot.capability.clone();
-            let capability = cap::to_cap_endpoint_cap(capability_cpy);
+            let capability = cap::cap_endpoint_cap(capability_cpy);
             if capability.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()
@@ -150,7 +149,7 @@ impl Transfer for tcb_t {
         while i < seL4_MsgMaxExtraCaps && current_extra_caps[i] as usize != 0 {
             let slot = convert_to_mut_type_ref::<cte_t>(current_extra_caps[i]);
             let capability_cpy = &slot.capability.clone();
-            let capability = cap::to_cap_endpoint_cap(capability_cpy);
+            let capability = cap::cap_endpoint_cap(capability_cpy);
             if capability.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
                 && endpoint.is_some()
                 && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()

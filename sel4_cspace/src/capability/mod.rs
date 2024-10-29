@@ -19,7 +19,7 @@ pub mod zombie;
 use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag};
 use sel4_common::{sel4_config::*, MASK};
 
-use crate::arch::{arch_same_object_as, cap_trans};
+use crate::arch::arch_same_object_as;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -64,8 +64,8 @@ impl cap_func for cap {
         }
         match self.get_tag() {
             cap_tag::cap_endpoint_cap => {
-                if !preserve && cap::to_cap_endpoint_cap(self).get_capEPBadge() == 0 {
-                    let mut new_cap = cap::to_cap_endpoint_cap(self).clone();
+                if !preserve && cap::cap_endpoint_cap(self).get_capEPBadge() == 0 {
+                    let mut new_cap = cap::cap_endpoint_cap(self).clone();
                     new_cap.set_capEPBadge(new_data);
                     new_cap.unsplay()
                 } else {
@@ -74,8 +74,8 @@ impl cap_func for cap {
             }
 
             cap_tag::cap_notification_cap => {
-                if !preserve && cap::to_cap_notification_cap(self).get_capNtfnBadge() == 0 {
-                    let mut new_cap = cap::to_cap_notification_cap(self).clone();
+                if !preserve && cap::cap_notification_cap(self).get_capNtfnBadge() == 0 {
+                    let mut new_cap = cap::cap_notification_cap(self).clone();
                     new_cap.set_capNtfnBadge(new_data);
                     new_cap.unsplay()
                 } else {
@@ -86,12 +86,11 @@ impl cap_func for cap {
             cap_tag::cap_cnode_cap => {
                 let w = CNodeCapData::new(new_data as usize);
                 let guard_size = w.get_guard_size();
-                if guard_size + cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize > wordBits
-                {
+                if guard_size + cap::cap_cnode_cap(self).get_capCNodeRadix() as usize > wordBits {
                     return cap_null_cap::new().unsplay();
                 }
                 let guard = w.get_guard() & MASK!(guard_size);
-                let mut new_cap = cap::to_cap_cnode_cap(self).clone();
+                let mut new_cap = cap::cap_cnode_cap(self).clone();
                 new_cap.set_capCNodeGuard(guard as u64);
                 new_cap.set_capCNodeGuardSize(guard_size as u64);
                 new_cap.unsplay()
@@ -102,11 +101,11 @@ impl cap_func for cap {
 
     fn get_cap_size_bits(&self) -> usize {
         match self.get_tag() {
-            cap_tag::cap_untyped_cap => cap::to_cap_untyped_cap(self).get_capBlockSize() as usize,
+            cap_tag::cap_untyped_cap => cap::cap_untyped_cap(self).get_capBlockSize() as usize,
             cap_tag::cap_endpoint_cap => seL4_EndpointBits,
             cap_tag::cap_notification_cap => seL4_NotificationBits,
             cap_tag::cap_cnode_cap => {
-                cap::to_cap_cnode_cap(self).get_capCNodeRadix() as usize + seL4_SlotBits
+                cap::cap_cnode_cap(self).get_capCNodeRadix() as usize + seL4_SlotBits
             }
             cap_tag::cap_page_table_cap => PT_SIZE_BITS,
             cap_tag::cap_reply_cap => seL4_ReplyBits,
@@ -139,10 +138,10 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
     match cap1.get_tag() {
         cap_tag::cap_untyped_cap => {
             if cap2.get_cap_is_physical() {
-                let aBase = cap::to_cap_untyped_cap(cap1).get_capPtr() as usize;
+                let aBase = cap::cap_untyped_cap(cap1).get_capPtr() as usize;
                 let bBase = cap2.get_cap_ptr();
 
-                let aTop = aBase + MASK!(cap::to_cap_untyped_cap(cap1).get_capBlockSize());
+                let aTop = aBase + MASK!(cap::cap_untyped_cap(cap1).get_capBlockSize());
                 let bTop = bBase + MASK!(cap2.get_cap_size_bits());
                 return (aBase <= bBase) && (bTop <= aTop) && (bBase <= bTop);
             }
@@ -167,10 +166,10 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
         }
         cap_tag::cap_cnode_cap => {
             if cap2.get_tag() == cap_tag::cap_cnode_cap {
-                return (cap::to_cap_cnode_cap(cap1).get_capCNodePtr()
-                    == cap::to_cap_cnode_cap(cap2).get_capCNodePtr())
-                    && (cap::to_cap_cnode_cap(cap1).get_capCNodeRadix()
-                        == cap::to_cap_cnode_cap(cap2).get_capCNodeRadix());
+                return (cap::cap_cnode_cap(cap1).get_capCNodePtr()
+                    == cap::cap_cnode_cap(cap2).get_capCNodePtr())
+                    && (cap::cap_cnode_cap(cap1).get_capCNodeRadix()
+                        == cap::cap_cnode_cap(cap2).get_capCNodeRadix());
             }
             false
         }
@@ -182,8 +181,8 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
         }
         cap_tag::cap_irq_handler_cap => {
             if cap2.get_tag() == cap_tag::cap_irq_handler_cap {
-                return cap::to_cap_irq_handler_cap(cap1).get_capIRQ()
-                    == cap::to_cap_irq_handler_cap(cap2).get_capIRQ();
+                return cap::cap_irq_handler_cap(cap1).get_capIRQ()
+                    == cap::cap_irq_handler_cap(cap2).get_capIRQ();
             }
             false
         }
@@ -220,14 +219,14 @@ pub fn is_cap_revocable(derived_cap: &cap, src_cap: &cap) -> bool {
     match derived_cap.get_tag() {
         cap_tag::cap_endpoint_cap => {
             assert_eq!(src_cap.get_tag(), cap_tag::cap_endpoint_cap);
-            cap::to_cap_endpoint_cap(derived_cap).get_capEPBadge()
-                != cap::to_cap_endpoint_cap(src_cap).get_capEPBadge()
+            cap::cap_endpoint_cap(derived_cap).get_capEPBadge()
+                != cap::cap_endpoint_cap(src_cap).get_capEPBadge()
         }
 
         cap_tag::cap_notification_cap => {
             assert_eq!(src_cap.get_tag(), cap_tag::cap_notification_cap);
-            cap::to_cap_notification_cap(derived_cap).get_capNtfnBadge()
-                != cap::to_cap_notification_cap(src_cap).get_capNtfnBadge()
+            cap::cap_notification_cap(derived_cap).get_capNtfnBadge()
+                != cap::cap_notification_cap(src_cap).get_capNtfnBadge()
         }
 
         cap_tag::cap_irq_handler_cap => src_cap.get_tag() == cap_tag::cap_irq_control_cap,

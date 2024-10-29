@@ -24,7 +24,7 @@ use sel4_common::{
     },
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::arch::{arch_mask_cap_rights, cap_trans};
+use sel4_cspace::arch::arch_mask_cap_rights;
 use sel4_cspace::capability::cap_func;
 use sel4_cspace::interface::{cte_t, resolve_address_bits};
 use sel4_ipc::notification_t;
@@ -153,7 +153,7 @@ pub fn safe_unbind_notification(tcb: &mut tcb_t) {
 #[cfg(target_arch = "riscv64")]
 pub fn is_valid_vtable_root(capability: &cap) -> bool {
     capability.get_tag() == cap_tag::cap_page_table_cap
-        && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0
+        && cap::cap_page_table_cap(capability).get_capPTIsMapped() != 0
 }
 
 #[no_mangle]
@@ -245,7 +245,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
     match capability.clone().splay() {
         cap_Splayed::endpoint_cap(data) => {
             let capability_copy = &capability.clone();
-            let new_cap = cap::to_cap_endpoint_cap(capability_copy);
+            let new_cap = cap::cap_endpoint_cap(capability_copy);
             new_cap.set_capCanSend(data.get_capCanSend() & rights.get_allow_write() as u64);
             new_cap.set_capCanReceive(data.get_capCanReceive() & rights.get_allow_read() as u64);
             new_cap.set_capCanGrant(data.get_capCanGrant() & rights.get_allow_grant() as u64);
@@ -256,7 +256,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
         }
         cap_Splayed::notification_cap(data) => {
             let capability_copy = &capability.clone();
-            let new_cap = cap::to_cap_notification_cap(capability_copy);
+            let new_cap = cap::cap_notification_cap(capability_copy);
             new_cap.set_capNtfnCanSend(data.get_capNtfnCanSend() & rights.get_allow_write() as u64);
             new_cap.set_capNtfnCanReceive(
                 data.get_capNtfnCanReceive() & rights.get_allow_read() as u64,
@@ -265,7 +265,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
         }
         cap_Splayed::reply_cap(data) => {
             let capability_copy = &capability.clone();
-            let new_cap = cap::to_cap_reply_cap(capability_copy);
+            let new_cap = cap::cap_reply_cap(capability_copy);
             new_cap.set_capReplyCanGrant(
                 data.get_capReplyCanGrant() & rights.get_allow_grant() as u64,
             );
@@ -273,7 +273,7 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, capability: &cap) -> cap {
         }
         cap_Splayed::frame_cap(data) => {
             let capability_copy = &capability.clone();
-            let new_cap = cap::to_cap_frame_cap(capability_copy);
+            let new_cap = cap::cap_frame_cap(capability_copy);
             let mut vm_rights = unsafe { core::mem::transmute(data.get_capFVMRights()) };
             vm_rights = maskVMRights(vm_rights, rights);
             new_cap.set_capFVMRights(vm_rights as u64);

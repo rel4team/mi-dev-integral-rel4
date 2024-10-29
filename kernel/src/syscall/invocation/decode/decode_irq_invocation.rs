@@ -6,7 +6,6 @@ use sel4_common::{
     structures::{exception_t, seL4_IPCBuffer},
     utils::convert_to_mut_type_ref,
 };
-use sel4_cspace::arch::cap_trans;
 use sel4_cspace::interface::cte_t;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 
@@ -35,7 +34,7 @@ pub fn decode_irq_control_invocation(
         let index = get_syscall_arg(1, buffer);
         let depth = get_syscall_arg(2, buffer);
 
-        let cnode_cap = cap::to_cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
+        let cnode_cap = cap::cap_cnode_cap(&get_extra_cap_by_index(0).unwrap().capability);
         let status = check_irq(irq);
         if status != exception_t::EXCEPTION_NONE {
             return status;

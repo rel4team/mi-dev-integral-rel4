@@ -7,7 +7,6 @@ use sel4_common::sel4_config::{tcbCNodeEntries, tcbCTable, tcbVTable};
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag};
 use sel4_common::utils::convert_to_mut_type_ref;
-use sel4_cspace::arch::cap_trans;
 use sel4_cspace::capability::cap_func;
 use sel4_cspace::compatibility::{ZombieType_ZombieTCB, Zombie_new};
 use sel4_cspace::interface::finaliseCap_ret;
@@ -28,12 +27,12 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
     };
     match capability.get_tag() {
         cap_tag::cap_frame_cap => {
-            if cap::to_cap_frame_cap(capability).get_capFMappedASID() != 0 {
+            if cap::cap_frame_cap(capability).get_capFMappedASID() != 0 {
                 match unmapPage(
-                    cap::to_cap_frame_cap(capability).get_capFSize() as usize,
-                    cap::to_cap_frame_cap(capability).get_capFMappedASID() as usize,
-                    cap::to_cap_frame_cap(capability).get_capFMappedAddress() as usize,
-                    cap::to_cap_frame_cap(capability).get_capFBasePtr() as usize,
+                    cap::cap_frame_cap(capability).get_capFSize() as usize,
+                    cap::cap_frame_cap(capability).get_capFMappedASID() as usize,
+                    cap::cap_frame_cap(capability).get_capFMappedAddress() as usize,
+                    cap::cap_frame_cap(capability).get_capFBasePtr() as usize,
                 ) {
                     Err(lookup_fault) => unsafe { current_lookup_fault = lookup_fault },
                     _ => {}
@@ -42,10 +41,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         }
 
         cap_tag::cap_page_table_cap => {
-            if final_ && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0 {
-                let asid = cap::to_cap_page_table_cap(capability).get_capPTMappedASID() as usize;
+            if final_ && cap::cap_page_table_cap(capability).get_capPTIsMapped() != 0 {
+                let asid = cap::cap_page_table_cap(capability).get_capPTMappedASID() as usize;
                 let find_ret = find_vspace_for_asid(asid);
-                let pte = cap::to_cap_page_table_cap(capability).get_capPTBasePtr() as usize;
+                let pte = cap::cap_page_table_cap(capability).get_capPTBasePtr() as usize;
                 if find_ret.status == exception_t::EXCEPTION_NONE
                     && find_ret.vspace_root.unwrap() as usize == pte
                 {
@@ -53,7 +52,7 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
                 } else {
                     convert_to_mut_type_ref::<PTE>(pte).unmap_page_table(
                         asid,
-                        cap::to_cap_page_table_cap(capability).get_capPTMappedAddress() as usize,
+                        cap::cap_page_table_cap(capability).get_capPTMappedAddress() as usize,
                     );
                 }
                 if let Some(lookup_fault) = find_ret.lookup_fault {
@@ -67,8 +66,8 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         cap_tag::cap_asid_pool_cap => {
             if final_ {
                 deleteASIDPool(
-                    cap::to_cap_asid_pool_cap(capability).get_capASIDBase() as usize,
-                    cap::to_cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t,
+                    cap::cap_asid_pool_cap(capability).get_capASIDBase() as usize,
+                    cap::cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t,
                 );
             }
         }
@@ -89,12 +88,12 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
     };
     match capability.get_tag() {
         cap_tag::cap_frame_cap => {
-            if cap::to_cap_frame_cap(capability).get_capFMappedASID() != 0 {
+            if cap::cap_frame_cap(capability).get_capFMappedASID() != 0 {
                 match unmapPage(
-                    cap::to_cap_frame_cap(capability).get_capFSize() as usize,
-                    cap::to_cap_frame_cap(capability).get_capFMappedASID() as usize,
-                    cap::to_cap_frame_cap(capability).get_capFMappedAddress() as usize,
-                    cap::to_cap_frame_cap(capability).get_capFBasePtr() as usize,
+                    cap::cap_frame_cap(capability).get_capFSize() as usize,
+                    cap::cap_frame_cap(capability).get_capFMappedASID() as usize,
+                    cap::cap_frame_cap(capability).get_capFMappedAddress() as usize,
+                    cap::cap_frame_cap(capability).get_capFBasePtr() as usize,
                 ) {
                     Err(fault) => unsafe { current_lookup_fault = fault },
                     _ => {}
@@ -102,10 +101,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
             }
         }
         cap_tag::cap_vspace_cap => {
-            if final_ && cap::to_cap_vspace_cap(capability).get_capVSIsMapped() == 1 {
+            if final_ && cap::cap_vspace_cap(capability).get_capVSIsMapped() == 1 {
                 deleteASID(
-                    cap::to_cap_vspace_cap(capability).get_capVSIsMapped() as usize,
-                    cap::to_cap_vspace_cap(capability).get_capVSBasePtr() as _,
+                    cap::cap_vspace_cap(capability).get_capVSIsMapped() as usize,
+                    cap::cap_vspace_cap(capability).get_capVSBasePtr() as _,
                 );
             }
         }
@@ -131,13 +130,12 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         //     }
         // }
         cap_tag::cap_page_table_cap => {
-            if final_ && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() == 1 {
-                let pte = ptr_to_mut(
-                    cap::to_cap_page_table_cap(capability).get_capPTBasePtr() as *mut PTE
-                );
+            if final_ && cap::cap_page_table_cap(capability).get_capPTIsMapped() == 1 {
+                let pte =
+                    ptr_to_mut(cap::cap_page_table_cap(capability).get_capPTBasePtr() as *mut PTE);
                 unmap_page_table(
-                    cap::to_cap_page_table_cap(capability).get_capPTMappedASID() as usize,
-                    cap::to_cap_page_table_cap(capability).get_capPTMappedAddress() as usize,
+                    cap::cap_page_table_cap(capability).get_capPTMappedASID() as usize,
+                    cap::cap_page_table_cap(capability).get_capPTMappedAddress() as usize,
                     pte,
                 );
             }
@@ -145,8 +143,8 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         cap_tag::cap_asid_pool_cap => {
             if final_ {
                 deleteASIDPool(
-                    cap::to_cap_asid_pool_cap(capability).get_capASIDBase() as usize,
-                    cap::to_cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t,
+                    cap::cap_asid_pool_cap(capability).get_capASIDBase() as usize,
+                    cap::cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t,
                 );
             }
         }
@@ -179,7 +177,7 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
             if _final {
                 // cancelAllIPC(cap.get_ep_ptr() as *mut endpoint_t);
                 convert_to_mut_type_ref::<endpoint_t>(
-                    cap::to_cap_endpoint_cap(capability).get_capEPPtr() as usize,
+                    cap::cap_endpoint_cap(capability).get_capEPPtr() as usize,
                 )
                 .cancel_all_ipc()
             }
@@ -190,7 +188,7 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         cap_tag::cap_notification_cap => {
             if _final {
                 let ntfn = convert_to_mut_type_ref::<notification_t>(
-                    cap::to_cap_notification_cap(capability).get_capNtfnPtr() as usize,
+                    cap::cap_notification_cap(capability).get_capNtfnPtr() as usize,
                 );
                 ntfn.safe_unbind_tcb();
                 ntfn.cacncel_all_signal();
@@ -215,9 +213,9 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         cap_tag::cap_cnode_cap => {
             return if _final {
                 fc_ret.remainder = Zombie_new(
-                    1usize << cap::to_cap_cnode_cap(capability).get_capCNodeRadix() as usize,
-                    cap::to_cap_cnode_cap(capability).get_capCNodeRadix() as usize,
-                    cap::to_cap_cnode_cap(capability).get_capCNodePtr() as usize,
+                    1usize << cap::cap_cnode_cap(capability).get_capCNodeRadix() as usize,
+                    cap::cap_cnode_cap(capability).get_capCNodeRadix() as usize,
+                    cap::cap_cnode_cap(capability).get_capCNodePtr() as usize,
                 );
                 fc_ret.cleanupInfo = cap_null_cap::new().unsplay();
                 fc_ret
@@ -230,7 +228,7 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         cap_tag::cap_thread_cap => {
             if _final {
                 let tcb = convert_to_mut_type_ref::<tcb_t>(
-                    cap::to_cap_thread_cap(capability).get_capTCBPtr() as usize,
+                    cap::cap_thread_cap(capability).get_capTCBPtr() as usize,
                 );
                 #[cfg(feature = "ENABLE_SMP")]
                 unsafe {
@@ -257,7 +255,7 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
         }
         cap_tag::cap_irq_handler_cap => {
             if _final {
-                let irq = cap::to_cap_irq_handler_cap(capability).get_capIRQ() as usize;
+                let irq = cap::cap_irq_handler_cap(capability).get_capIRQ() as usize;
                 deletingIRQHandler(irq);
                 fc_ret.remainder = cap_null_cap::new().unsplay();
                 fc_ret.cleanupInfo = capability.clone();
@@ -278,7 +276,7 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
 #[no_mangle]
 pub fn post_cap_deletion(capability: &cap) {
     if capability.get_tag() == cap_tag::cap_irq_handler_cap {
-        let irq = cap::to_cap_irq_handler_cap(capability).get_capIRQ() as usize;
+        let irq = cap::cap_irq_handler_cap(capability).get_capIRQ() as usize;
         setIRQState(IRQState::IRQInactive, irq);
     }
 }
@@ -305,7 +303,7 @@ pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
         if let Err(lookup_fault) = delete_asid(
             asid,
             vspace,
-            cap::to_cap_page_table_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
+            cap::cap_page_table_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
         ) {
             current_lookup_fault = lookup_fault;
         }
@@ -319,7 +317,7 @@ pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
         if let Err(lookup_fault) = delete_asid(
             asid,
             vspace,
-            &cap::to_cap_vspace_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
+            &cap::cap_vspace_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
         ) {
             current_lookup_fault = lookup_fault;
         }
@@ -333,7 +331,7 @@ pub fn deleteASIDPool(asid_base: asid_t, pool: *mut asid_pool_t) {
         if let Err(lookup_fault) = delete_asid_pool(
             asid_base,
             pool,
-            &cap::to_cap_vspace_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
+            &cap::cap_vspace_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
         ) {
             current_lookup_fault = lookup_fault;
         }
@@ -347,7 +345,7 @@ pub fn deleteASIDPool(asid_base: asid_t, pool: *mut asid_pool_t) {
         if let Err(lookup_fault) = delete_asid_pool(
             asid_base,
             pool,
-            &cap::to_cap_page_table_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
+            &cap::cap_page_table_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
         ) {
             current_lookup_fault = lookup_fault;
         }

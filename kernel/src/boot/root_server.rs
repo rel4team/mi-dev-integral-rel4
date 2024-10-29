@@ -531,8 +531,6 @@ unsafe fn rust_create_it_address_space(
     root_cnode_cap: &cap_cnode_cap,
     it_v_reg: v_region_t,
 ) -> cap_page_table_cap {
-    use sel4_cspace::arch::cap_trans;
-
     copyGlobalMappings(rootserver.vspace);
     let lvl1pt_cap = cap_page_table_cap::new(
         IT_ASID as u64,
@@ -554,7 +552,7 @@ unsafe fn rust_create_it_address_space(
                 root_cnode_cap,
                 create_it_pt_cap(&lvl1pt_cap, it_alloc_paging(), pt_vptr, IT_ASID).unsplay(),
             ) {
-                return cap::to_cap_page_table_cap(&cap_null_cap::new().unsplay()).clone();
+                return cap::cap_page_table_cap(&cap_null_cap::new().unsplay()).clone();
             }
             pt_vptr += RISCV_GET_LVL_PGSIZE(i);
         }
@@ -576,7 +574,6 @@ unsafe fn rust_create_it_address_space(
     // create the PGD
 
     use sel4_common::structures_gen::cap_null_cap;
-    use sel4_cspace::arch::cap_trans;
     let vspace_cap = cap_vspace_cap::new(IT_ASID as u64, rootserver.vspace as u64, 1);
     let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     let slot_pos_before = ndks_boot.slot_pos_cur;
@@ -595,7 +592,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pud_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID).unsplay(),
         ) {
-            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
+            return cap::cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
         }
         vptr += BIT!(PGD_INDEX_OFFSET);
     }
@@ -607,7 +604,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pd_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
         ) {
-            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
+            return cap::cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
         }
         vptr += BIT!(PUD_INDEX_OFFSET);
     }
@@ -619,7 +616,7 @@ unsafe fn rust_create_it_address_space(
             root_cnode_cap,
             create_it_pt_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID).unsplay(),
         ) {
-            return cap::to_cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
+            return cap::cap_vspace_cap(&cap_null_cap::new().unsplay()).clone();
         }
         vptr += BIT!(PD_INDEX_OFFSET);
     }

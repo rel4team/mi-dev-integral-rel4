@@ -5,7 +5,6 @@ use super::{
     mdb::mdb_node_t,
     structures::{finaliseSlot_ret, resolveAddressBits_ret_t},
 };
-use crate::arch::cap_trans;
 use crate::capability::{
     cap_func,
     zombie::{capCyclicZombie, zombie_func},
@@ -99,20 +98,20 @@ impl cte_t {
         match self.capability.get_tag() {
             cap_tag::cap_endpoint_cap => {
                 assert_eq!(next.capability.get_tag(), cap_tag::cap_endpoint_cap);
-                let badge = cap::to_cap_endpoint_cap(&self.capability).get_capEPBadge();
+                let badge = cap::cap_endpoint_cap(&self.capability).get_capEPBadge();
                 if badge == 0 {
                     return true;
                 }
-                badge == cap::to_cap_endpoint_cap(&next.capability).get_capEPBadge()
+                badge == cap::cap_endpoint_cap(&next.capability).get_capEPBadge()
                     && next.cteMDBNode.get_first_badged() == 0
             }
             cap_tag::cap_notification_cap => {
                 assert_eq!(next.capability.get_tag(), cap_tag::cap_notification_cap);
-                let badge = cap::to_cap_notification_cap(&self.capability).get_capNtfnBadge();
+                let badge = cap::cap_notification_cap(&self.capability).get_capNtfnBadge();
                 if badge == 0 {
                     return true;
                 }
-                badge == cap::to_cap_notification_cap(&next.capability).get_capNtfnBadge()
+                badge == cap::cap_notification_cap(&next.capability).get_capNtfnBadge()
                     && next.cteMDBNode.get_first_badged() == 0
             }
             _ => true,
@@ -250,9 +249,9 @@ impl cte_t {
     fn reduce_zombie(&mut self, immediate: bool) -> exception_t {
         assert_eq!(self.capability.get_tag(), cap_tag::cap_zombie_cap);
         let self_ptr = self as *mut cte_t as usize;
-        let ptr = cap::to_cap_zombie_cap(&self.capability).get_zombie_ptr();
-        let n = cap::to_cap_zombie_cap(&self.capability).get_zombie_number();
-        let zombie_type = cap::to_cap_zombie_cap(&self.capability).get_capZombieType();
+        let ptr = cap::cap_zombie_cap(&self.capability).get_zombie_ptr();
+        let n = cap::cap_zombie_cap(&self.capability).get_zombie_number();
+        let zombie_type = cap::cap_zombie_cap(&self.capability).get_capZombieType();
         assert!(n > 0);
         if immediate {
             let end_slot = unsafe { &mut *((ptr as *mut cte_t).add(n - 1)) };
@@ -265,14 +264,13 @@ impl cte_t {
                     return exception_t::EXCEPTION_NONE;
                 }
                 cap_tag::cap_zombie_cap => {
-                    let ptr2 = cap::to_cap_zombie_cap(&self.capability).get_zombie_ptr();
+                    let ptr2 = cap::cap_zombie_cap(&self.capability).get_zombie_ptr();
                     if ptr == ptr2
-                        && cap::to_cap_zombie_cap(&self.capability).get_zombie_number() == n
-                        && cap::to_cap_zombie_cap(&self.capability).get_capZombieType()
-                            == zombie_type
+                        && cap::cap_zombie_cap(&self.capability).get_zombie_number() == n
+                        && cap::cap_zombie_cap(&self.capability).get_capZombieType() == zombie_type
                     {
                         assert_eq!(end_slot.capability.get_tag(), cap_tag::cap_null_cap);
-                        cap::to_cap_zombie_cap(&self.capability).set_zombie_number(n - 1);
+                        cap::cap_zombie_cap(&self.capability).set_zombie_number(n - 1);
                     } else {
                         assert!(ptr2 == self_ptr && ptr != self_ptr);
                     }
@@ -460,8 +458,8 @@ fn cap_removable(capability: &cap, slot: *mut cte_t) -> bool {
     match capability.get_tag() {
         cap_tag::cap_null_cap => true,
         cap_tag::cap_zombie_cap => {
-            let n = cap::to_cap_zombie_cap(capability).get_zombie_number();
-            let ptr = cap::to_cap_zombie_cap(capability).get_zombie_ptr();
+            let n = cap::cap_zombie_cap(capability).get_zombie_number();
+            let ptr = cap::cap_zombie_cap(capability).get_zombie_ptr();
             let z_slot = ptr as *mut cte_t;
             n == 0 || (n == 1 && slot == z_slot)
         }
@@ -477,13 +475,12 @@ fn setUntypedCapAsFull(srcCap: &cap, newCap: &cap, srcSlot: &mut cte_t) {
     if srcCap.get_tag() == cap_tag::cap_untyped_cap && newCap.get_tag() == cap_tag::cap_untyped_cap
     {
         assert_eq!(srcSlot.capability.get_tag(), cap_tag::cap_untyped_cap);
-        if cap::to_cap_untyped_cap(srcCap).get_capPtr()
-            == cap::to_cap_untyped_cap(newCap).get_capPtr()
-            && cap::to_cap_untyped_cap(srcCap).get_capBlockSize()
-                == cap::to_cap_untyped_cap(newCap).get_capBlockSize()
+        if cap::cap_untyped_cap(srcCap).get_capPtr() == cap::cap_untyped_cap(newCap).get_capPtr()
+            && cap::cap_untyped_cap(srcCap).get_capBlockSize()
+                == cap::cap_untyped_cap(newCap).get_capBlockSize()
         {
-            cap::to_cap_untyped_cap(&srcSlot.capability).set_capFreeIndex(MAX_FREE_INDEX(
-                cap::to_cap_untyped_cap(srcCap).get_capBlockSize() as usize,
+            cap::cap_untyped_cap(&srcSlot.capability).set_capFreeIndex(MAX_FREE_INDEX(
+                cap::cap_untyped_cap(srcCap).get_capBlockSize() as usize,
             ) as u64);
         }
     }
@@ -534,7 +531,7 @@ pub fn resolve_address_bits(
             return ret;
         }
         n_bits -= levelBits;
-        nodeCap = unsafe { cap::to_cap_cnode_cap(&(*slot).capability).clone() };
+        nodeCap = unsafe { cap::cap_cnode_cap(&(*slot).capability).clone() };
         if unlikely(nodeCap.clone().unsplay().get_tag() != cap_tag::cap_cnode_cap) {
             ret.slot = slot;
             ret.bitsRemaining = n_bits;
