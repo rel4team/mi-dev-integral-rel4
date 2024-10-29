@@ -1,5 +1,5 @@
 use log::debug;
-use sel4_common::structures_gen::{cap, cap_tag};
+use sel4_common::structures_gen::{cap, cap_tag, endpoint};
 use sel4_common::{
     sel4_config::{seL4_DeleteFirst, seL4_IllegalOperation, tcbCaller},
     shared_types_bf_gen::seL4_CapRights,
@@ -8,7 +8,7 @@ use sel4_common::{
 };
 use sel4_cspace::capability::cap_func;
 use sel4_cspace::interface::{cte_insert, cte_move, cte_swap, cte_t};
-use sel4_ipc::endpoint_t;
+use sel4_ipc::endpoint_func;
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 
 use crate::{kernel::boot::current_syscall_error, syscall::mask_cap_rights};
@@ -175,7 +175,7 @@ pub fn invoke_cnode_cancel_badged_sends(dest_slot: &mut cte_t) -> exception_t {
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
     let badge = cap::cap_endpoint_cap(&dest_cap).get_capEPBadge() as usize;
     if badge != 0 {
-        convert_to_mut_type_ref::<endpoint_t>(
+        convert_to_mut_type_ref::<endpoint>(
             cap::cap_endpoint_cap(&dest_cap).get_capEPPtr() as usize
         )
         .cancel_badged_sends(badge);

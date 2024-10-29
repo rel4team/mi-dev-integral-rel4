@@ -26,11 +26,11 @@ pub const SysDebugNameThread: isize = -14;
 pub const SysGetClock: isize = -30;
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{
-    cap, cap_Splayed, cap_tag, lookup_fault_missing_capability, notification, seL4_Fault_CapFault,
-    seL4_Fault_tag,
+    cap, cap_Splayed, cap_tag, endpoint, lookup_fault_missing_capability, notification,
+    seL4_Fault_CapFault, seL4_Fault_tag,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
-use sel4_ipc::{endpoint_t, notification_func, Transfer};
+use sel4_ipc::{endpoint_func, notification_func, Transfer};
 use sel4_task::{
     activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
     ThreadState,
@@ -124,7 +124,7 @@ fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
         if thread.tcbFault.get_tag() == seL4_Fault_tag::seL4_Fault_CapFault {
             thread.tcbLookupFailure = origin_lookup_fault;
         }
-        convert_to_mut_type_ref::<endpoint_t>(handler_cap.get_capEPPtr() as usize).send_ipc(
+        convert_to_mut_type_ref::<endpoint>(handler_cap.get_capEPPtr() as usize).send_ipc(
             thread,
             true,
             true,
@@ -183,7 +183,7 @@ fn handle_recv(block: bool) {
                 return handle_fault(current_thread);
             }
             current_thread.delete_caller_cap();
-            convert_to_mut_type_ref::<endpoint_t>(data.get_capEPPtr() as usize).receive_ipc(
+            convert_to_mut_type_ref::<endpoint>(data.get_capEPPtr() as usize).receive_ipc(
                 current_thread,
                 block,
                 data.get_capCanGrant() != 0,

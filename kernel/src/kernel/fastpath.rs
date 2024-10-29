@@ -8,8 +8,8 @@ use sel4_common::arch::msgRegister;
 use sel4_common::message_info::seL4_MessageInfo_func;
 use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{
-    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, mdb_node,
-    notification, seL4_Fault_tag, thread_state,
+    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, endpoint,
+    mdb_node, notification, seL4_Fault_tag, thread_state,
 };
 use sel4_common::{
     sel4_config::*,
@@ -72,9 +72,9 @@ pub fn thread_state_ptr_mset_blockingObject_tsType(
 
 #[inline]
 #[no_mangle]
-pub fn endpoint_ptr_mset_epQueue_tail_state(ptr: *mut endpoint_t, tail: usize, state: usize) {
+pub fn endpoint_ptr_mset_epQueue_tail_state(ptr: *mut endpoint, tail: usize, state: usize) {
     unsafe {
-        (*ptr).words[0] = tail | state;
+        (*ptr).0.arr[0] = (tail | state) as u64;
     }
 }
 
@@ -219,13 +219,13 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     ) {
         slowpath(SysCall as usize);
     }
-    let ep = convert_to_mut_type_ref::<endpoint_t>(ep_cap.get_capEPPtr() as usize);
+    let ep = convert_to_mut_type_ref::<endpoint>(ep_cap.get_capEPPtr() as usize);
 
-    if unlikely(ep.get_state() != EPState::Recv) {
+    if unlikely(ep.get_ep_state() != EPState::Recv) {
         slowpath(SysCall as usize);
     }
 
-    let dest = convert_to_mut_type_ref::<tcb_t>(ep.get_queue_head());
+    let dest = convert_to_mut_type_ref::<tcb_t>(ep.get_epQueue_head() as usize);
     let new_vtable = cap::cap_page_table_cap(&dest.get_cspace(tcbVTable).capability);
 
     if unlikely(!isValidVTableRoot_fp(&new_vtable.clone().unsplay())) {
@@ -246,12 +246,12 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
 
     // debug!("enter fast path");
 
-    ep.set_queue_head(dest.tcbEPNext);
+    ep.set_epQueue_head(dest.tcbEPNext as u64);
     if unlikely(dest.tcbEPNext != 0) {
         convert_to_mut_type_ref::<tcb_t>(dest.tcbEPNext).tcbEPNext = 0;
     } else {
-        ep.set_queue_tail(0);
-        ep.set_state(EPState::Idle as usize);
+        ep.set_epQueue_tail(0);
+        ep.set_state(EPState::Idle as u64);
     }
 
     current.tcbState.0.arr[0] = ThreadState::ThreadStateBlockedOnReply as u64;
@@ -312,8 +312,8 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         }
     }
 
-    let ep = convert_to_mut_type_ref::<endpoint_t>(ep_cap.get_capEPPtr() as usize);
-    if unlikely(ep.get_state() == EPState::Send) {
+    let ep = convert_to_mut_type_ref::<endpoint>(ep_cap.get_capEPPtr() as usize);
+    if unlikely(ep.get_ep_state() == EPState::Send) {
         slowpath(SysReplyRecv as usize);
     }
 
@@ -355,17 +355,19 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         .tcbState
         .set_blockingIPCCanGrant(ep_cap.get_capCanGrant() as u64);
 
-    if let Some(ep_tail_tcb) = convert_to_option_mut_type_ref::<tcb_t>(ep.get_queue_tail()) {
+    if let Some(ep_tail_tcb) =
+        convert_to_option_mut_type_ref::<tcb_t>(ep.get_epQueue_tail() as usize)
+    {
         ep_tail_tcb.tcbEPNext = current.get_ptr();
         current.tcbEPPrev = ep_tail_tcb.get_ptr();
         current.tcbEPNext = 0;
     } else {
         current.tcbEPPrev = 0;
         current.tcbEPNext = 0;
-        ep.set_queue_head(current.get_ptr());
+        ep.set_epQueue_head(current.get_ptr() as u64);
     }
     endpoint_ptr_mset_epQueue_tail_state(
-        ep as *mut endpoint_t,
+        ep as *mut endpoint,
         get_currenct_thread().get_ptr(),
         EPState_Recv,
     );

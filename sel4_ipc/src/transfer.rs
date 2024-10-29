@@ -2,6 +2,7 @@ use core::intrinsics::likely;
 
 use super::endpoint::*;
 use super::notification::*;
+use sel4_common::structures_gen::endpoint;
 use sel4_common::structures_gen::notification;
 
 use sel4_common::arch::ArchReg;
@@ -27,14 +28,14 @@ pub trait Transfer {
 
     fn set_transfer_caps(
         &mut self,
-        endpoint: Option<&endpoint_t>,
+        endpoint: Option<&endpoint>,
         info: &mut seL4_MessageInfo,
         current_extra_caps: &[pptr_t; seL4_MsgMaxExtraCaps],
     );
 
     fn set_transfer_caps_with_buf(
         &mut self,
-        endpoint: Option<&endpoint_t>,
+        endpoint: Option<&endpoint>,
         info: &mut seL4_MessageInfo,
         current_extra_caps: &[pptr_t; seL4_MsgMaxExtraCaps],
         ipc_buffer: Option<&mut seL4_IPCBuffer>,
@@ -45,7 +46,7 @@ pub trait Transfer {
     fn do_normal_transfer(
         &mut self,
         receiver: &mut tcb_t,
-        endpoint: Option<&endpoint_t>,
+        endpoint: Option<&endpoint>,
         badge: usize,
         can_grant: bool,
     );
@@ -57,7 +58,7 @@ pub trait Transfer {
     fn do_ipc_transfer(
         &mut self,
         receiver: &mut tcb_t,
-        endpoint: Option<&endpoint_t>,
+        endpoint: Option<&endpoint>,
         badge: usize,
         grant: bool,
     );
@@ -70,8 +71,8 @@ impl Transfer for tcb_t {
         let state = &self.tcbState;
         match self.get_state() {
             ThreadState::ThreadStateBlockedOnSend | ThreadState::ThreadStateBlockedOnReceive => {
-                let ep = convert_to_mut_type_ref::<endpoint_t>(state.get_blockingObject() as usize);
-                assert_ne!(ep.get_state(), EPState::Idle);
+                let ep = convert_to_mut_type_ref::<endpoint>(state.get_blockingObject() as usize);
+                assert_ne!(ep.get_ep_state(), EPState::Idle);
                 ep.cancel_ipc(self);
             }
             ThreadState::ThreadStateBlockedOnNotification => {
@@ -94,7 +95,7 @@ impl Transfer for tcb_t {
 
     fn set_transfer_caps(
         &mut self,
-        endpoint: Option<&endpoint_t>,
+        ep: Option<&endpoint>,
         info: &mut seL4_MessageInfo,
         current_extra_caps: &[pptr_t; seL4_MsgMaxExtraCaps],
     ) {
@@ -112,8 +113,8 @@ impl Transfer for tcb_t {
             let capability_cpy = &slot.capability.clone();
             let capability = cap::cap_endpoint_cap(capability_cpy);
             if capability.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
-                && endpoint.is_some()
-                && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()
+                && ep.is_some()
+                && capability.get_capEPPtr() as usize == ep.unwrap().get_ptr()
             {
                 buffer.caps_or_badges[i] = capability.get_capEPBadge() as usize;
                 info.set_capsUnwrapped(info.get_capsUnwrapped() | (1 << i));
@@ -138,7 +139,7 @@ impl Transfer for tcb_t {
 
     fn set_transfer_caps_with_buf(
         &mut self,
-        endpoint: Option<&endpoint_t>,
+        ep: Option<&endpoint>,
         info: &mut seL4_MessageInfo,
         current_extra_caps: &[pptr_t; seL4_MsgMaxExtraCaps],
         ipc_buffer: Option<&mut seL4_IPCBuffer>,
@@ -157,8 +158,8 @@ impl Transfer for tcb_t {
             let capability_cpy = &slot.capability.clone();
             let capability = cap::cap_endpoint_cap(capability_cpy);
             if capability.clone().unsplay().get_tag() == cap_tag::cap_endpoint_cap
-                && endpoint.is_some()
-                && capability.get_capEPPtr() as usize == endpoint.unwrap().get_ptr()
+                && ep.is_some()
+                && capability.get_capEPPtr() as usize == ep.unwrap().get_ptr()
             {
                 buffer.caps_or_badges[i] = capability.get_capEPBadge() as usize;
                 info.set_capsUnwrapped(info.get_capsUnwrapped() | (1 << i));
@@ -247,7 +248,7 @@ impl Transfer for tcb_t {
     fn do_normal_transfer(
         &mut self,
         receiver: &mut tcb_t,
-        endpoint: Option<&endpoint_t>,
+        ep: Option<&endpoint>,
         badge: usize,
         can_grant: bool,
     ) {
@@ -258,7 +259,7 @@ impl Transfer for tcb_t {
             let _ = self.lookup_extra_caps(&mut current_extra_caps);
         }
         let msg_transferred = self.copy_mrs(receiver, tag.get_length() as usize);
-        receiver.set_transfer_caps(endpoint, &mut tag, &current_extra_caps);
+        receiver.set_transfer_caps(ep, &mut tag, &current_extra_caps);
         tag.set_length(msg_transferred as u64);
         receiver
             .tcbArch
@@ -308,12 +309,12 @@ impl Transfer for tcb_t {
     fn do_ipc_transfer(
         &mut self,
         receiver: &mut tcb_t,
-        endpoint: Option<&endpoint_t>,
+        ep: Option<&endpoint>,
         badge: usize,
         grant: bool,
     ) {
         if likely(self.tcbFault.get_tag() == seL4_Fault_tag::seL4_Fault_NullFault) {
-            self.do_normal_transfer(receiver, endpoint, badge, grant)
+            self.do_normal_transfer(receiver, ep, badge, grant)
         } else {
             self.do_fault_transfer(receiver, badge)
         }
