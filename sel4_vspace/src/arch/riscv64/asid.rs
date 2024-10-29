@@ -3,11 +3,11 @@ use core::{arch::asm, intrinsics::unlikely};
 use sel4_common::{
     sel4_config::{asidHighBits, asidLowBits, IT_ASID},
     structures::exception_t,
-    structures_gen::{lookup_fault, lookup_fault_invalid_root},
+    structures_gen::{cap, cap_page_table_cap, lookup_fault, lookup_fault_invalid_root},
     utils::convert_to_option_mut_type_ref,
     BIT, MASK,
 };
-use sel4_cspace::arch::cap_t;
+use sel4_cspace::capability::cap_arch_func;
 
 use crate::{asid_pool_t, asid_t, findVSpaceForASID_ret, pptr_t, set_vm_root, PTE};
 
@@ -17,7 +17,7 @@ use crate::{asid_pool_t, asid_t, findVSpaceForASID_ret, pptr_t, set_vm_root, PTE
 pub static mut riscvKSASIDTable: [*mut asid_pool_t; BIT!(asidHighBits)] =
     [0 as *mut asid_pool_t; BIT!(asidHighBits)];
 
-pub fn write_it_asid_pool(it_ap_cap: &cap_t, it_lvl1pt_cap: &cap_t) {
+pub fn write_it_asid_pool(it_ap_cap: &cap, it_lvl1pt_cap: &cap) {
     let ap = it_ap_cap.get_cap_ptr();
     unsafe {
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
@@ -33,7 +33,7 @@ pub fn write_it_asid_pool(it_ap_cap: &cap_t, it_lvl1pt_cap: &cap_t) {
 pub fn delete_asid(
     asid: asid_t,
     vspace: *mut PTE,
-    default_vspace_cap: &cap_t,
+    default_vspace_cap: &cap_page_table_cap,
 ) -> Result<(), lookup_fault> {
     unsafe {
         let poolPtr = riscvKSASIDTable[asid >> asidLowBits];
@@ -109,7 +109,7 @@ pub fn find_vspace_for_asid(asid: asid_t) -> findVSpaceForASID_ret {
 pub fn delete_asid_pool(
     asid_base: asid_t,
     pool: *mut asid_pool_t,
-    default_vspace_cap: &cap_t,
+    default_vspace_cap: &cap_page_table_cap,
 ) -> Result<(), lookup_fault> {
     unsafe {
         if riscvKSASIDTable[asid_base >> asidLowBits] == pool {

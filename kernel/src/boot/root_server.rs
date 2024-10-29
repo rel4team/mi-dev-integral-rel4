@@ -21,8 +21,12 @@ use sel4_common::sel4_config::{
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 use sel4_common::structures_gen::{
     cap, cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap, cap_frame_cap,
-    cap_irq_control_cap, cap_tag, cap_thread_cap, cap_vspace_cap,
+    cap_irq_control_cap, cap_tag, cap_thread_cap,
 };
+#[cfg(target_arch="riscv64")]
+use sel4_common::structures_gen::{cap_page_table_cap, cap_null_cap};
+#[cfg(target_arch="aarch64")]
+use sel4_common::structures_gen::cap_vspace_cap;
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::*;
@@ -128,6 +132,7 @@ pub fn root_server_init(
 }
 
 // #[no_mangle]
+#[cfg(target_arch="aarch64")]
 unsafe fn create_initial_thread(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_vspace_cap,
@@ -190,7 +195,72 @@ unsafe fn create_initial_thread(
     // forget(*tcb);
     tcb as *mut tcb_t
 }
+// #[no_mangle]
+#[cfg(target_arch="riscv64")]
+unsafe fn create_initial_thread(
+    root_cnode_cap: &cap_cnode_cap,
+    it_pd_cap: &cap_page_table_cap,
+    ui_v_entry: usize,
+    bi_frame_vptr: usize,
+    ipcbuf_vptr: usize,
+    ipcbuf_cap: cap_frame_cap,
+) -> *mut tcb_t {
+    let tcb = convert_to_mut_type_ref::<tcb_t>(rootserver.tcb + TCB_OFFSET);
+    tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
+    tcb.tcbArch = ArchTCB::default();
 
+    let cnode = convert_to_mut_type_ref::<cte_t>(root_cnode_cap.get_capCNodePtr() as usize);
+    let ipc_buf_slot = cnode.get_offset_slot(seL4_CapInitThreadIPCBuffer);
+    let dc_ret = ipc_buf_slot.derive_cap(&ipcbuf_cap.unsplay().clone());
+    if dc_ret.status != exception_t::EXCEPTION_NONE {
+        debug!("Failed to derive copy of IPC Buffer\n");
+        return 0 as *mut tcb_t;
+    }
+
+    cte_insert(
+        &root_cnode_cap.clone().unsplay(),
+        cnode.get_offset_slot(seL4_CapInitThreadCNode),
+        tcb.get_cspace_mut_ref(tcbCTable),
+    );
+
+    cte_insert(
+        &it_pd_cap.clone().unsplay(),
+        cnode.get_offset_slot(seL4_CapInitThreadVspace),
+        tcb.get_cspace_mut_ref(tcbVTable),
+    );
+
+    cte_insert(
+        &dc_ret.capability,
+        cnode.get_offset_slot(seL4_CapInitThreadIPCBuffer),
+        tcb.get_cspace_mut_ref(tcbBuffer),
+    );
+
+    tcb.tcbIPCBuffer = ipcbuf_vptr;
+    tcb.tcbArch.set_register(ArchReg::Cap, bi_frame_vptr);
+    tcb.tcbArch.set_register(ArchReg::NextIP, ui_v_entry);
+    tcb.tcbMCP = seL4_MaxPrio;
+    tcb.tcbPriority = seL4_MaxPrio;
+    set_thread_state(tcb, ThreadState::ThreadStateRunning);
+    tcb.setup_reply_master();
+    ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
+    ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
+    tcb.domain = ksCurDomain;
+    // log::error!("tcb.domain:{:#x}", &tcb.domain as *const usize as usize);
+    #[cfg(feature = "ENABLE_SMP")]
+    {
+        tcb.tcbAffinity = 0;
+    }
+
+    let capability = cap_thread_cap::new(tcb.get_ptr() as u64).unsplay();
+    write_slot(
+        cnode.get_offset_slot(seL4_CapInitThreadTCB) as *mut cte_t,
+        capability,
+    );
+    // forget(*tcb);
+    tcb as *mut tcb_t
+}
+
+#[cfg(target_arch="aarch64")]
 fn asid_init(root_cnode_cap: &cap_cnode_cap, it_pd_cap: &cap_vspace_cap) -> bool {
     let it_ap_cap = create_it_asid_pool(root_cnode_cap);
     if it_ap_cap.get_tag() == cap_tag::cap_null_cap {
@@ -202,6 +272,26 @@ fn asid_init(root_cnode_cap: &cap_cnode_cap, it_pd_cap: &cap_vspace_cap) -> bool
         let ap = it_ap_cap.get_cap_ptr();
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
         *ptr = it_pd_cap.get_cap_ptr();
+        riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
+    }
+    #[cfg(target_arch = "aarch64")]
+    {
+        write_it_asid_pool(&it_ap_cap, it_pd_cap);
+    }
+    true
+}
+#[cfg(target_arch="riscv64")]
+fn asid_init(root_cnode_cap: &cap_cnode_cap, it_pd_cap: &cap_page_table_cap) -> bool {
+    let it_ap_cap = create_it_asid_pool(root_cnode_cap);
+    if it_ap_cap.get_tag() == cap_tag::cap_null_cap {
+        debug!("ERROR: could not create ASID pool for initial thread");
+        return false;
+    }
+    #[cfg(target_arch = "riscv64")]
+    unsafe {
+        let ap = it_ap_cap.get_cap_ptr();
+        let ptr = (ap + 8 * IT_ASID) as *mut usize;
+        *ptr = it_pd_cap.get_capPTBasePtr() as usize;
         riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
     }
     #[cfg(target_arch = "aarch64")]
@@ -234,10 +324,33 @@ fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap {
     );
     ap_cap
 }
-
+#[cfg(target_arch="aarch64")]
 fn create_frame_ui_frames(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_vspace_cap,
+    ui_reg: region_t,
+    pv_offset: isize,
+) -> bool {
+    let create_frames_ret = rust_create_frames_of_region(
+        &root_cnode_cap,
+        &it_pd_cap,
+        ui_reg,
+        true,
+        pv_offset as isize,
+    );
+    if !create_frames_ret.success {
+        debug!("ERROR: could not create all userland image frames");
+        return false;
+    }
+    unsafe {
+        (*ndks_boot.bi_frame).userImageFrames = create_frames_ret.region;
+    }
+    true
+}
+#[cfg(target_arch="riscv64")]
+fn create_frame_ui_frames(
+    root_cnode_cap: &cap_cnode_cap,
+    it_pd_cap: &cap_page_table_cap,
     ui_reg: region_t,
     pv_offset: isize,
 ) -> bool {
@@ -428,21 +541,24 @@ fn init_irqs(root_cnode_cap: &cap_cnode_cap) {
 }
 
 #[cfg(target_arch = "riscv64")]
-unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_region_t) -> cap_t {
+unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_cnode_cap, it_v_reg: v_region_t) -> cap_page_table_cap {
+    use sel4_cspace::arch::cap_trans;
+
+
     copyGlobalMappings(rootserver.vspace);
-    let lvl1pt_cap = cap_t::new_page_table_cap(IT_ASID, rootserver.vspace, 1, rootserver.vspace);
-    let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
+    let lvl1pt_cap = cap_page_table_cap::new(IT_ASID as u64, rootserver.vspace as u64, 1, rootserver.vspace as u64);
+    let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     let slot_pos_before = ndks_boot.slot_pos_cur;
-    write_slot(ptr.add(seL4_CapInitThreadVspace), lvl1pt_cap.clone());
+    write_slot(ptr.add(seL4_CapInitThreadVspace), lvl1pt_cap.clone().unsplay());
     let mut i = 0;
     while i < CONFIG_PT_LEVELS - 1 {
         let mut pt_vptr = ROUND_DOWN!(it_v_reg.start, RISCV_GET_LVL_PGSIZE_BITS(i));
         while pt_vptr < it_v_reg.end {
             if !provide_cap(
                 root_cnode_cap,
-                create_it_pt_cap(&lvl1pt_cap, it_alloc_paging(), pt_vptr, IT_ASID),
+                create_it_pt_cap(&lvl1pt_cap, it_alloc_paging(), pt_vptr, IT_ASID).unsplay(),
             ) {
-                return cap_t::new_null_cap();
+                return cap::to_cap_page_table_cap(&cap_null_cap::new().unsplay()).clone();
             }
             pt_vptr += RISCV_GET_LVL_PGSIZE(i);
         }
@@ -520,6 +636,7 @@ unsafe fn rust_create_it_address_space(
     vspace_cap
 }
 
+#[cfg(target_arch="aarch64")]
 fn init_bi_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_vspace_cap,
@@ -555,7 +672,44 @@ fn init_bi_frame_cap(
     }
     true
 }
+#[cfg(target_arch="riscv64")]
+fn init_bi_frame_cap(
+    root_cnode_cap: &cap_cnode_cap,
+    it_pd_cap: &cap_page_table_cap,
+    bi_frame_vptr: usize,
+    extra_bi_size: usize,
+    extra_bi_frame_vptr: usize,
+) -> bool {
+    unsafe {
+        create_bi_frame_cap(root_cnode_cap, it_pd_cap, bi_frame_vptr);
+    }
+    if extra_bi_size > 0 {
+        let extra_bi_region = unsafe {
+            region_t {
+                start: rootserver.extra_bi,
+                end: rootserver.extra_bi + extra_bi_size,
+            }
+        };
+        let extra_bi_ret = rust_create_frames_of_region(
+            root_cnode_cap,
+            it_pd_cap,
+            extra_bi_region,
+            true,
+            pptr_to_paddr(extra_bi_region.start) as isize - extra_bi_frame_vptr as isize,
+        );
 
+        if !extra_bi_ret.success {
+            debug!("ERROR: mapping extra boot info to initial thread failed");
+            return false;
+        }
+        unsafe {
+            (*ndks_boot.bi_frame).extraBIPages = extra_bi_ret.region;
+        }
+    }
+    true
+}
+
+#[cfg(target_arch="aarch64")]
 fn rust_create_frames_of_region(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_vspace_cap,
@@ -599,10 +753,66 @@ fn rust_create_frames_of_region(
         };
     }
 }
+#[cfg(target_arch="riscv64")]
+fn rust_create_frames_of_region(
+    root_cnode_cap: &cap_cnode_cap,
+    pd_cap: &cap_page_table_cap,
+    reg: region_t,
+    do_map: bool,
+    pv_offset: isize,
+) -> create_frames_of_region_ret_t {
+    let slot_pos_before = unsafe { ndks_boot.slot_pos_cur };
+    let mut f = reg.start;
+    let mut frame_cap: cap_frame_cap;
+    while f < reg.end {
+        if do_map {
+            frame_cap = create_mapped_it_frame_cap(
+                pd_cap,
+                f,
+                pptr_to_paddr((f as isize - pv_offset) as usize),
+                IT_ASID,
+                false,
+                true,
+            );
+        } else {
+            frame_cap = create_unmapped_it_frame_cap(f, false);
+        }
 
+        if !provide_cap(root_cnode_cap, frame_cap.unsplay()) {
+            return create_frames_of_region_ret_t {
+                region: seL4_SlotRegion { start: 0, end: 0 },
+                success: false,
+            };
+        }
+        f += BIT!(PAGE_BITS);
+    }
+    unsafe {
+        let slot_pos_after = ndks_boot.slot_pos_cur;
+        return create_frames_of_region_ret_t {
+            region: seL4_SlotRegion {
+                start: slot_pos_before,
+                end: slot_pos_after,
+            },
+            success: true,
+        };
+    }
+}
+
+#[cfg(target_arch="aarch64")]
 unsafe fn create_bi_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_vspace_cap,
+    vptr: usize,
+) {
+    let capability =
+        create_mapped_it_frame_cap(pd_cap, rootserver.boot_info, vptr, IT_ASID, false, false);
+    let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
+    write_slot(ptr.add(seL4_CapBootInfoFrame), capability.unsplay());
+}
+#[cfg(target_arch="riscv64")]
+unsafe fn create_bi_frame_cap(
+    root_cnode_cap: &cap_cnode_cap,
+    pd_cap: &cap_page_table_cap,
     vptr: usize,
 ) {
     let capability =
@@ -636,10 +846,26 @@ unsafe fn rust_populate_bi_frame(
     ndks_boot.bi_frame = bi as *mut seL4_BootInfo;
     ndks_boot.slot_pos_cur = seL4_NumInitialCaps;
 }
-
+#[cfg(target_arch="aarch64")]
 unsafe fn create_ipcbuf_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_vspace_cap,
+    vptr: usize,
+) -> cap_frame_cap {
+    clear_memory(rootserver.ipc_buf as *mut u8, PAGE_BITS);
+    let capability =
+        create_mapped_it_frame_cap(pd_cap, rootserver.ipc_buf, vptr, IT_ASID, false, false);
+    let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
+    write_slot(
+        ptr.add(seL4_CapInitThreadIPCBuffer),
+        capability.clone().unsplay(),
+    );
+    return capability;
+}
+#[cfg(target_arch="riscv64")]
+unsafe fn create_ipcbuf_frame_cap(
+    root_cnode_cap: &cap_cnode_cap,
+    pd_cap: &cap_page_table_cap,
     vptr: usize,
 ) -> cap_frame_cap {
     clear_memory(rootserver.ipc_buf as *mut u8, PAGE_BITS);

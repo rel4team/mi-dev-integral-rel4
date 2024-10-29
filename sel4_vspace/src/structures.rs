@@ -21,7 +21,7 @@ pub type asid_t = usize;
 
 #[cfg(target_arch = "riscv64")]
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct findVSpaceForASID_ret {
     pub status: exception_t,
     pub vspace_root: Option<*mut PTE>,

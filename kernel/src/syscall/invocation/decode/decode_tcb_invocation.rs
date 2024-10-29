@@ -15,7 +15,9 @@ use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag, cap_thread_cap};
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_common::BIT;
 use sel4_cspace::arch::cap_trans;
-use sel4_cspace::capability::{cap_arch_func, cap_func};
+use sel4_cspace::capability::cap_func;
+#[cfg(target_arch="aarch64")]
+use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::cte_t;
 use sel4_ipc::notification_t;
 use sel4_task::{get_currenct_thread, set_thread_state, tcb_t, ThreadState};

@@ -52,17 +52,17 @@ pub fn invoke_page_table_unmap(capability: &mut cap_page_table_cap) -> exception
 }
 #[cfg(target_arch = "riscv64")]
 pub fn invoke_page_table_map(
-    pt_cap: &mut cap_t,
+    pt_cap: &mut cap_page_table_cap,
     pt_slot: &mut PTE,
     asid: usize,
     vaddr: usize,
 ) -> exception_t {
-    let paddr = pptr_to_paddr(pt_cap.get_pt_base_ptr());
+    let paddr = pptr_to_paddr(pt_cap.get_capPTBasePtr() as usize);
     let pte = PTE::new(paddr >> seL4_PageBits, PTEFlags::V);
     *pt_slot = pte;
-    pt_cap.set_pt_is_mapped(1);
-    pt_cap.set_pt_mapped_asid(asid);
-    pt_cap.set_pt_mapped_address(vaddr);
+    pt_cap.set_capPTIsMapped(1);
+    pt_cap.set_capPTMappedASID(asid as u64);
+    pt_cap.set_capPTMappedAddress(vaddr as u64);
     sfence();
     exception_t::EXCEPTION_NONE
 }
@@ -126,7 +126,7 @@ pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
 
 #[cfg(target_arch = "riscv64")]
 pub fn invoke_page_map(
-    _frame_cap: &mut cap_t,
+    _frame_cap: &mut cap_frame_cap,
     w_rights_mask: usize,
     vaddr: usize,
     asid: usize,
@@ -134,11 +134,11 @@ pub fn invoke_page_map(
     pt_slot: &mut PTE,
     frame_slot: &mut cte_t,
 ) -> exception_t {
-    let frame_vm_rights = unsafe { core::mem::transmute(frame_slot.cap.get_frame_vm_rights()) };
+    let frame_vm_rights = unsafe { core::mem::transmute(cap::to_cap_frame_cap(&frame_slot.capability).get_capFVMRights()) };
     let vm_rights = maskVMRights(frame_vm_rights, seL4_CapRights_t::from_word(w_rights_mask));
-    let frame_addr = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
-    frame_slot.cap.set_frame_mapped_address(vaddr);
-    frame_slot.cap.set_frame_mapped_asid(asid);
+    let frame_addr = pptr_to_paddr(cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize);
+    cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedAddress(vaddr as u64);
+    cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedASID(asid as u64);
     #[cfg(target_arch = "riscv64")]
     let executable = attr.get_execute_never() == 0;
     #[cfg(target_arch = "riscv64")]
@@ -254,12 +254,14 @@ pub fn invoke_asid_control(
     parent_slot: &mut cte_t,
     asid_base: usize,
 ) -> exception_t {
-    parent_slot
-        .cap
-        .set_untyped_free_index(MAX_FREE_INDEX(parent_slot.cap.get_untyped_block_size()));
+    use sel4_common::structures_gen::cap_asid_pool_cap;
+
+    cap::to_cap_untyped_cap(&parent_slot
+        .capability)
+        .set_capFreeIndex(MAX_FREE_INDEX(cap::to_cap_untyped_cap(&parent_slot.capability).get_capBlockSize() as usize) as u64);
     clear_memory(frame_ptr as *mut u8, pageBitsForSize(RISCV_4K_Page));
     cte_insert(
-        &cap_t::new_asid_pool_cap(asid_base, frame_ptr),
+        &cap_asid_pool_cap::new(asid_base as u64, frame_ptr as u64).unsplay(),
         parent_slot,
         slot,
     );
@@ -274,10 +276,10 @@ pub fn invoke_asid_pool(
     pool: &mut asid_pool_t,
     vspace_slot: &mut cte_t,
 ) -> exception_t {
-    let region_base = vspace_slot.cap.get_pt_base_ptr();
-    vspace_slot.cap.set_pt_is_mapped(1);
-    vspace_slot.cap.set_pt_mapped_address(0);
-    vspace_slot.cap.set_pt_mapped_asid(asid);
+    let region_base = cap::to_cap_page_table_cap(&vspace_slot.capability).get_capPTBasePtr() as usize;
+    cap::to_cap_page_table_cap(&vspace_slot.capability).set_capPTIsMapped(1);
+    cap::to_cap_page_table_cap(&vspace_slot.capability).set_capPTMappedAddress(0);
+    cap::to_cap_page_table_cap(&vspace_slot.capability).set_capPTMappedASID(asid as u64);
 
     copyGlobalMappings(region_base);
     pool.set_vspace_by_index(asid & MASK!(asidLowBits), region_base);

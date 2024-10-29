@@ -21,16 +21,19 @@ use sel4_vspace::{asid_pool_t, asid_t, delete_asid, delete_asid_pool, unmapPage,
 
 #[cfg(target_arch = "riscv64")]
 #[no_mangle]
-pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
-    let mut fc_ret = finaliseCap_ret::default();
-    match cap.get_cap_type() {
+pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
+    let mut fc_ret = finaliseCap_ret {
+        remainder: cap_null_cap::new().unsplay(),
+        cleanupInfo: cap_null_cap::new().unsplay(),
+    };
+    match capability.get_tag() {
         cap_tag::cap_frame_cap => {
-            if cap.get_frame_mapped_asid() != 0 {
+            if cap::to_cap_frame_cap(capability).get_capFMappedASID() != 0 {
                 match unmapPage(
-                    cap.get_frame_size(),
-                    cap.get_frame_mapped_asid(),
-                    cap.get_frame_mapped_address(),
-                    cap.get_frame_base_ptr(),
+                    cap::to_cap_frame_cap(capability).get_capFSize() as usize,
+                    cap::to_cap_frame_cap(capability).get_capFMappedASID() as usize,
+                    cap::to_cap_frame_cap(capability).get_capFMappedAddress() as usize,
+                    cap::to_cap_frame_cap(capability).get_capFBasePtr() as usize,
                 ) {
                     Err(lookup_fault) => unsafe { current_lookup_fault = lookup_fault },
                     _ => {}
@@ -39,17 +42,17 @@ pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
         }
 
         cap_tag::cap_page_table_cap => {
-            if final_ && cap.get_pt_is_mapped() != 0 {
-                let asid = cap.get_pt_mapped_asid();
+            if final_ && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0 {
+                let asid = cap::to_cap_page_table_cap(capability).get_capPTMappedASID() as usize;
                 let find_ret = find_vspace_for_asid(asid);
-                let pte = cap.get_pt_base_ptr();
+                let pte = cap::to_cap_page_table_cap(capability).get_capPTBasePtr() as usize;
                 if find_ret.status == exception_t::EXCEPTION_NONE
                     && find_ret.vspace_root.unwrap() as usize == pte
                 {
                     deleteASID(asid, pte as *mut PTE);
                 } else {
                     convert_to_mut_type_ref::<PTE>(pte)
-                        .unmap_page_table(asid, cap.get_pt_mapped_address());
+                        .unmap_page_table(asid, cap::to_cap_page_table_cap(capability).get_capPTMappedAddress() as usize);
                 }
                 if let Some(lookup_fault) = find_ret.lookup_fault {
                     unsafe {
@@ -61,7 +64,7 @@ pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
 
         cap_tag::cap_asid_pool_cap => {
             if final_ {
-                deleteASIDPool(cap.get_asid_base(), cap.get_asid_pool() as *mut asid_pool_t);
+                deleteASIDPool(cap::to_cap_asid_pool_cap(capability).get_capASIDBase() as usize, cap::to_cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t);
             }
         }
         _ => {}
@@ -297,7 +300,7 @@ pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
         if let Err(lookup_fault) = delete_asid(
             asid,
             vspace,
-            &get_currenct_thread().get_cspace(tcbVTable).cap,
+            cap::to_cap_page_table_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
         ) {
             current_lookup_fault = lookup_fault;
         }
@@ -319,12 +322,27 @@ pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
 }
 
 #[no_mangle]
+#[cfg(target_arch = "aarch64")]
 pub fn deleteASIDPool(asid_base: asid_t, pool: *mut asid_pool_t) {
     unsafe {
         if let Err(lookup_fault) = delete_asid_pool(
             asid_base,
             pool,
             &cap::to_cap_vspace_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
+        ) {
+            current_lookup_fault = lookup_fault;
+        }
+    }
+}
+
+#[no_mangle]
+#[cfg(target_arch = "riscv64")]
+pub fn deleteASIDPool(asid_base: asid_t, pool: *mut asid_pool_t) {
+    unsafe {
+        if let Err(lookup_fault) = delete_asid_pool(
+            asid_base,
+            pool,
+            &cap::to_cap_page_table_cap(&get_currenct_thread().get_cspace(tcbVTable).capability),
         ) {
             current_lookup_fault = lookup_fault;
         }
