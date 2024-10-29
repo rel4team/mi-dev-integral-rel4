@@ -3,11 +3,12 @@ use core::{arch::asm, intrinsics::unlikely};
 use sel4_common::{
     sel4_config::{asidHighBits, asidLowBits, IT_ASID},
     structures::exception_t,
-    structures_gen::{cap, cap_page_table_cap, lookup_fault, lookup_fault_invalid_root},
+    structures_gen::{
+        cap_asid_pool_cap, cap_page_table_cap, lookup_fault, lookup_fault_invalid_root,
+    },
     utils::convert_to_option_mut_type_ref,
     BIT, MASK,
 };
-use sel4_cspace::capability::cap_arch_func;
 
 use crate::{asid_pool_t, asid_t, findVSpaceForASID_ret, pptr_t, set_vm_root, PTE};
 
@@ -17,11 +18,11 @@ use crate::{asid_pool_t, asid_t, findVSpaceForASID_ret, pptr_t, set_vm_root, PTE
 pub static mut riscvKSASIDTable: [*mut asid_pool_t; BIT!(asidHighBits)] =
     [0 as *mut asid_pool_t; BIT!(asidHighBits)];
 
-pub fn write_it_asid_pool(it_ap_cap: &cap, it_lvl1pt_cap: &cap) {
-    let ap = it_ap_cap.get_cap_ptr();
+pub fn write_it_asid_pool(it_ap_cap: &cap_asid_pool_cap, it_lvl1pt_cap: &cap_page_table_cap) {
+    let ap = it_ap_cap.get_capASIDPool() as usize;
     unsafe {
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
-        *ptr = it_lvl1pt_cap.get_cap_ptr();
+        *ptr = it_lvl1pt_cap.get_capPTBasePtr() as usize;
         riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
     }
 }

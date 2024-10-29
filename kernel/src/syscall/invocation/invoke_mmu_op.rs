@@ -134,9 +134,12 @@ pub fn invoke_page_map(
     pt_slot: &mut PTE,
     frame_slot: &mut cte_t,
 ) -> exception_t {
-    let frame_vm_rights = unsafe { core::mem::transmute(cap::to_cap_frame_cap(&frame_slot.capability).get_capFVMRights()) };
+    let frame_vm_rights = unsafe {
+        core::mem::transmute(cap::to_cap_frame_cap(&frame_slot.capability).get_capFVMRights())
+    };
     let vm_rights = maskVMRights(frame_vm_rights, seL4_CapRights_t::from_word(w_rights_mask));
-    let frame_addr = pptr_to_paddr(cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize);
+    let frame_addr =
+        pptr_to_paddr(cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize);
     cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedAddress(vaddr as u64);
     cap::to_cap_frame_cap(&frame_slot.capability).set_capFMappedASID(asid as u64);
     #[cfg(target_arch = "riscv64")]
@@ -256,9 +259,9 @@ pub fn invoke_asid_control(
 ) -> exception_t {
     use sel4_common::structures_gen::cap_asid_pool_cap;
 
-    cap::to_cap_untyped_cap(&parent_slot
-        .capability)
-        .set_capFreeIndex(MAX_FREE_INDEX(cap::to_cap_untyped_cap(&parent_slot.capability).get_capBlockSize() as usize) as u64);
+    cap::to_cap_untyped_cap(&parent_slot.capability).set_capFreeIndex(MAX_FREE_INDEX(
+        cap::to_cap_untyped_cap(&parent_slot.capability).get_capBlockSize() as usize,
+    ) as u64);
     clear_memory(frame_ptr as *mut u8, pageBitsForSize(RISCV_4K_Page));
     cte_insert(
         &cap_asid_pool_cap::new(asid_base as u64, frame_ptr as u64).unsplay(),
@@ -276,7 +279,8 @@ pub fn invoke_asid_pool(
     pool: &mut asid_pool_t,
     vspace_slot: &mut cte_t,
 ) -> exception_t {
-    let region_base = cap::to_cap_page_table_cap(&vspace_slot.capability).get_capPTBasePtr() as usize;
+    let region_base =
+        cap::to_cap_page_table_cap(&vspace_slot.capability).get_capPTBasePtr() as usize;
     cap::to_cap_page_table_cap(&vspace_slot.capability).set_capPTIsMapped(1);
     cap::to_cap_page_table_cap(&vspace_slot.capability).set_capPTMappedAddress(0);
     cap::to_cap_page_table_cap(&vspace_slot.capability).set_capPTMappedASID(asid as u64);

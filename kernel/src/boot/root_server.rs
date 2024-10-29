@@ -19,16 +19,15 @@ use sel4_common::sel4_config::{
     IT_ASID, PAGE_BITS, TCB_OFFSET,
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
+#[cfg(target_arch = "aarch64")]
+use sel4_common::structures_gen::cap_vspace_cap;
 use sel4_common::structures_gen::{
     cap, cap_asid_control_cap, cap_asid_pool_cap, cap_cnode_cap, cap_domain_cap, cap_frame_cap,
     cap_irq_control_cap, cap_tag, cap_thread_cap,
 };
-#[cfg(target_arch="riscv64")]
-use sel4_common::structures_gen::{cap_page_table_cap, cap_null_cap};
-#[cfg(target_arch="aarch64")]
-use sel4_common::structures_gen::cap_vspace_cap;
+#[cfg(target_arch = "riscv64")]
+use sel4_common::structures_gen::{cap_null_cap, cap_page_table_cap};
 use sel4_common::utils::convert_to_mut_type_ref;
-use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::*;
 
 use crate::config::*;
@@ -132,7 +131,7 @@ pub fn root_server_init(
 }
 
 // #[no_mangle]
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 unsafe fn create_initial_thread(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_vspace_cap,
@@ -196,7 +195,7 @@ unsafe fn create_initial_thread(
     tcb as *mut tcb_t
 }
 // #[no_mangle]
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 unsafe fn create_initial_thread(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_page_table_cap,
@@ -260,58 +259,45 @@ unsafe fn create_initial_thread(
     tcb as *mut tcb_t
 }
 
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 fn asid_init(root_cnode_cap: &cap_cnode_cap, it_pd_cap: &cap_vspace_cap) -> bool {
     let it_ap_cap = create_it_asid_pool(root_cnode_cap);
-    if it_ap_cap.get_tag() == cap_tag::cap_null_cap {
+    if it_ap_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create ASID pool for initial thread");
         return false;
     }
-    #[cfg(target_arch = "riscv64")]
-    unsafe {
-        let ap = it_ap_cap.get_cap_ptr();
-        let ptr = (ap + 8 * IT_ASID) as *mut usize;
-        *ptr = it_pd_cap.get_cap_ptr();
-        riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
-    }
-    #[cfg(target_arch = "aarch64")]
-    {
-        write_it_asid_pool(&it_ap_cap, it_pd_cap);
-    }
+    write_it_asid_pool(&it_ap_cap, it_pd_cap);
     true
 }
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 fn asid_init(root_cnode_cap: &cap_cnode_cap, it_pd_cap: &cap_page_table_cap) -> bool {
     let it_ap_cap = create_it_asid_pool(root_cnode_cap);
-    if it_ap_cap.get_tag() == cap_tag::cap_null_cap {
+    if it_ap_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create ASID pool for initial thread");
         return false;
     }
-    #[cfg(target_arch = "riscv64")]
     unsafe {
-        let ap = it_ap_cap.get_cap_ptr();
+        let ap = it_ap_cap.get_capASIDPool() as usize;
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
         *ptr = it_pd_cap.get_capPTBasePtr() as usize;
         riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
     }
-    #[cfg(target_arch = "aarch64")]
-    {
-        write_it_asid_pool(&it_ap_cap, it_pd_cap);
-    }
     true
 }
 
-fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap {
+fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap_asid_pool_cap {
     log::debug!("root_server.asid_pool: {:#x}", unsafe {
         rootserver.asid_pool
     });
     let ap_cap = unsafe {
         cap_asid_pool_cap::new((IT_ASID >> asidLowBits) as u64, rootserver.asid_pool as u64)
-            .unsplay()
     };
     unsafe {
         let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
-        write_slot(ptr.add(seL4_CapInitThreadASIDPool), ap_cap.clone());
+        write_slot(
+            ptr.add(seL4_CapInitThreadASIDPool),
+            ap_cap.clone().unsplay(),
+        );
         write_slot(
             ptr.add(seL4_CapASIDControl),
             cap_asid_control_cap::new().unsplay(),
@@ -319,12 +305,12 @@ fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap {
     }
     log::debug!(
         "asid_init needed to create: {:p} {:#x}",
-        &ap_cap,
-        ap_cap.get_cap_ptr()
+        &ap_cap.clone(),
+        ap_cap.get_capASIDPool()
     );
     ap_cap
 }
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 fn create_frame_ui_frames(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_vspace_cap,
@@ -347,7 +333,7 @@ fn create_frame_ui_frames(
     }
     true
 }
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 fn create_frame_ui_frames(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_page_table_cap,
@@ -541,15 +527,25 @@ fn init_irqs(root_cnode_cap: &cap_cnode_cap) {
 }
 
 #[cfg(target_arch = "riscv64")]
-unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_cnode_cap, it_v_reg: v_region_t) -> cap_page_table_cap {
+unsafe fn rust_create_it_address_space(
+    root_cnode_cap: &cap_cnode_cap,
+    it_v_reg: v_region_t,
+) -> cap_page_table_cap {
     use sel4_cspace::arch::cap_trans;
 
-
     copyGlobalMappings(rootserver.vspace);
-    let lvl1pt_cap = cap_page_table_cap::new(IT_ASID as u64, rootserver.vspace as u64, 1, rootserver.vspace as u64);
+    let lvl1pt_cap = cap_page_table_cap::new(
+        IT_ASID as u64,
+        rootserver.vspace as u64,
+        1,
+        rootserver.vspace as u64,
+    );
     let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     let slot_pos_before = ndks_boot.slot_pos_cur;
-    write_slot(ptr.add(seL4_CapInitThreadVspace), lvl1pt_cap.clone().unsplay());
+    write_slot(
+        ptr.add(seL4_CapInitThreadVspace),
+        lvl1pt_cap.clone().unsplay(),
+    );
     let mut i = 0;
     while i < CONFIG_PT_LEVELS - 1 {
         let mut pt_vptr = ROUND_DOWN!(it_v_reg.start, RISCV_GET_LVL_PGSIZE_BITS(i));
@@ -636,7 +632,7 @@ unsafe fn rust_create_it_address_space(
     vspace_cap
 }
 
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 fn init_bi_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_vspace_cap,
@@ -672,7 +668,7 @@ fn init_bi_frame_cap(
     }
     true
 }
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 fn init_bi_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     it_pd_cap: &cap_page_table_cap,
@@ -709,7 +705,7 @@ fn init_bi_frame_cap(
     true
 }
 
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 fn rust_create_frames_of_region(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_vspace_cap,
@@ -753,7 +749,7 @@ fn rust_create_frames_of_region(
         };
     }
 }
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 fn rust_create_frames_of_region(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_page_table_cap,
@@ -798,7 +794,7 @@ fn rust_create_frames_of_region(
     }
 }
 
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 unsafe fn create_bi_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_vspace_cap,
@@ -809,7 +805,7 @@ unsafe fn create_bi_frame_cap(
     let ptr = root_cnode_cap.get_capCNodePtr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapBootInfoFrame), capability.unsplay());
 }
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 unsafe fn create_bi_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_page_table_cap,
@@ -846,7 +842,7 @@ unsafe fn rust_populate_bi_frame(
     ndks_boot.bi_frame = bi as *mut seL4_BootInfo;
     ndks_boot.slot_pos_cur = seL4_NumInitialCaps;
 }
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 unsafe fn create_ipcbuf_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_vspace_cap,
@@ -862,7 +858,7 @@ unsafe fn create_ipcbuf_frame_cap(
     );
     return capability;
 }
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 unsafe fn create_ipcbuf_frame_cap(
     root_cnode_cap: &cap_cnode_cap,
     pd_cap: &cap_page_table_cap,

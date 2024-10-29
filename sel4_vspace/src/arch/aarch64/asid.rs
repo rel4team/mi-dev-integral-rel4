@@ -3,13 +3,12 @@ use sel4_common::{
     sel4_config::{asidHighBits, asidLowBits, IT_ASID},
     structures::exception_t,
     structures_gen::{
-        asid_map_Splayed, asid_map_asid_map_none, asid_map_asid_map_vspace, asid_map_tag, cap,
-        cap_vspace_cap, lookup_fault, lookup_fault_invalid_root,
+        asid_map_Splayed, asid_map_asid_map_none, asid_map_asid_map_vspace, asid_map_tag,
+        cap_asid_pool_cap, cap_vspace_cap, lookup_fault, lookup_fault_invalid_root,
     },
     utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
     BIT, MASK,
 };
-use sel4_cspace::capability::cap_arch_func;
 
 use crate::{asid_pool_t, asid_t, findVSpaceForASID_ret, set_vm_root};
 use sel4_common::structures_gen::asid_map;
@@ -113,8 +112,8 @@ pub fn delete_asid_pool(
 
 #[no_mangle]
 #[inline]
-pub fn write_it_asid_pool(it_ap_cap: &cap, it_vspace_cap: &cap_vspace_cap) {
-    let ap = asid_pool_from_addr(it_ap_cap.get_cap_ptr());
+pub fn write_it_asid_pool(it_ap_cap: &cap_asid_pool_cap, it_vspace_cap: &cap_vspace_cap) {
+    let ap = asid_pool_from_addr(it_ap_cap.get_capASIDPool() as usize);
     let asidmap = asid_map_asid_map_vspace::new(it_vspace_cap.get_capVSBasePtr() as u64).unsplay();
     ap[IT_ASID] = asidmap;
     set_asid_pool_by_index(IT_ASID >> asidLowBits, ap as *const _ as usize);

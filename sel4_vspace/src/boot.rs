@@ -1,8 +1,8 @@
 use sel4_common::structures_gen::cap_page_table_cap;
 
+use crate::{map_it_pt_cap, pptr_t, vptr_t};
 #[cfg(target_arch = "aarch64")]
 use sel4_common::structures_gen::cap_vspace_cap;
-use crate::{map_it_pt_cap, pptr_t, vptr_t};
 
 #[no_mangle]
 #[link_section = ".boot.text"]

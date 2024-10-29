@@ -51,8 +51,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
                 {
                     deleteASID(asid, pte as *mut PTE);
                 } else {
-                    convert_to_mut_type_ref::<PTE>(pte)
-                        .unmap_page_table(asid, cap::to_cap_page_table_cap(capability).get_capPTMappedAddress() as usize);
+                    convert_to_mut_type_ref::<PTE>(pte).unmap_page_table(
+                        asid,
+                        cap::to_cap_page_table_cap(capability).get_capPTMappedAddress() as usize,
+                    );
                 }
                 if let Some(lookup_fault) = find_ret.lookup_fault {
                     unsafe {
@@ -64,7 +66,10 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
 
         cap_tag::cap_asid_pool_cap => {
             if final_ {
-                deleteASIDPool(cap::to_cap_asid_pool_cap(capability).get_capASIDBase() as usize, cap::to_cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t);
+                deleteASIDPool(
+                    cap::to_cap_asid_pool_cap(capability).get_capASIDBase() as usize,
+                    cap::to_cap_asid_pool_cap(capability).get_capASIDPool() as *mut asid_pool_t,
+                );
             }
         }
         _ => {}

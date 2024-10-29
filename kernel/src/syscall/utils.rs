@@ -152,7 +152,8 @@ pub fn safe_unbind_notification(tcb: &mut tcb_t) {
 #[inline]
 #[cfg(target_arch = "riscv64")]
 pub fn is_valid_vtable_root(capability: &cap) -> bool {
-    capability.get_tag() == cap_tag::cap_page_table_cap && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0
+    capability.get_tag() == cap_tag::cap_page_table_cap
+        && cap::to_cap_page_table_cap(capability).get_capPTIsMapped() != 0
 }
 
 #[no_mangle]

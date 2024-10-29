@@ -1,6 +1,7 @@
 use sel4_common::{
     arch::{vm_rights_t, ObjectType},
-    sel4_config::asidInvalid, structures_gen::{cap, cap_frame_cap, cap_page_table_cap},
+    sel4_config::asidInvalid,
+    structures_gen::{cap, cap_frame_cap, cap_page_table_cap},
 };
 use sel4_vspace::pptr_t;
 
@@ -11,7 +12,9 @@ pub fn arch_create_object(
     device_mem: usize,
 ) -> cap {
     match obj_type {
-        ObjectType::PageTableObject => cap_page_table_cap::new(asidInvalid as u64, region_base as u64, 0, 0).unsplay(),
+        ObjectType::PageTableObject => {
+            cap_page_table_cap::new(asidInvalid as u64, region_base as u64, 0, 0).unsplay()
+        }
 
         ObjectType::NormalPageObject | ObjectType::GigaPageObject | ObjectType::MegaPageObject => {
             cap_frame_cap::new(
@@ -21,7 +24,8 @@ pub fn arch_create_object(
                 vm_rights_t::VMReadWrite as u64,
                 device_mem as u64,
                 0,
-            ).unsplay()
+            )
+            .unsplay()
         }
         _ => {
             unimplemented!(

@@ -12,7 +12,7 @@ use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 use sel4_common::BIT;
 use sel4_common::MASK;
 use sel4_cspace::arch::cap_trans;
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 use sel4_cspace::capability::cap_arch_func;
 use sel4_cspace::interface::{cte_insert, cte_t, mdb_node_t, resolve_address_bits};
 #[cfg(target_arch = "aarch64")]
@@ -313,9 +313,9 @@ impl tcb_t {
     pub fn set_vm_root(&mut self) -> Result<(), lookup_fault> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
         let thread_root = &self.get_cspace(tcbVTable).capability;
-		#[cfg(target_arch = "riscv64")]
-		let thread_root_vspace = cap::to_cap_page_table_cap(&thread_root);
-		#[cfg(target_arch = "aarch64")]
+        #[cfg(target_arch = "riscv64")]
+        let thread_root_vspace = cap::to_cap_page_table_cap(&thread_root);
+        #[cfg(target_arch = "aarch64")]
         let thread_root_vspace = cap::to_cap_vspace_cap(&thread_root);
         #[cfg(target_arch = "aarch64")]
         {
@@ -443,7 +443,7 @@ impl tcb_t {
         let caller_slot = self.get_cspace_mut_ref(tcbCaller);
         assert_eq!(caller_slot.capability.get_tag(), cap_tag::cap_null_cap);
         cte_insert(
-            &cap_reply_cap::new(sender.get_ptr() as u64,can_grant as u64, 0, ).unsplay(),
+            &cap_reply_cap::new(sender.get_ptr() as u64, can_grant as u64, 0).unsplay(),
             reply_slot,
             caller_slot,
         );

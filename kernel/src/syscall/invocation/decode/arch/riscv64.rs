@@ -98,7 +98,10 @@ fn decode_frame_invocation(
         }
         MessageLabel::RISCVPageGetAddress => {
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            invoke_page_get_address(cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize, call)
+            invoke_page_get_address(
+                cap::to_cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize,
+                call,
+            )
         }
         _ => {
             debug!("invalid operation label:{:?}", label);
@@ -291,7 +294,8 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
         }
 
         let pt_slot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
-        let frame_asid = cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedASID() as usize;
+        let frame_asid =
+            cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedASID() as usize;
         if frame_asid != asidInvalid {
             if frame_asid != asid {
                 debug!("RISCVPageMap: Attempting to remap a frame that does not belong to the passed address space");
@@ -302,7 +306,9 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
 
-            if cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedAddress() as usize != vaddr {
+            if cap::to_cap_frame_cap(&frame_slot.capability).get_capFMappedAddress() as usize
+                != vaddr
+            {
                 debug!("RISCVPageMap: attempting to map frame into multiple addresses");
                 unsafe {
                     current_syscall_error._type = seL4_InvalidArgument;
