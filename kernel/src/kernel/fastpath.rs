@@ -9,7 +9,7 @@ use sel4_common::message_info::seL4_MessageInfo_func;
 use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{
     cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, mdb_node,
-    seL4_Fault_tag,
+    seL4_Fault_tag, thread_state,
 };
 use sel4_common::{
     sel4_config::*,
@@ -63,11 +63,11 @@ pub fn lookup_fp(_cap: &cap_cnode_cap, cptr: usize) -> cap {
 #[inline]
 #[no_mangle]
 pub fn thread_state_ptr_mset_blockingObject_tsType(
-    ptr: &mut thread_state_t,
+    ptr: &mut thread_state,
     ep: usize,
     tsType: usize,
 ) {
-    (*ptr).words[0] = ep | tsType;
+    (*ptr).0.arr[0] = (ep | tsType) as u64;
 }
 
 #[inline]
@@ -254,11 +254,11 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
         ep.set_state(EPState::Idle as usize);
     }
 
-    current.tcbState.words[0] = ThreadState::ThreadStateBlockedOnReply as usize;
+    current.tcbState.0.arr[0] = ThreadState::ThreadStateBlockedOnReply as u64;
 
     let reply_slot = current.get_cspace_mut_ref(tcbReply);
     let caller_slot = dest.get_cspace_mut_ref(tcbCaller);
-    let reply_can_grant = dest.tcbState.get_blocking_ipc_can_grant();
+    let reply_can_grant = dest.tcbState.get_blockingIPCCanGrant();
 
     caller_slot.capability =
         cap_reply_cap::new(current.get_ptr() as u64, reply_can_grant as u64, 0).unsplay();
@@ -270,7 +270,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
         1,
     );
     fastpath_copy_mrs(length, current, dest);
-    dest.tcbState.words[0] = ThreadState::ThreadStateRunning as usize;
+    dest.tcbState.0.arr[0] = ThreadState::ThreadStateRunning as u64;
     let cap_pd = new_vtable.get_capPTBasePtr() as *mut PTE;
     let stored_hw_asid: PTE = PTE(new_vtable.get_capPTMappedASID() as usize);
     switchToThread_fp(dest as *mut tcb_t, cap_pd, stored_hw_asid);
@@ -354,7 +354,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     );
     current
         .tcbState
-        .set_blocking_ipc_can_grant(ep_cap.get_capCanGrant() as usize);
+        .set_blockingIPCCanGrant(ep_cap.get_capCanGrant() as u64);
 
     if let Some(ep_tail_tcb) = convert_to_option_mut_type_ref::<tcb_t>(ep.get_queue_tail()) {
         ep_tail_tcb.tcbEPNext = current.get_ptr();
@@ -378,7 +378,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     caller_slot.cteMDBNode = mdb_node::new(0, 0, 0, 0);
     fastpath_copy_mrs(length, current, caller);
 
-    caller.tcbState.words[0] = ThreadState::ThreadStateRunning as usize;
+    caller.tcbState.0.arr[0] = ThreadState::ThreadStateRunning as u64;
     let cap_pd = new_vtable.get_capPTBasePtr() as *mut PTE;
     let stored_hw_asid: PTE = PTE(new_vtable.get_capPTMappedASID() as usize);
     switchToThread_fp(caller, cap_pd, stored_hw_asid);

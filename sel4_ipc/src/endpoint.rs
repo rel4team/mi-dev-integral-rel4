@@ -122,7 +122,7 @@ impl endpoint_t {
                 while thread_ptr != 0 {
                     let thread = convert_to_mut_type_ref::<tcb_t>(thread_ptr);
                     thread_ptr = thread.tcbEPNext;
-                    if thread.tcbState.get_blocking_ipc_badge() == badge {
+                    if thread.tcbState.get_blockingIPCBadge() as usize == badge {
                         set_thread_state(thread, ThreadState::ThreadStateRestart);
                         thread.sched_enqueue();
                         queue.ep_dequeue(thread);
@@ -159,18 +159,18 @@ impl endpoint_t {
                 if blocking {
                     src_thread
                         .tcbState
-                        .set_ts_type(ThreadState::ThreadStateBlockedOnSend as usize);
-                    src_thread.tcbState.set_blocking_object(self.get_ptr());
+                        .set_tsType(ThreadState::ThreadStateBlockedOnSend as u64);
                     src_thread
                         .tcbState
-                        .set_blocking_ipc_can_grant(can_grant as usize);
-                    src_thread.tcbState.set_blocking_ipc_badge(badge);
+                        .set_blockingObject(self.get_ptr() as u64);
                     src_thread
                         .tcbState
-                        .set_blocking_ipc_can_grant_reply(can_grant_reply as usize);
+                        .set_blockingIPCCanGrant(can_grant as u64);
+                    src_thread.tcbState.set_blockingIPCBadge(badge as u64);
                     src_thread
                         .tcbState
-                        .set_blocking_ipc_is_call(do_call as usize);
+                        .set_blockingIPCCanGrantReply(can_grant_reply as u64);
+                    src_thread.tcbState.set_blockingIPCIsCall(do_call as u64);
                     schedule_tcb(src_thread);
 
                     let mut queue = self.get_queue();
@@ -191,7 +191,7 @@ impl endpoint_t {
                     self.set_state(EPState::Idle as usize);
                 }
                 src_thread.do_ipc_transfer(dest_thread, Some(self), badge, can_grant);
-                let reply_can_grant = dest_thread.tcbState.get_blocking_ipc_can_grant() != 0;
+                let reply_can_grant = dest_thread.tcbState.get_blockingIPCCanGrant() != 0;
                 set_thread_state(dest_thread, ThreadState::ThreadStateRunning);
                 possible_switch_to(dest_thread);
                 if do_call {
@@ -218,8 +218,8 @@ impl endpoint_t {
         match self.get_state() {
             EPState::Idle | EPState::Recv => {
                 if is_blocking {
-                    thread.tcbState.set_blocking_object(self.get_ptr());
-                    thread.tcbState.set_blocking_ipc_can_grant(grant as usize);
+                    thread.tcbState.set_blockingObject(self.get_ptr() as u64);
+                    thread.tcbState.set_blockingIPCCanGrant(grant as u64);
                     set_thread_state(thread, ThreadState::ThreadStateBlockedOnReceive);
                     let mut queue = self.get_queue();
                     queue.ep_append(thread);
@@ -239,11 +239,11 @@ impl endpoint_t {
                 if queue.empty() {
                     self.set_state(EPState::Idle as usize);
                 }
-                let badge = sender.tcbState.get_blocking_ipc_badge();
-                let can_grant = sender.tcbState.get_blocking_ipc_can_grant() != 0;
-                let can_grant_reply = sender.tcbState.get_blocking_ipc_can_grant_reply() != 0;
+                let badge = sender.tcbState.get_blockingIPCBadge() as usize;
+                let can_grant = sender.tcbState.get_blockingIPCCanGrant() != 0;
+                let can_grant_reply = sender.tcbState.get_blockingIPCCanGrantReply() != 0;
                 sender.do_ipc_transfer(thread, Some(self), badge, can_grant);
-                let do_call = sender.tcbState.get_blocking_ipc_is_call() != 0;
+                let do_call = sender.tcbState.get_blockingIPCIsCall() != 0;
                 if do_call {
                     if can_grant || can_grant_reply {
                         thread.setup_caller_cap(sender, grant);

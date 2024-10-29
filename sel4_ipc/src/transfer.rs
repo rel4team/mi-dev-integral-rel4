@@ -66,15 +66,16 @@ pub trait Transfer {
 
 impl Transfer for tcb_t {
     fn cancel_ipc(&mut self) {
-        let state = self.tcbState;
+        let state = &self.tcbState;
         match self.get_state() {
             ThreadState::ThreadStateBlockedOnSend | ThreadState::ThreadStateBlockedOnReceive => {
-                let ep = convert_to_mut_type_ref::<endpoint_t>(state.get_blocking_object());
+                let ep = convert_to_mut_type_ref::<endpoint_t>(state.get_blockingObject() as usize);
                 assert_ne!(ep.get_state(), EPState::Idle);
                 ep.cancel_ipc(self);
             }
             ThreadState::ThreadStateBlockedOnNotification => {
-                let ntfn = convert_to_mut_type_ref::<notification_t>(state.get_blocking_object());
+                let ntfn =
+                    convert_to_mut_type_ref::<notification_t>(state.get_blockingObject() as usize);
                 ntfn.cancel_signal(self);
             }
 

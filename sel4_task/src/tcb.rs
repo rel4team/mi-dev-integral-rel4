@@ -7,7 +7,7 @@ use sel4_common::message_info::seL4_MessageInfo_func;
 use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{
     cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed, mdb_node, seL4_Fault,
-    seL4_Fault_CapFault, seL4_Fault_tag,
+    seL4_Fault_CapFault, seL4_Fault_tag, thread_state,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 #[cfg(feature = "ENABLE_SMP")]
@@ -42,7 +42,7 @@ pub struct tcb_t {
     /// The architecture registers of the TCB
     pub tcbArch: ArchTCB,
     /// The state of the TCB
-    pub tcbState: thread_state_t,
+    pub tcbState: thread_state,
     /// The bound notification of the TCB
     pub tcbBoundNotification: usize,
     /// The fault of the TCB
@@ -102,7 +102,7 @@ impl tcb_t {
     #[inline]
     /// Get the current state of the TCB
     pub fn get_state(&self) -> ThreadState {
-        unsafe { core::mem::transmute::<u8, ThreadState>(self.tcbState.get_ts_type() as u8) }
+        unsafe { core::mem::transmute::<u8, ThreadState>(self.tcbState.get_tsType() as u8) }
     }
 
     #[inline]
@@ -184,7 +184,7 @@ impl tcb_t {
     /// Enqueue the TCB to the scheduling queue
     pub fn sched_enqueue(&mut self) {
         let self_ptr = self as *mut tcb_t;
-        if self.tcbState.get_tcb_queued() == 0 {
+        if self.tcbState.get_tcbQueued() == 0 {
             let dom = self.domain;
             let prio = self.tcbPriority;
             let idx = ready_queues_index(dom, prio);
@@ -198,7 +198,7 @@ impl tcb_t {
             self.tcbSchedPrev = queue.tail;
             self.tcbSchedNext = 0;
             queue.tail = self_ptr as usize;
-            self.tcbState.set_tcb_queued(1);
+            self.tcbState.set_tcbQueued(1);
         }
 
         #[cfg(feature = "ENABLE_SMP")]
@@ -237,7 +237,7 @@ impl tcb_t {
 
     /// Dequeue the TCB from the scheduling queue
     pub fn sched_dequeue(&mut self) {
-        if self.tcbState.get_tcb_queued() != 0 {
+        if self.tcbState.get_tcbQueued() != 0 {
             let dom = self.domain;
             let prio = self.tcbPriority;
             let idx = ready_queues_index(dom, prio);
@@ -258,7 +258,7 @@ impl tcb_t {
                 queue.tail = self.tcbSchedPrev;
             }
             // unsafe { ksReadyQueues[idx] = queue; }
-            self.tcbState.set_tcb_queued(0);
+            self.tcbState.set_tcbQueued(0);
         }
     }
 
@@ -267,7 +267,7 @@ impl tcb_t {
     /// This function is as same as `sched_enqueue`, but it is used for the EP queue
     pub fn sched_append(&mut self) {
         let self_ptr = self as *mut tcb_t;
-        if self.tcbState.get_tcb_queued() == 0 {
+        if self.tcbState.get_tcbQueued() == 0 {
             let dom = self.domain;
             let prio = self.tcbPriority;
             let idx = ready_queues_index(dom, prio);
@@ -286,7 +286,7 @@ impl tcb_t {
             queue.tail = self_ptr as usize;
             // unsafe { ksReadyQueues[idx] = queue; }
 
-            self.tcbState.set_tcb_queued(1);
+            self.tcbState.set_tcbQueued(1);
         }
         #[cfg(feature = "ENABLE_SMP")]
         self.update_queue();
@@ -804,7 +804,7 @@ impl tcb_t {
     /// Set the thread state
     #[inline]
     pub fn set_state(&mut self, state: ThreadState) {
-        self.tcbState.set_ts_type(state as usize);
+        self.tcbState.set_tsType(state as u64);
         schedule_tcb(self);
     }
     pub fn DebugAppend(&mut self) {}
@@ -817,6 +817,6 @@ impl tcb_t {
 /// * `tcb` - The TCB to set
 /// * `state` - The state
 pub fn set_thread_state(tcb: &mut tcb_t, state: ThreadState) {
-    tcb.tcbState.set_ts_type(state as usize);
+    tcb.tcbState.set_tsType(state as u64);
     schedule_tcb(tcb);
 }

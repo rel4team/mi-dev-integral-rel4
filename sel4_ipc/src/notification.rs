@@ -189,7 +189,9 @@ impl notification_t {
         match self.get_state() {
             NtfnState::Idle | NtfnState::Waiting => {
                 if is_blocking {
-                    recv_thread.tcbState.set_blocking_object(self.get_ptr());
+                    recv_thread
+                        .tcbState
+                        .set_blockingObject(self.get_ptr() as u64);
                     set_thread_state(recv_thread, ThreadState::ThreadStateBlockedOnNotification);
                     let mut queue = self.get_queue();
                     queue.ep_append(recv_thread);
