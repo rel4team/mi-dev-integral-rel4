@@ -6,7 +6,8 @@ use crate::{
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
 use sel4_common::structures_gen::{
-    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, seL4_Fault_tag,
+    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, mdb_node,
+    seL4_Fault_tag,
 };
 use sel4_common::{
     message_info::*,
@@ -94,12 +95,12 @@ pub fn switchToThread_fp(thread: *mut tcb_t, vroot: *mut PTE, stored_hw_asid: PT
 #[inline]
 #[no_mangle]
 pub fn mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
-    ptr: &mut mdb_node_t,
+    ptr: &mut mdb_node,
     mdbNext: usize,
     mdbRevocable: usize,
     mdbFirstBadged: usize,
 ) {
-    ptr.words[1] = mdbNext | (mdbRevocable << 1) | mdbFirstBadged;
+    ptr.0.arr[1] = (mdbNext | (mdbRevocable << 1) | mdbFirstBadged) as u64;
 }
 
 #[inline]
@@ -260,7 +261,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
 
     caller_slot.capability =
         cap_reply_cap::new(current.get_ptr() as u64, reply_can_grant as u64, 0).unsplay();
-    caller_slot.cteMDBNode.words[0] = reply_slot.get_ptr();
+    caller_slot.cteMDBNode.0.arr[0] = reply_slot.get_ptr() as u64;
     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
         &mut reply_slot.cteMDBNode,
         caller_slot.get_ptr(),
@@ -370,10 +371,10 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     );
 
     // unsafe {
-    let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_prev());
+    let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_mdbPrev() as usize);
     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
     caller_slot.capability = cap_null_cap::new().unsplay();
-    caller_slot.cteMDBNode = mdb_node_t::new(0, 0, 0, 0);
+    caller_slot.cteMDBNode = mdb_node::new(0, 0, 0, 0);
     fastpath_copy_mrs(length, current, caller);
 
     caller.tcbState.words[0] = ThreadState::ThreadStateRunning as usize;

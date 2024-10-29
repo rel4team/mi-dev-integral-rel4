@@ -5,7 +5,7 @@ use sel4_common::arch::{
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_t;
 use sel4_common::structures_gen::{
-    cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed, seL4_Fault,
+    cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed, mdb_node, seL4_Fault,
     seL4_Fault_CapFault, seL4_Fault_tag,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
@@ -14,7 +14,7 @@ use sel4_common::BIT;
 use sel4_common::MASK;
 #[cfg(target_arch = "aarch64")]
 use sel4_cspace::capability::cap_arch_func;
-use sel4_cspace::interface::{cte_insert, cte_t, mdb_node_t, resolve_address_bits};
+use sel4_cspace::interface::{cte_insert, cte_t, resolve_address_bits};
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::{
     find_vspace_for_asid, get_arm_global_user_vspace_base, kpptr_to_paddr,
@@ -392,7 +392,7 @@ impl tcb_t {
         let slot = self.get_cspace_mut_ref(tcbReply);
         if slot.capability.get_tag() == cap_tag::cap_null_cap {
             slot.capability = cap_reply_cap::new(self.get_ptr() as u64, 1, 1).unsplay();
-            slot.cteMDBNode = mdb_node_t::new(0, 1, 1, 0);
+            slot.cteMDBNode = mdb_node::new(0, 1, 1, 0);
         }
     }
 

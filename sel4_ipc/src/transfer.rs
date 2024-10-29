@@ -80,7 +80,7 @@ impl Transfer for tcb_t {
             ThreadState::ThreadStateBlockedOnReply => {
                 self.tcbFault = seL4_Fault_NullFault::new().unsplay();
                 let slot = self.get_cspace(tcbReply);
-                let caller_slot_ptr = slot.cteMDBNode.get_next();
+                let caller_slot_ptr = slot.cteMDBNode.get_mdbNext() as usize;
                 if caller_slot_ptr != 0 {
                     convert_to_mut_type_ref::<cte_t>(caller_slot_ptr).delete_one()
                 }
