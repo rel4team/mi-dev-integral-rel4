@@ -2,6 +2,7 @@ use core::intrinsics::likely;
 
 use super::endpoint::*;
 use super::notification::*;
+use sel4_common::structures_gen::notification;
 
 use sel4_common::arch::ArchReg;
 use sel4_common::arch::{n_exceptionMessage, n_syscallMessage};
@@ -75,7 +76,7 @@ impl Transfer for tcb_t {
             }
             ThreadState::ThreadStateBlockedOnNotification => {
                 let ntfn =
-                    convert_to_mut_type_ref::<notification_t>(state.get_blockingObject() as usize);
+                    convert_to_mut_type_ref::<notification>(state.get_blockingObject() as usize);
                 ntfn.cancel_signal(self);
             }
 
@@ -292,12 +293,12 @@ impl Transfer for tcb_t {
 
     fn complete_signal(&mut self) -> bool {
         if let Some(ntfn) =
-            convert_to_option_mut_type_ref::<notification_t>(self.tcbBoundNotification)
+            convert_to_option_mut_type_ref::<notification>(self.tcbBoundNotification)
         {
-            if likely(ntfn.get_state() == NtfnState::Active) {
+            if likely(ntfn.get_ntfn_state() == NtfnState::Active) {
                 self.tcbArch
-                    .set_register(ArchReg::Badge, ntfn.get_msg_identifier());
-                ntfn.set_state(NtfnState::Idle as usize);
+                    .set_register(ArchReg::Badge, ntfn.get_ntfnMsgIdentifier() as usize);
+                ntfn.set_state(NtfnState::Idle as u64);
                 return true;
             }
         }

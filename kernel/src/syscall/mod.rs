@@ -26,10 +26,11 @@ pub const SysDebugNameThread: isize = -14;
 pub const SysGetClock: isize = -30;
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{
-    cap, cap_Splayed, cap_tag, lookup_fault_missing_capability, seL4_Fault_CapFault, seL4_Fault_tag,
+    cap, cap_Splayed, cap_tag, lookup_fault_missing_capability, notification, seL4_Fault_CapFault,
+    seL4_Fault_tag,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
-use sel4_ipc::{endpoint_t, notification_t, Transfer};
+use sel4_ipc::{endpoint_t, notification_func, Transfer};
 use sel4_task::{
     activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
     ThreadState,
@@ -190,11 +191,11 @@ fn handle_recv(block: bool) {
         }
 
         cap_Splayed::notification_cap(data) => {
-            let ntfn = convert_to_mut_type_ref::<notification_t>(data.get_capNtfnPtr() as usize);
-            let bound_tcb_ptr = ntfn.get_bound_tcb();
+            let ntfn = convert_to_mut_type_ref::<notification>(data.get_capNtfnPtr() as usize);
+            let bound_tcb_ptr = ntfn.get_ntfnBoundTCB();
             if unlikely(
                 data.get_capNtfnCanReceive() == 0
-                    || (bound_tcb_ptr != 0 && bound_tcb_ptr != current_thread.get_ptr()),
+                    || (bound_tcb_ptr != 0 && bound_tcb_ptr != current_thread.get_ptr() as u64),
             ) {
                 unsafe {
                     current_lookup_fault = lookup_fault_missing_capability::new(0).unsplay();

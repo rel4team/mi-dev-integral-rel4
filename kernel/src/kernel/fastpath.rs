@@ -9,7 +9,7 @@ use sel4_common::message_info::seL4_MessageInfo_func;
 use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{
     cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, mdb_node,
-    seL4_Fault_tag, thread_state,
+    notification, seL4_Fault_tag, thread_state,
 };
 use sel4_common::{
     sel4_config::*,
@@ -305,10 +305,9 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         slowpath(SysReplyRecv as usize);
     }
 
-    if let Some(ntfn) =
-        convert_to_option_mut_type_ref::<notification_t>(current.tcbBoundNotification)
+    if let Some(ntfn) = convert_to_option_mut_type_ref::<notification>(current.tcbBoundNotification)
     {
-        if ntfn.get_state() == NtfnState::Active {
+        if ntfn.get_ntfn_state() == NtfnState::Active {
             slowpath(SysReplyRecv as usize);
         }
     }

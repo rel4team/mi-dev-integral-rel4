@@ -12,7 +12,7 @@ use sel4_common::sel4_config::seL4_MinUntypedBits;
 use sel4_common::shared_types_bf_gen::seL4_CapRights;
 use sel4_common::structures_gen::{
     cap, cap_Splayed, cap_cnode_cap, cap_frame_cap, cap_tag, lookup_fault_depth_mismatch,
-    lookup_fault_invalid_root,
+    lookup_fault_invalid_root, notification,
 };
 use sel4_common::{
     sel4_config::*,
@@ -27,7 +27,7 @@ use sel4_common::{
 use sel4_cspace::arch::arch_mask_cap_rights;
 use sel4_cspace::capability::cap_func;
 use sel4_cspace::interface::{cte_t, resolve_address_bits};
-use sel4_ipc::notification_t;
+use sel4_ipc::notification_func;
 use sel4_task::{get_currenct_thread, lookupSlot_ret_t, tcb_t};
 
 pub fn alignUp(baseValue: usize, alignment: usize) -> usize {
@@ -130,13 +130,13 @@ pub fn check_ipc_buffer_vaild(vptr: usize, capability: &cap_frame_cap) -> except
 }
 
 #[inline]
-pub fn do_bind_notification(tcb: &mut tcb_t, nftn: &mut notification_t) {
+pub fn do_bind_notification(tcb: &mut tcb_t, nftn: &mut notification) {
     nftn.bind_tcb(tcb);
     tcb.bind_notification(nftn.get_ptr());
 }
 
 #[inline]
-pub fn do_unbind_notification(tcb: &mut tcb_t, nftn: &mut notification_t) {
+pub fn do_unbind_notification(tcb: &mut tcb_t, nftn: &mut notification) {
     nftn.unbind_tcb();
     tcb.unbind_notification();
 }
@@ -145,7 +145,7 @@ pub fn do_unbind_notification(tcb: &mut tcb_t, nftn: &mut notification_t) {
 pub fn safe_unbind_notification(tcb: &mut tcb_t) {
     let nftn = tcb.tcbBoundNotification;
     if nftn != 0 {
-        do_unbind_notification(tcb, convert_to_mut_type_ref::<notification_t>(nftn))
+        do_unbind_notification(tcb, convert_to_mut_type_ref::<notification>(nftn))
     }
 }
 
