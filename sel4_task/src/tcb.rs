@@ -3,7 +3,8 @@ use sel4_common::arch::{
     msgRegisterNum, n_exceptionMessage, n_syscallMessage, vm_rights_t, ArchReg, ArchTCB,
 };
 use sel4_common::fault::*;
-use sel4_common::message_info::seL4_MessageInfo_t;
+use sel4_common::message_info::seL4_MessageInfo_func;
+use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{
     cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed, mdb_node, seL4_Fault,
     seL4_Fault_CapFault, seL4_Fault_tag,
@@ -496,21 +497,21 @@ impl tcb_t {
         res: &mut [pptr_t; seL4_MsgMaxExtraCaps],
     ) -> Result<(), seL4_Fault> {
         let info =
-            seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
+            seL4_MessageInfo::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
         if let Some(buffer) = self.lookup_ipc_buffer(false) {
-            let length = info.get_extra_caps();
+            let length = info.get_extraCaps();
             let mut i = 0;
             while i < length {
-                let cptr = buffer.get_extra_cptr(i);
+                let cptr = buffer.get_extra_cptr(i as usize);
                 let lu_ret = self.lookup_slot(cptr);
                 if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
                     return Err(seL4_Fault_CapFault::new(cptr as u64, false as u64).unsplay());
                 }
-                res[i] = lu_ret.slot as usize;
+                res[i as usize] = lu_ret.slot as usize;
                 i += 1;
             }
-            if i < seL4_MsgMaxExtraCaps {
-                res[i] = 0;
+            if i < seL4_MsgMaxExtraCaps as u64 {
+                res[i as usize] = 0;
             }
         }
         Ok(())
@@ -528,21 +529,21 @@ impl tcb_t {
         buf: Option<&seL4_IPCBuffer>,
     ) -> Result<(), seL4_Fault> {
         let info =
-            seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
+            seL4_MessageInfo::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
         if let Some(buffer) = buf {
-            let length = info.get_extra_caps();
+            let length = info.get_extraCaps();
             let mut i = 0;
             while i < length {
-                let cptr = buffer.get_extra_cptr(i);
+                let cptr = buffer.get_extra_cptr(i as usize);
                 let lu_ret = self.lookup_slot(cptr);
                 if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
                     return Err(seL4_Fault_CapFault::new(cptr as u64, false as u64).unsplay());
                 }
-                res[i] = lu_ret.slot as usize;
+                res[i as usize] = lu_ret.slot as usize;
                 i += 1;
             }
-            if i < seL4_MsgMaxExtraCaps {
-                res[i] = 0;
+            if i < seL4_MsgMaxExtraCaps as u64 {
+                res[i as usize] = 0;
             }
         }
         Ok(())

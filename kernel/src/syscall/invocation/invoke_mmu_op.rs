@@ -4,6 +4,8 @@ use core::intrinsics::unlikely;
 use sel4_common::BIT;
 use sel4_common::{
     arch::ArchReg,
+    message_info::seL4_MessageInfo_func,
+    shared_types_bf_gen::seL4_MessageInfo,
     structures_gen::{cap, cap_page_table_cap},
 };
 
@@ -18,10 +20,7 @@ use sel4_common::{
     utils::{pageBitsForSize, MAX_FREE_INDEX},
     MASK,
 };
-use sel4_common::{
-    message_info::seL4_MessageInfo_t, sel4_config::*, structures::exception_t,
-    utils::convert_to_mut_type_ref,
-};
+use sel4_common::{sel4_config::*, structures::exception_t, utils::convert_to_mut_type_ref};
 
 #[cfg(target_arch = "riscv64")]
 use sel4_cspace::interface::cte_insert;
@@ -95,10 +94,10 @@ pub fn invoke_page_get_address(vbase_ptr: usize, call: bool) -> exception_t {
     let thread = get_currenct_thread();
     if call {
         thread.tcbArch.set_register(ArchReg::Badge, 0);
-        let length = thread.set_mr(0, vbase_ptr);
+        let length = thread.set_mr(0, vbase_ptr) as u64;
         thread.tcbArch.set_register(
             ArchReg::MsgInfo,
-            seL4_MessageInfo_t::new(0, 0, 0, length).to_word(),
+            seL4_MessageInfo::new(0, 0, 0, length).to_word(),
         );
     }
     set_thread_state(thread, ThreadState::ThreadStateRestart);

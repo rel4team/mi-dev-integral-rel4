@@ -5,12 +5,13 @@ use crate::{
 };
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
+use sel4_common::message_info::seL4_MessageInfo_func;
+use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{
     cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, mdb_node,
     seL4_Fault_tag,
 };
 use sel4_common::{
-    message_info::*,
     sel4_config::*,
     utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
 };
@@ -199,8 +200,8 @@ pub fn fastpath_restore(_badge: usize, _msgInfo: usize, cur_thread: *mut tcb_t) 
 #[no_mangle]
 pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     let current = get_currenct_thread();
-    let mut info = seL4_MessageInfo_t::from_word(msgInfo);
-    let length = info.get_length();
+    let mut info = seL4_MessageInfo::from_word(msgInfo);
+    let length = info.get_length() as usize;
 
     if fastpath_mi_check(msgInfo)
         || current.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault
@@ -273,7 +274,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     let cap_pd = new_vtable.get_capPTBasePtr() as *mut PTE;
     let stored_hw_asid: PTE = PTE(new_vtable.get_capPTMappedASID() as usize);
     switchToThread_fp(dest as *mut tcb_t, cap_pd, stored_hw_asid);
-    info.set_caps_unwrapped(0);
+    info.set_capsUnwrapped(0);
     let msgInfo1 = info.to_word();
     let badge = ep_cap.get_capEPBadge() as usize;
     fastpath_restore(badge, msgInfo1, get_currenct_thread());
@@ -284,8 +285,8 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
 pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     // debug!("enter fastpath_reply_recv");
     let current = get_currenct_thread();
-    let mut info = seL4_MessageInfo_t::from_word(msgInfo);
-    let length = info.get_length();
+    let mut info = seL4_MessageInfo::from_word(msgInfo);
+    let length = info.get_length() as usize;
     let fault_type = current.tcbFault.get_tag();
 
     if fastpath_mi_check(msgInfo) || fault_type != seL4_Fault_tag::seL4_Fault_NullFault {
@@ -381,7 +382,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     let cap_pd = new_vtable.get_capPTBasePtr() as *mut PTE;
     let stored_hw_asid: PTE = PTE(new_vtable.get_capPTMappedASID() as usize);
     switchToThread_fp(caller, cap_pd, stored_hw_asid);
-    info.set_caps_unwrapped(0);
+    info.set_capsUnwrapped(0);
     let msg_info1 = info.to_word();
     fastpath_restore(0, msg_info1, get_currenct_thread() as *mut tcb_t);
     // }

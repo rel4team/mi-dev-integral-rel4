@@ -1,7 +1,8 @@
 use sel4_common::arch::*;
+use sel4_common::message_info::seL4_MessageInfo_func;
+use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
 use sel4_common::structures_gen::{cap, cap_thread_cap};
 use sel4_common::{
-    message_info::seL4_MessageInfo_t,
     sel4_config::{tcbBuffer, tcbCTable, tcbVTable},
     structures::{exception_t, seL4_IPCBuffer},
 };
@@ -61,7 +62,7 @@ pub fn invoke_tcb_read_registers(
         }
         thread.tcbArch.set_register(
             ArchReg::MsgInfo,
-            seL4_MessageInfo_t::new(0, 0, 0, i + j).to_word(),
+            seL4_MessageInfo::new(0, 0, 0, (i + j) as u64).to_word(),
         );
     }
     set_thread_state(thread, ThreadState::ThreadStateRunning);
