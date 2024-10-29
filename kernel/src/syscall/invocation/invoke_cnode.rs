@@ -1,7 +1,7 @@
 use log::debug;
 use sel4_common::structures_gen::{cap, cap_tag};
 use sel4_common::{
-    cap_rights::seL4_CapRights_t,
+    shared_types_bf_gen::seL4_CapRights,
     sel4_config::{seL4_DeleteFirst, seL4_IllegalOperation, tcbCaller},
     structures::exception_t,
     utils::convert_to_mut_type_ref,
@@ -17,7 +17,7 @@ use crate::{kernel::boot::current_syscall_error, syscall::mask_cap_rights};
 pub fn invoke_cnode_copy(
     src_slot: &mut cte_t,
     dest_slot: &mut cte_t,
-    cap_right: seL4_CapRights_t,
+    cap_right: seL4_CapRights,
 ) -> exception_t {
     let src_cap = mask_cap_rights(cap_right, &src_slot.capability);
     let dc_ret = src_slot.derive_cap(&src_cap);
@@ -42,7 +42,7 @@ pub fn invoke_cnode_copy(
 pub fn invoke_cnode_mint(
     src_slot: &mut cte_t,
     dest_slot: &mut cte_t,
-    cap_right: seL4_CapRights_t,
+    cap_right: seL4_CapRights,
     cap_data: usize,
 ) -> exception_t {
     let src_cap = mask_cap_rights(cap_right, &src_slot.capability);
