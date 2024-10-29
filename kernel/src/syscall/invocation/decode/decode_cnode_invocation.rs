@@ -115,7 +115,9 @@ fn decode_cnode_invoke_with_two_slot(
                 }
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
-			let cap_right = seL4_CapRights(Bitfield{arr:[get_syscall_arg(4, buffer) as u64;1]});
+            let cap_right = seL4_CapRights(Bitfield {
+                arr: [get_syscall_arg(4, buffer) as u64; 1],
+            });
             return invoke_cnode_copy(src_slot, dest_slot, cap_right);
         }
 
@@ -127,7 +129,9 @@ fn decode_cnode_invoke_with_two_slot(
                 }
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
-            let cap_right = seL4_CapRights(Bitfield{arr:[get_syscall_arg(4, buffer) as u64;1]});
+            let cap_right = seL4_CapRights(Bitfield {
+                arr: [get_syscall_arg(4, buffer) as u64; 1],
+            });
             let cap_data = get_syscall_arg(5, buffer);
             return invoke_cnode_mint(src_slot, dest_slot, cap_right, cap_data);
         }

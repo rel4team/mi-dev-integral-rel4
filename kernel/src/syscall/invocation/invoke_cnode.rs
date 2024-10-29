@@ -1,8 +1,8 @@
 use log::debug;
 use sel4_common::structures_gen::{cap, cap_tag};
 use sel4_common::{
-    shared_types_bf_gen::seL4_CapRights,
     sel4_config::{seL4_DeleteFirst, seL4_IllegalOperation, tcbCaller},
+    shared_types_bf_gen::seL4_CapRights,
     structures::exception_t,
     utils::convert_to_mut_type_ref,
 };

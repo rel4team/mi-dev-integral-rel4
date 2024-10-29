@@ -5,7 +5,8 @@ use sel4_common::arch::{
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_t;
 use sel4_common::structures_gen::{
-    cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed,
+    cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed, seL4_Fault,
+    seL4_Fault_CapFault, seL4_Fault_tag,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 #[cfg(feature = "ENABLE_SMP")]
@@ -44,7 +45,7 @@ pub struct tcb_t {
     /// The bound notification of the TCB
     pub tcbBoundNotification: usize,
     /// The fault of the TCB
-    pub tcbFault: seL4_Fault_t,
+    pub tcbFault: seL4_Fault,
     /// The lookup fault of the TCB
     pub tcbLookupFailure: lookup_fault,
     /// The domain of the TCB
@@ -493,7 +494,7 @@ impl tcb_t {
     pub fn lookup_extra_caps(
         &mut self,
         res: &mut [pptr_t; seL4_MsgMaxExtraCaps],
-    ) -> Result<(), seL4_Fault_t> {
+    ) -> Result<(), seL4_Fault> {
         let info =
             seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
         if let Some(buffer) = self.lookup_ipc_buffer(false) {
@@ -503,7 +504,7 @@ impl tcb_t {
                 let cptr = buffer.get_extra_cptr(i);
                 let lu_ret = self.lookup_slot(cptr);
                 if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
-                    return Err(seL4_Fault_t::new_cap_fault(cptr, false as usize));
+                    return Err(seL4_Fault_CapFault::new(cptr as u64, false as u64).unsplay());
                 }
                 res[i] = lu_ret.slot as usize;
                 i += 1;
@@ -525,7 +526,7 @@ impl tcb_t {
         &mut self,
         res: &mut [pptr_t; seL4_MsgMaxExtraCaps],
         buf: Option<&seL4_IPCBuffer>,
-    ) -> Result<(), seL4_Fault_t> {
+    ) -> Result<(), seL4_Fault> {
         let info =
             seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
         if let Some(buffer) = buf {
@@ -535,7 +536,7 @@ impl tcb_t {
                 let cptr = buffer.get_extra_cptr(i);
                 let lu_ret = self.lookup_slot(cptr);
                 if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
-                    return Err(seL4_Fault_t::new_cap_fault(cptr, false as usize));
+                    return Err(seL4_Fault_CapFault::new(cptr as u64, false as u64).unsplay());
                 }
                 res[i] = lu_ret.slot as usize;
                 i += 1;
@@ -742,46 +743,56 @@ impl tcb_t {
     /// # Arguments
     /// * `receiver` - The receiver TCB
     pub fn set_fault_mrs(&self, receiver: &mut Self) -> usize {
-        match self.tcbFault.get_fault_type() {
-            FaultType::CapFault => {
+        match self.tcbFault.get_tag() {
+            seL4_Fault_tag::seL4_Fault_CapFault => {
                 receiver.set_mr(
                     seL4_CapFault_IP,
                     self.tcbArch.get_register(ArchReg::FaultIP),
                 );
-                receiver.set_mr(seL4_CapFault_Addr, self.tcbFault.cap_fault_get_address());
+                receiver.set_mr(
+                    seL4_CapFault_Addr,
+                    seL4_Fault::seL4_Fault_CapFault(&self.tcbFault).get_address() as usize,
+                );
                 receiver.set_mr(
                     seL4_CapFault_InRecvPhase,
-                    self.tcbFault.cap_fault_get_in_receive_phase(),
+                    seL4_Fault::seL4_Fault_CapFault(&self.tcbFault).get_inReceivePhase() as usize,
                 );
                 receiver
                     .set_lookup_fault_mrs(seL4_CapFault_LookupFailureType, &self.tcbLookupFailure)
             }
-            FaultType::UnknownSyscall => {
+            seL4_Fault_tag::seL4_Fault_UnknownSyscall => {
                 self.copy_syscall_fault_mrs(receiver);
                 receiver.set_mr(
                     n_syscallMessage,
-                    self.tcbFault.unknown_syscall_get_syscall_number(),
+                    seL4_Fault::seL4_Fault_UnknownSyscall(&self.tcbFault).get_syscallNumber()
+                        as usize,
                 )
             }
-            FaultType::UserException => {
+            seL4_Fault_tag::seL4_Fault_UserException => {
                 self.copy_exeception_fault_mrs(receiver);
                 receiver.set_mr(
                     n_exceptionMessage,
-                    self.tcbFault.user_exeception_get_number(),
+                    seL4_Fault::seL4_Fault_UserException(&self.tcbFault).get_number() as usize,
                 );
                 receiver.set_mr(
                     n_exceptionMessage + 1,
-                    self.tcbFault.user_exeception_get_code(),
+                    seL4_Fault::seL4_Fault_UserException(&self.tcbFault).get_code() as usize,
                 )
             }
-            FaultType::VMFault => {
+            seL4_Fault_tag::seL4_Fault_VMFault => {
                 receiver.set_mr(seL4_VMFault_IP, self.tcbArch.get_register(ArchReg::FaultIP));
-                receiver.set_mr(seL4_VMFault_Addr, self.tcbFault.vm_fault_get_address());
+                receiver.set_mr(
+                    seL4_VMFault_Addr,
+                    seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_address() as usize,
+                );
                 receiver.set_mr(
                     seL4_VMFault_PrefetchFault,
-                    self.tcbFault.vm_fault_get_instruction_fault(),
+                    seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_instructionFault() as usize,
                 );
-                receiver.set_mr(seL4_VMFault_FSR, self.tcbFault.vm_fault_get_fsr())
+                receiver.set_mr(
+                    seL4_VMFault_FSR,
+                    seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_FSR() as usize,
+                )
             }
             _ => {
                 panic!("invalid fault")

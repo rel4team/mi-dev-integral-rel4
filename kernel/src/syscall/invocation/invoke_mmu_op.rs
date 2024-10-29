@@ -13,7 +13,7 @@ use sel4_common::utils::convert_ref_type_to_usize;
 #[cfg(target_arch = "riscv64")]
 use sel4_common::{
     arch::maskVMRights,
-	sel4_bitfield_types::Bitfield,
+    sel4_bitfield_types::Bitfield,
     shared_types_bf_gen::seL4_CapRights,
     utils::{pageBitsForSize, MAX_FREE_INDEX},
     MASK,
@@ -138,7 +138,12 @@ pub fn invoke_page_map(
     let frame_vm_rights = unsafe {
         core::mem::transmute(cap::cap_frame_cap(&frame_slot.capability).get_capFVMRights())
     };
-    let vm_rights = maskVMRights(frame_vm_rights, seL4_CapRights(Bitfield{arr:[w_rights_mask as u64;1]}));
+    let vm_rights = maskVMRights(
+        frame_vm_rights,
+        seL4_CapRights(Bitfield {
+            arr: [w_rights_mask as u64; 1],
+        }),
+    );
     let frame_addr =
         pptr_to_paddr(cap::cap_frame_cap(&frame_slot.capability).get_capFBasePtr() as usize);
     cap::cap_frame_cap(&frame_slot.capability).set_capFMappedAddress(vaddr as u64);

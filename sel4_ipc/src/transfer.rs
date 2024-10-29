@@ -11,6 +11,9 @@ use sel4_common::sel4_config::*;
 use sel4_common::structures::*;
 use sel4_common::structures_gen::cap;
 use sel4_common::structures_gen::cap_tag;
+use sel4_common::structures_gen::seL4_Fault;
+use sel4_common::structures_gen::seL4_Fault_NullFault;
+use sel4_common::structures_gen::seL4_Fault_tag;
 use sel4_common::utils::*;
 use sel4_cspace::interface::*;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
@@ -75,7 +78,7 @@ impl Transfer for tcb_t {
             }
 
             ThreadState::ThreadStateBlockedOnReply => {
-                self.tcbFault = seL4_Fault_t::new_null_fault();
+                self.tcbFault = seL4_Fault_NullFault::new().unsplay();
                 let slot = self.get_cspace(tcbReply);
                 let caller_slot_ptr = slot.cteMDBNode.get_next();
                 if caller_slot_ptr != 0 {
@@ -176,52 +179,62 @@ impl Transfer for tcb_t {
     }
 
     fn do_fault_transfer(&self, receiver: &mut tcb_t, badge: usize) {
-        let sent = match self.tcbFault.get_fault_type() {
-            FaultType::CapFault => {
+        let sent = match self.tcbFault.get_tag() {
+            seL4_Fault_tag::seL4_Fault_CapFault => {
                 receiver.set_mr(
                     seL4_CapFault_IP,
                     self.tcbArch.get_register(ArchReg::FaultIP),
                 );
-                receiver.set_mr(seL4_CapFault_Addr, self.tcbFault.cap_fault_get_address());
+                receiver.set_mr(
+                    seL4_CapFault_Addr,
+                    seL4_Fault::seL4_Fault_CapFault(&self.tcbFault).get_address() as usize,
+                );
                 receiver.set_mr(
                     seL4_CapFault_InRecvPhase,
-                    self.tcbFault.cap_fault_get_in_receive_phase(),
+                    seL4_Fault::seL4_Fault_CapFault(&self.tcbFault).get_inReceivePhase() as usize,
                 );
                 receiver
                     .set_lookup_fault_mrs(seL4_CapFault_LookupFailureType, &self.tcbLookupFailure)
             }
-            FaultType::UnknownSyscall => {
+            seL4_Fault_tag::seL4_Fault_UnknownSyscall => {
                 self.copy_syscall_fault_mrs(receiver);
                 receiver.set_mr(
                     n_syscallMessage,
-                    self.tcbFault.unknown_syscall_get_syscall_number(),
+                    seL4_Fault::seL4_Fault_UnknownSyscall(&self.tcbFault).get_syscallNumber()
+                        as usize,
                 )
             }
-            FaultType::UserException => {
+            seL4_Fault_tag::seL4_Fault_UserException => {
                 self.copy_exeception_fault_mrs(receiver);
                 receiver.set_mr(
                     n_exceptionMessage,
-                    self.tcbFault.user_exeception_get_number(),
+                    seL4_Fault::seL4_Fault_UserException(&self.tcbFault).get_number() as usize,
                 );
                 receiver.set_mr(
                     n_exceptionMessage + 1,
-                    self.tcbFault.user_exeception_get_code(),
+                    seL4_Fault::seL4_Fault_UserException(&self.tcbFault).get_code() as usize,
                 )
             }
-            FaultType::VMFault => {
+            seL4_Fault_tag::seL4_Fault_VMFault => {
                 receiver.set_mr(seL4_VMFault_IP, self.tcbArch.get_register(ArchReg::FaultIP));
-                receiver.set_mr(seL4_VMFault_Addr, self.tcbFault.vm_fault_get_address());
+                receiver.set_mr(
+                    seL4_VMFault_Addr,
+                    seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_address() as usize,
+                );
                 receiver.set_mr(
                     seL4_VMFault_PrefetchFault,
-                    self.tcbFault.vm_fault_get_instruction_fault(),
+                    seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_instructionFault() as usize,
                 );
-                receiver.set_mr(seL4_VMFault_FSR, self.tcbFault.vm_fault_get_fsr())
+                receiver.set_mr(
+                    seL4_VMFault_FSR,
+                    seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_FSR() as usize,
+                )
             }
             _ => {
                 panic!("invalid fault")
             }
         };
-        let msg_info = seL4_MessageInfo_t::new(self.tcbFault.get_type(), 0, 0, sent);
+        let msg_info = seL4_MessageInfo_t::new(self.tcbFault.get_tag() as usize, 0, 0, sent);
         receiver
             .tcbArch
             .set_register(ArchReg::MsgInfo, msg_info.to_word());
@@ -255,8 +268,8 @@ impl Transfer for tcb_t {
             seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(ArchReg::MsgInfo));
         let label = tag.get_label();
         let length = tag.get_length();
-        match receiver.tcbFault.get_fault_type() {
-            FaultType::UnknownSyscall => {
+        match receiver.tcbFault.get_tag() {
+            seL4_Fault_tag::seL4_Fault_UnknownSyscall => {
                 self.copy_fault_mrs_for_reply(
                     receiver,
                     MessageID_Syscall,
@@ -264,7 +277,7 @@ impl Transfer for tcb_t {
                 );
                 return label as usize == 0;
             }
-            FaultType::UserException => {
+            seL4_Fault_tag::seL4_Fault_UserException => {
                 self.copy_fault_mrs_for_reply(
                     receiver,
                     MessageID_Exception,
@@ -297,7 +310,7 @@ impl Transfer for tcb_t {
         badge: usize,
         grant: bool,
     ) {
-        if likely(self.tcbFault.get_fault_type() == FaultType::NullFault) {
+        if likely(self.tcbFault.get_tag() == seL4_Fault_tag::seL4_Fault_NullFault) {
             self.do_normal_transfer(receiver, endpoint, badge, grant)
         } else {
             self.do_fault_transfer(receiver, badge)
@@ -306,8 +319,8 @@ impl Transfer for tcb_t {
 
     fn do_reply(&mut self, receiver: &mut tcb_t, slot: &mut cte_t, grant: bool) {
         assert_eq!(receiver.get_state(), ThreadState::ThreadStateBlockedOnReply);
-        let fault_type = receiver.tcbFault.get_fault_type();
-        if likely(fault_type == FaultType::NullFault) {
+        let fault_type = receiver.tcbFault.get_tag();
+        if likely(fault_type == seL4_Fault_tag::seL4_Fault_NullFault) {
             self.do_ipc_transfer(receiver, None, 0, grant);
             slot.delete_one();
             set_thread_state(receiver, ThreadState::ThreadStateRunning);

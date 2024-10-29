@@ -8,7 +8,6 @@ use crate::syscall::{ensure_empty_slot, get_currenct_thread, lookup_slot_for_cno
 use log::debug;
 use sel4_common::arch::maskVMRights;
 use sel4_common::sel4_bitfield_types::Bitfield;
-use sel4_common::shared_types_bf_gen::seL4_CapRights;
 use sel4_common::sel4_config::{
     asidInvalid, asidLowBits, nASIDPools, seL4_AlignmentError, seL4_FailedLookup, seL4_PageBits,
     seL4_RangeError,
@@ -17,6 +16,7 @@ use sel4_common::sel4_config::{seL4_DeleteFirst, seL4_InvalidArgument};
 use sel4_common::sel4_config::{
     seL4_IllegalOperation, seL4_InvalidCapability, seL4_RevokeFirst, seL4_TruncatedMessage,
 };
+use sel4_common::shared_types_bf_gen::seL4_CapRights;
 use sel4_common::structures_gen::{
     asid_map_asid_map_vspace, cap, cap_Splayed, cap_asid_pool_cap, cap_tag, cap_vspace_cap,
 };
@@ -449,7 +449,9 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuff
     };
     let vm_rights = maskVMRights(
         frame_vm_rights,
-		seL4_CapRights(Bitfield{arr:[get_syscall_arg(1, buffer) as u64;1]})
+        seL4_CapRights(Bitfield {
+            arr: [get_syscall_arg(1, buffer) as u64; 1],
+        }),
     );
     if unlikely(!vspace_root_cap.clone().unsplay().is_valid_native_root()) {
         global_ops!(current_syscall_error._type = seL4_InvalidCapability);

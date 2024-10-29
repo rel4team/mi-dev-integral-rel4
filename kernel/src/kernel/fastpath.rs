@@ -6,10 +6,9 @@ use crate::{
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::msgRegister;
 use sel4_common::structures_gen::{
-    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag,
+    cap, cap_cnode_cap, cap_null_cap, cap_page_table_cap, cap_reply_cap, cap_tag, seL4_Fault_tag,
 };
 use sel4_common::{
-    fault::*,
     message_info::*,
     sel4_config::*,
     utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
@@ -202,7 +201,9 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     let mut info = seL4_MessageInfo_t::from_word(msgInfo);
     let length = info.get_length();
 
-    if fastpath_mi_check(msgInfo) || current.tcbFault.get_fault_type() != FaultType::NullFault {
+    if fastpath_mi_check(msgInfo)
+        || current.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault
+    {
         slowpath(SysCall as usize);
     }
     let lookup_fp_ret = &lookup_fp(
@@ -284,9 +285,9 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     let current = get_currenct_thread();
     let mut info = seL4_MessageInfo_t::from_word(msgInfo);
     let length = info.get_length();
-    let fault_type = current.tcbFault.get_fault_type();
+    let fault_type = current.tcbFault.get_tag();
 
-    if fastpath_mi_check(msgInfo) || fault_type != FaultType::NullFault {
+    if fastpath_mi_check(msgInfo) || fault_type != seL4_Fault_tag::seL4_Fault_NullFault {
         slowpath(SysReplyRecv as usize);
     }
     let lookup_fp_ret = &lookup_fp(
@@ -328,7 +329,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     }
 
     let caller = convert_to_mut_type_ref::<tcb_t>(caller_cap.get_capTCBPtr() as usize);
-    if unlikely(caller.tcbFault.get_fault_type() != FaultType::NullFault) {
+    if unlikely(caller.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault) {
         slowpath(SysReplyRecv as usize);
     }
 

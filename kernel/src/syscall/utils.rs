@@ -8,8 +8,8 @@ use crate::{
 };
 use log::debug;
 use sel4_common::arch::{maskVMRights, msgRegisterNum, ArchReg};
-use sel4_common::shared_types_bf_gen::seL4_CapRights;
 use sel4_common::sel4_config::seL4_MinUntypedBits;
+use sel4_common::shared_types_bf_gen::seL4_CapRights;
 use sel4_common::structures_gen::{
     cap, cap_Splayed, cap_cnode_cap, cap_frame_cap, cap_tag, lookup_fault_depth_mismatch,
     lookup_fault_invalid_root,
@@ -257,7 +257,8 @@ pub fn mask_cap_rights(rights: seL4_CapRights, capability: &cap) -> cap {
         cap_Splayed::notification_cap(data) => {
             let capability_copy = &capability.clone();
             let new_cap = cap::cap_notification_cap(capability_copy);
-            new_cap.set_capNtfnCanSend(data.get_capNtfnCanSend() & rights.get_capAllowWrite() as u64);
+            new_cap
+                .set_capNtfnCanSend(data.get_capNtfnCanSend() & rights.get_capAllowWrite() as u64);
             new_cap.set_capNtfnCanReceive(
                 data.get_capNtfnCanReceive() & rights.get_capAllowRead() as u64,
             );
