@@ -388,6 +388,7 @@ impl tcb_t {
     }
 
     #[inline]
+    #[cfg(not(feature = "KERNEL_MCS"))]
     /// Setup the reply master of the TCB
     pub fn setup_reply_master(&mut self) {
         let slot = self.get_cspace_mut_ref(tcbReply);
@@ -412,18 +413,50 @@ impl tcb_t {
     }
 
     #[inline]
+    // void restart(tcb_t *target)
+    // {
+    //     if (isStopped(target))
+    //     {
+    //         cancelIPC(target);
+    // #ifdef CONFIG_KERNEL_MCS
+    //         setThreadState(target, ThreadState_Restart);
+    //         if (sc_sporadic(target->tcbSchedContext) && target->tcbSchedContext != NODE_STATE(ksCurSC))
+    //         {
+    //             refill_unblock_check(target->tcbSchedContext);
+    //         }
+    //         schedContext_resume(target->tcbSchedContext);
+    //         if (isSchedulable(target))
+    //         {
+    //             possibleSwitchTo(target);
+    //         }
+    // #else
+    //         setupReplyMaster(target);
+    //         setThreadState(target, ThreadState_Restart);
+    //         SCHED_ENQUEUE(target);
+    //         possibleSwitchTo(target);
+    // #endif
+    //     }
+    // }
     /// Restart the TCB, set the state to ThreadStateRestart and enqueue to the scheduling queue waiting for reschedule
     pub fn restart(&mut self) {
         if self.is_stopped() {
-            self.setup_reply_master();
-            // setThreadState(self as *mut Self, ThreadStateRestart);
-            set_thread_state(self, ThreadState::ThreadStateRestart);
-            self.sched_enqueue();
-            possible_switch_to(self);
+            #[cfg(feature = "KERNEL_MCS")]
+            {
+                // TODO
+            }
+            #[cfg(not(feature = "KERNEL_MCS"))]
+            {
+                self.setup_reply_master();
+                // setThreadState(self as *mut Self, ThreadStateRestart);
+                set_thread_state(self, ThreadState::ThreadStateRestart);
+                self.sched_enqueue();
+                possible_switch_to(self);
+            }
         }
     }
 
     #[inline]
+    #[cfg(not(feature = "KERNEL_MCS"))]
     /// Setup the caller cap of the TCB
     /// # Arguments
     /// * `sender` - The sender TCB
@@ -451,6 +484,7 @@ impl tcb_t {
     }
 
     #[inline]
+    #[cfg(not(feature = "KERNEL_MCS"))]
     /// Delete the caller cap of the TCB
     pub fn delete_caller_cap(&mut self) {
         let caller_slot = self.get_cspace_mut_ref(tcbCaller);

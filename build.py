@@ -58,11 +58,11 @@ if __name__ == "__main__":
             sys.exit(-1)
     else:
         if args.cpu_nums > 1:
-            if not exec_shell(f"cargo build --release --target {target} --features ENABLE_SMP"):
+            if not exec_shell(f"cargo build --release --target {target} --features \"ENABLE_SMP KERNEL_MCS\""):
                 clean_config()
                 sys.exit(-1)
         else:
-            if not exec_shell(f"cargo build --release --target {target}"):
+            if not exec_shell(f"cargo build --release --target {target} --features \"KERNEL_MCS\""):
                 clean_config()
                 sys.exit(-1)
     

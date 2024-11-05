@@ -95,6 +95,11 @@ pub fn root_server_init(
     ) {
         return None;
     }
+
+    // #ifdef CONFIG_KERNEL_MCS
+    //     init_sched_control(root_cnode_cap, CONFIG_MAX_NUM_NODES);
+    // #endif
+
     let ipcbuf_cap = unsafe { create_ipcbuf_frame_cap(&root_cnode_cap, &it_pd_cap, ipcbuf_vptr) };
     if ipcbuf_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
         debug!("ERROR: could not create IPC buffer for initial thread");
@@ -310,6 +315,11 @@ fn create_it_asid_pool(root_cnode_cap: &cap_cnode_cap) -> cap_asid_pool_cap {
     );
     ap_cap
 }
+
+#[cfg(feature = "KERNEL_MCS")]
+//TODO: finish it
+fn init_sched_control(root_cnode_cap: &cap_cnode_cap, num_nodes: usize) -> bool {}
+
 #[cfg(target_arch = "aarch64")]
 fn create_frame_ui_frames(
     root_cnode_cap: &cap_cnode_cap,
