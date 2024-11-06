@@ -86,7 +86,7 @@ pub fn handleInvocation(isCall: bool, isBlocking: bool) -> exception_t {
 }
 #[no_mangle]
 #[cfg(feature = "KERNEL_MCS")]
-// TODO: fix it
+// TODO: MCS
 pub fn handleInvocation(
     isCall: bool,
     isBlocking: bool,

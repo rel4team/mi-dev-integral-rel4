@@ -55,6 +55,12 @@ pub struct tcb_t {
     pub tcbMCP: usize,
     /// The priority of the TCB
     pub tcbPriority: usize,
+    #[cfg(feature = "KERNEL_MCS")]
+    /// scheduling context that this TCB is running on
+    pub tcbSchedContext: usize,
+    #[cfg(feature = "KERNEL_MCS")]
+    /// scheduling context that this TCB yielded to
+    pub tcbYieldTo: usize,
     /// The time slice of the TCB
     pub tcbTimeSlice: usize,
     /// The falut handler of the TCB
@@ -442,7 +448,10 @@ impl tcb_t {
         if self.is_stopped() {
             #[cfg(feature = "KERNEL_MCS")]
             {
-                // TODO
+                // TODO: MCS
+                // #ifdef CONFIG_KERNEL_MCS
+                //         reply_remove_tcb(tptr);
+                // #else
             }
             #[cfg(not(feature = "KERNEL_MCS"))]
             {
