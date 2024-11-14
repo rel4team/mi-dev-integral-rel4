@@ -433,6 +433,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     // debug!("enter fastpath_reply_recv");
 
     use sel4_common::{reply::reply_t, sched_context::sched_context_t};
+    use sel4_ipc::endpoint_func;
     let current = get_currenct_thread();
     let mut info = seL4_MessageInfo::from_word(msgInfo);
     let length = info.get_length() as usize;
@@ -538,7 +539,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     //     reply_ptr->replyTCB = NODE_STATE(ksCurThread);
     caller.tcbState.set_replyObject(0);
     current.tcbState.set_replyObject(reply_cap.get_capReplyPtr());
-    reply_ptr.replyTCB = current;
+    reply_ptr.replyTCB = unsafe{current as *mut _ as usize};
     // #else
     //     thread_state_ptr_set_blockingIPCCanGrant(&NODE_STATE(ksCurThread)->tcbState,
     //                                              cap_endpoint_cap_get_capCanGrant(ep_cap));;
@@ -550,7 +551,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     if let Some(ep_tail_tcb) =
         convert_to_option_mut_type_ref::<tcb_t>(ep.get_epQueue_tail() as usize)
     {
-        let queue = tcbEPAppend(current, ep_cap.get_queue());
+        let queue = unsafe{tcbEPAppend(current, ep.get_queue())};
         ep.set_epQueue_head(queue.head as u64);
         endpoint_ptr_mset_epQueue_tail_state(
             ep as *mut endpoint,
