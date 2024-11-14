@@ -431,6 +431,8 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
 #[cfg(feature = "KERNEL_MCS")]
 pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     // debug!("enter fastpath_reply_recv");
+
+    use sel4_common::{reply::reply_t, sched_context::sched_context_t};
     let current = get_currenct_thread();
     let mut info = seL4_MessageInfo::from_word(msgInfo);
     let length = info.get_length() as usize;
@@ -451,16 +453,18 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     ) {
         slowpath(SysReplyRecv as usize);
     }
-    // TODO: MCS
-    // #ifdef CONFIG_KERNEL_MCS
-    //     /* lookup the reply object */
-    //     cap_t reply_cap = lookup_fp(TCB_PTR_CTE_PTR(NODE_STATE(ksCurThread), tcbCTable)->cap, reply);
 
-    //     /* check it's a reply object */
-    //     if (unlikely(!cap_capType_equals(reply_cap, cap_reply_cap))) {
-    //         slowpath(SysReplyRecv);
-    //     }
-    // #endif
+    /* lookup the reply object */
+    let lookup_fp_ret = &lookup_fp(
+        &cap::cap_cnode_cap(&current.get_cspace(tcbCTable).capability),
+        reply,
+    );
+    let reply_cap = cap::cap_reply_cap(lookup_fp_ret);
+
+    /* check it's a reply object */
+    if unlikely(reply_cap.clone().unsplay().get_tag() != cap_tag::cap_endpoint_cap) {
+        slowpath(SysReplyRecv as usize);
+    }
 
     if let Some(ntfn) = convert_to_option_mut_type_ref::<notification>(current.tcbBoundNotification)
     {
@@ -487,12 +491,24 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     //     /* Determine who the caller is. */
     //     caller = reply_ptr->replyTCB;
     // #endif
+    /* Get the reply address */
+    let reply_ptr = convert_to_mut_type_ref::<reply_t>(reply_cap.get_capReplyPtr() as usize);
+    /* check that its valid and at the head of the call chain
+    and that the current thread's SC is going to be donated. */
+    if unlikely(
+        reply_ptr.replyTCB == 0
+            || reply_ptr.replyNext.get_isHead() == 0
+            || reply_ptr.replyNext.get_callStackPtr() as usize != current.tcbSchedContext,
+    ) {
+        slowpath(SysReplyRecv as usize);
+    }
+    let caller = convert_to_mut_type_ref::<tcb_t>(reply_ptr.replyTCB);
 
     if unlikely(caller.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault) {
         slowpath(SysReplyRecv as usize);
     }
 
-    let new_vtable = &cap::cap_page_table_cap(&caller.get_cspace(tcbVTable).capability);
+    let new_vtable = cap::cap_page_table_cap(&caller.get_cspace(tcbVTable).capability);
 
     if unlikely(!isValidVTableRoot_fp(
         &<cap_page_table_cap as Clone>::clone(&new_vtable).unsplay(),
@@ -530,11 +546,49 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
         EPState_Recv,
     );
 
+    // #ifdef CONFIG_KERNEL_MCS
+    //     /* update call stack */
+    //     word_t prev_ptr = call_stack_get_callStackPtr(reply_ptr->replyPrev);
+    //     sched_context_t *sc = NODE_STATE(ksCurThread)->tcbSchedContext;
+    //     NODE_STATE(ksCurThread)->tcbSchedContext = NULL;
+    //     caller->tcbSchedContext = sc;
+    //     sc->scTcb = caller;
+
+    //     sc->scReply = REPLY_PTR(prev_ptr);
+    //     if (unlikely(REPLY_PTR(prev_ptr) != NULL)) {
+    //         sc->scReply->replyNext = reply_ptr->replyNext;
+    //     }
+
+    //     /* TODO neccessary? */
+    //     reply_ptr->replyPrev.words[0] = 0;
+    //     reply_ptr->replyNext.words[0] = 0;
+    let prev_ptr = reply_ptr.replyPrev.get_callStackPtr() as usize;
+    let sc = current.tcbSchedContext;
+    current.tcbSchedContext = 0;
+    caller.tcbSchedContext = sc;
+    let schedcontext = convert_to_mut_type_ref::<sched_context_t>(sc);
+    schedcontext.scTcb = reply_ptr.replyTCB;
+    schedcontext.scReply = prev_ptr;
+    if unlikely(prev_ptr != 0) {
+        let screply_ptr = convert_to_mut_type_ref::<reply_t>(schedcontext.scReply);
+        screply_ptr.replyNext = reply_ptr.replyNext.clone();
+    }
+    reply_ptr.replyPrev.0.arr[0] = 0;
+    reply_ptr.replyNext.0.arr[0] = 0;
+    // #else
+    //     /* Delete the reply cap. */
+    //     mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
+    //         &CTE_PTR(mdb_node_get_mdbPrev(callerSlot->cteMDBNode))->cteMDBNode,
+    //         0, 1, 1);
+    //     callerSlot->cap = cap_null_cap_new();
+    //     callerSlot->cteMDBNode = nullMDBNode;
+    // #endif
     // unsafe {
-    let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_mdbPrev() as usize);
-    mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
-    caller_slot.capability = cap_null_cap::new().unsplay();
-    caller_slot.cteMDBNode = mdb_node::new(0, 0, 0, 0);
+    // let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_mdbPrev() as usize);
+    // mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
+    // caller_slot.capability = cap_null_cap::new().unsplay();
+    // caller_slot.cteMDBNode = mdb_node::new(0, 0, 0, 0);
+
     fastpath_copy_mrs(length, current, caller);
 
     caller.tcbState.0.arr[0] = ThreadState::ThreadStateRunning as u64;

@@ -64,23 +64,23 @@ if __name__ == "__main__":
     else:
         if args.cpu_nums > 1:
             if mcs == True:
-                print("multi cpu and mcs ******\n")
+                print("[ Config ] multi cpu and mcs\n")
                 if not exec_shell(f"cargo build --release --target {target} --features \"ENABLE_SMP KERNEL_MCS\""):
                     clean_config()
                     sys.exit(-1)
             else:
-                print("multi cpu no mcs ******\n")
+                print("[ Config ] multi cpu no mcs\n")
                 if not exec_shell(f"cargo build --release --target {target} --features ENABLE_SMP"):
                     clean_config()
                     sys.exit(-1)
         else:
             if mcs == True:
-                print("single cpu and mcs ******\n")
+                print("[ Config ] single cpu and mcs\n")
                 if not exec_shell(f"cargo build --release --target {target} --features \"KERNEL_MCS\""):
                     clean_config()
                     sys.exit(-1)
             else:
-                print("single cpu no mcs ******\n")
+                print("[ Config ] single cpu no mcs\n")
                 if not exec_shell(f"cargo build --release --target {target}"):
                     clean_config()
                     sys.exit(-1)
