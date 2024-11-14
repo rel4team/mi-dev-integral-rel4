@@ -520,31 +520,54 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     if unlikely(!isHighestPrio(dom, caller.tcbPriority)) {
         slowpath(SysReplyRecv as usize);
     }
+
+    if unlikely(caller.tcbSchedContext !=0){
+        slowpath(SysReplyRecv as usize);
+    }
+
     thread_state_ptr_mset_blockingObject_tsType(
         &mut current.tcbState,
         ep.get_ptr(),
         ThreadState::ThreadStateBlockedOnReceive as usize,
     );
-    current
-        .tcbState
-        .set_blockingIPCCanGrant(ep_cap.get_capCanGrant() as u64);
+    // #ifdef CONFIG_KERNEL_MCS
+    //     /* unlink reply object from caller */
+    //     thread_state_ptr_set_replyObject_np(&caller->tcbState, 0);
+    //     /* set the reply object */
+    //     thread_state_ptr_set_replyObject_np(&NODE_STATE(ksCurThread)->tcbState, REPLY_REF(reply_ptr));
+    //     reply_ptr->replyTCB = NODE_STATE(ksCurThread);
+    caller.tcbState.set_replyObject(0);
+    current.tcbState.set_replyObject(reply_cap.get_capReplyPtr() as usize);
+    reply_ptr.replyTCB = current;
+    // #else
+    //     thread_state_ptr_set_blockingIPCCanGrant(&NODE_STATE(ksCurThread)->tcbState,
+    //                                              cap_endpoint_cap_get_capCanGrant(ep_cap));;
+    // #endif
+    // current
+    //     .tcbState
+    //     .set_blockingIPCCanGrant(ep_cap.get_capCanGrant() as u64);
 
     if let Some(ep_tail_tcb) =
         convert_to_option_mut_type_ref::<tcb_t>(ep.get_epQueue_tail() as usize)
     {
-        ep_tail_tcb.tcbEPNext = current.get_ptr();
-        current.tcbEPPrev = ep_tail_tcb.get_ptr();
-        current.tcbEPNext = 0;
+        let queue = tcbEPAppend(current, ep_cap.get_queue());
+        ep.set_epQueue_head(queue.head);
+        endpoint_ptr_mset_epQueue_tail_state(
+            ep as *mut endpoint,
+            queue.head,
+            EPState_Recv,
+        );
     } else {
         current.tcbEPPrev = 0;
         current.tcbEPNext = 0;
         ep.set_epQueue_head(current.get_ptr() as u64);
+        endpoint_ptr_mset_epQueue_tail_state(
+            ep as *mut endpoint,
+            get_currenct_thread().get_ptr(),
+            EPState_Recv,
+        );
     }
-    endpoint_ptr_mset_epQueue_tail_state(
-        ep as *mut endpoint,
-        get_currenct_thread().get_ptr(),
-        EPState_Recv,
-    );
+    
 
     // #ifdef CONFIG_KERNEL_MCS
     //     /* update call stack */

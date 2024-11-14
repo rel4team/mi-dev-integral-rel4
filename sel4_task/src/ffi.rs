@@ -1,3 +1,5 @@
+use crate::{tcb_queue_t, tcb_t};
+
 //TODO: MCS
 #[no_mangle]
 pub extern "C" fn sendIPC() {
@@ -30,4 +32,8 @@ pub extern "C" fn setMCPriority() {
 #[no_mangle]
 pub extern "C" fn setPriority() {
     unimplemented!("MCS");
+}
+
+extern "C" {
+    pub fn tcbEPAppend(tcb: tcb_t, queue: tcb_queue_t)->tcb_queue_t;
 }
