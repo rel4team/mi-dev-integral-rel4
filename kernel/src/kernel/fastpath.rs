@@ -537,7 +537,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     //     thread_state_ptr_set_replyObject_np(&NODE_STATE(ksCurThread)->tcbState, REPLY_REF(reply_ptr));
     //     reply_ptr->replyTCB = NODE_STATE(ksCurThread);
     caller.tcbState.set_replyObject(0);
-    current.tcbState.set_replyObject(reply_cap.get_capReplyPtr() as usize);
+    current.tcbState.set_replyObject(reply_cap.get_capReplyPtr());
     reply_ptr.replyTCB = current;
     // #else
     //     thread_state_ptr_set_blockingIPCCanGrant(&NODE_STATE(ksCurThread)->tcbState,
@@ -551,7 +551,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
         convert_to_option_mut_type_ref::<tcb_t>(ep.get_epQueue_tail() as usize)
     {
         let queue = tcbEPAppend(current, ep_cap.get_queue());
-        ep.set_epQueue_head(queue.head);
+        ep.set_epQueue_head(queue.head as u64);
         endpoint_ptr_mset_epQueue_tail_state(
             ep as *mut endpoint,
             queue.head,
