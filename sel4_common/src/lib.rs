@@ -17,8 +17,6 @@ pub mod object;
 pub mod platform;
 #[cfg(feature = "KERNEL_MCS")]
 pub mod reply;
-#[cfg(feature = "KERNEL_MCS")]
-pub mod sched_context;
 pub mod sel4_bitfield_types;
 pub mod sel4_config;
 pub mod shared_types_bf_gen;

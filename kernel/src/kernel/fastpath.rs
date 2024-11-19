@@ -432,8 +432,9 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
 pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     // debug!("enter fastpath_reply_recv");
 
-    use sel4_common::{reply::reply_t, sched_context::sched_context_t};
+    use sel4_common::reply::reply_t;
     use sel4_ipc::endpoint_func;
+    use sel4_task::sched_context::sched_context_t;
     let current = get_currenct_thread();
     let mut info = seL4_MessageInfo::from_word(msgInfo);
     let length = info.get_length() as usize;

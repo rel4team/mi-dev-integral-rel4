@@ -6,6 +6,7 @@ pub mod config;
 mod message_info;
 mod object;
 mod registers;
+mod timer;
 mod vm_rights;
 use crate::platform::time_def::ticks_t;
 pub use arch_tcb::ArchTCB;
@@ -13,6 +14,7 @@ pub use message_info::*;
 pub use object::*;
 pub use registers::*;
 use riscv::register::time;
+pub use timer::*;
 pub use vm_rights::*;
 
 const SBI_SET_TIMER: usize = 0;

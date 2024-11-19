@@ -3,7 +3,7 @@ pub(crate) const CLK_MAGIC: usize = 4611686019;
 pub(crate) const CLK_SHIFT: usize = 58;
 use core::arch::asm;
 
-use aarch64_cpu::registers::{Writeable, CNTV_CTL_EL0, CNTV_TVAL_EL0};
+use aarch64_cpu::registers::{Writeable, CNTV_CTL_EL0, CNTV_CVAL_EL0, CNTV_TVAL_EL0};
 
 use crate::{sel4_config::UINT64_MAX, BIT};
 
@@ -31,13 +31,7 @@ impl Timer_func for timer {
         #[cfg(feature = "KERNEL_MCS")]
         {
             self.ackDeadlineIRQ();
-            unsafe {
-                let cnt_ctl = BIT!(0);
-                asm!(
-                    "msr {}, cnt_ctl",
-                    in(reg) cnt_ctl,
-                );
-            }
+            CNTV_CTL_EL0.set(BIT!(0) as u64);
         }
         #[cfg(not(feature = "KERNEL_MCS"))]
         {
@@ -55,12 +49,7 @@ impl Timer_func for timer {
         time
     }
     fn setDeadline(self, deadline: ticks_t) {
-        unsafe {
-            asm!(
-                "msr {}, cnt_cval",
-                in(reg) deadline,
-            )
-        }
+        CNTV_CVAL_EL0.set(deadline as u64);
     }
     /// Reset the current Timer
     #[no_mangle]
@@ -74,7 +63,7 @@ impl Timer_func for timer {
         CNTV_CTL_EL0.set(1);
     }
     fn ackDeadlineIRQ(self) {
-        let deadline: ticks_t = UINT64_MAX as usize;
+        let deadline: ticks_t = UINT64_MAX;
         self.setDeadline(deadline);
     }
 }

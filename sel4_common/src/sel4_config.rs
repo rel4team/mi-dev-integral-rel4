@@ -1,7 +1,7 @@
 //! This module contains the configuration settings for sel4_common.
 use crate::BIT;
 
-pub const UINT64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
+pub const UINT64_MAX: usize = 0xFFFFFFFFFFFFFFFF;
 pub const wordRadix: usize = 6;
 pub const wordBits: usize = BIT!(wordRadix);
 pub const seL4_EndpointBits: usize = 4;
