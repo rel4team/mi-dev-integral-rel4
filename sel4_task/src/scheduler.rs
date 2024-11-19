@@ -540,6 +540,20 @@ pub fn timerTick() {
 pub fn activateThread() {
     let thread = get_currenct_thread();
     // debug!("current: {:#x}", thread.get_ptr());
+	#[cfg(feature="KERNEL_MCS")]
+	{
+		// TODO: MCS
+// #ifdef CONFIG_KERNEL_MCS
+//     if (unlikely(NODE_STATE(ksCurThread)->tcbYieldTo))
+//     {
+//         schedContext_completeYieldTo(NODE_STATE(ksCurThread));
+//         assert(thread_state_get_tsType(NODE_STATE(ksCurThread)->tcbState) == ThreadState_Running);
+//     }
+// #endif
+		if unlikely(thread.tcbYieldTo!=0){
+			;
+		}
+	}
     match thread.get_state() {
         ThreadState::ThreadStateRunning => {
             return;

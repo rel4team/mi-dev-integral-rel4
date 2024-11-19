@@ -1,5 +1,5 @@
-/// 时钟ticks
-pub type ticks_t = usize;
+use crate::platform::timer::{ticks_t, time_t};
+
 
 pub type sched_context_t = sched_context;
 #[repr(C)]
@@ -18,4 +18,12 @@ pub struct sched_context {
     pub scRefillHead: usize,
     pub scRefillTail: usize,
     pub scSporadic: bool,
+}
+impl sched_context {
+	pub fn setConsumed(&mut self,buffer:usize){
+
+	}
+	pub fn schedContext_updateConsumed(&mut self) -> time_t{
+		0
+	}
 }

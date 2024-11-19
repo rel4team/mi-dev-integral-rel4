@@ -8,7 +8,7 @@ pub use c_traps::restore_user_context;
 use core::arch::asm;
 pub use platform::{init_cpu, init_freemem};
 
-use crate::config::RESET_CYCLES;
+use sel4_common::arch::config::RESET_CYCLES;
 pub use exception::handleUnknownSyscall;
 use sel4_common::arch::set_timer;
 

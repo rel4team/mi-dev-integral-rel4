@@ -8,6 +8,7 @@
 #![allow(clippy::enum_clike_unportable_variant)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 pub mod arch;
+pub mod platform;
 pub mod console;
 pub mod fault;
 pub mod ffi;

@@ -1,0 +1,1 @@
+pub const CONFIGURE_TIMER_FREQUENCY: usize = 10000000;
