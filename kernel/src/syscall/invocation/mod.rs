@@ -137,6 +137,8 @@ pub fn handleInvocation(
         cptr,
         isBlocking,
         isCall,
+        canDonate,
+        firstPhase,
         buffer.unwrap(),
     );
     if status == exception_t::EXCEPTION_PREEMTED {
