@@ -1,5 +1,5 @@
+use crate::platform::time_def::{MS_IN_S, TIMER_CLOCK_HZ};
 use crate::MASK;
-use crate::platform::timer::{TIMER_CLOCK_HZ,MS_IN_S};
 
 // boot 相关的常数
 pub const PPTR_TOP: usize = 0xFFFFFFFF80000000;

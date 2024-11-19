@@ -1,10 +1,3 @@
-use riscv::register::{stvec, utvec::TrapMode};
-use sel4_common::{
-    arch::{config::KERNEL_ELF_BASE, get_time, set_timer},
-    BIT,
-};
-use sel4_vspace::activate_kernel_vspace;
-use sel4_common::arch::config::RESET_CYCLES;
 use crate::boot::paddr_to_pptr_reg;
 use crate::boot::rust_init_freemem;
 use crate::boot::{avail_p_regs_addr, avail_p_regs_size, res_reg};
@@ -15,6 +8,13 @@ use crate::{
     interrupt::set_sie_mask,
 };
 use log::debug;
+use riscv::register::{stvec, utvec::TrapMode};
+use sel4_common::arch::config::RESET_CYCLES;
+use sel4_common::{
+    arch::{config::KERNEL_ELF_BASE, get_time, set_timer},
+    BIT,
+};
+use sel4_vspace::activate_kernel_vspace;
 use sel4_vspace::*;
 
 pub fn init_cpu() {

@@ -129,7 +129,6 @@ pub const CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS: usize = 230;
 
 pub const seL4_MaxPrio: usize = 255;
 
-
 pub const seL4_MinPrio: usize = 0;
 
 pub const CONFIG_MAX_NUM_WORK_UNITS_PER_PREEMPTION: usize = 100;

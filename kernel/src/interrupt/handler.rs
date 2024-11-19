@@ -1,8 +1,8 @@
-use crate::arch::resetTimer;
 use crate::config::{irqInvalid, maxIRQ};
 use crate::interrupt::*;
 use core::intrinsics::unlikely;
 use log::debug;
+use sel4_common::platform::{timer, Timer_func};
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{cap, cap_tag, notification};
 use sel4_ipc::notification_func;
@@ -53,7 +53,7 @@ pub fn handleInterrupt(irq: usize) {
         }
         IRQState::IRQTimer => {
             timerTick();
-            resetTimer();
+            timer.resetTimer();
         }
         #[cfg(feature = "ENABLE_SMP")]
         IRQState::IRQIPI => {

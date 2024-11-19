@@ -1,10 +1,10 @@
 use aarch64_cpu::registers::TPIDR_EL1;
 use aarch64_cpu::registers::{Writeable, CNTKCTL_EL1};
-use sel4_common::platform::initTimer;
 use core::arch::asm;
 use sel4_common::arch::config::{KERNEL_ELF_BASE, PADDR_TOP};
 use sel4_common::ffi::kernel_stack_alloc;
 use sel4_common::ffi_addr;
+use sel4_common::platform::{timer, Timer_func};
 use sel4_common::sel4_config::{wordBits, CONFIG_KERNEL_STACK_BITS};
 
 use crate::boot::{
@@ -49,7 +49,7 @@ pub fn init_cpu() -> bool {
     armv_init_user_access();
 
     unsafe {
-        initTimer();
+        timer.initTimer();
     }
     true
 }

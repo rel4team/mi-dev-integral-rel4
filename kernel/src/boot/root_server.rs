@@ -101,8 +101,8 @@ pub fn root_server_init(
     // #ifdef CONFIG_KERNEL_MCS
     //     init_sched_control(root_cnode_cap, CONFIG_MAX_NUM_NODES);
     // #endif
-	#[cfg(feature="KERNEL_MCS")]
-	init_sched_control(&root_cnode_cap, CONFIG_MAX_NUM_NODES);
+    #[cfg(feature = "KERNEL_MCS")]
+    init_sched_control(&root_cnode_cap, CONFIG_MAX_NUM_NODES);
 
     let ipcbuf_cap = unsafe { create_ipcbuf_frame_cap(&root_cnode_cap, &it_pd_cap, ipcbuf_vptr) };
     if ipcbuf_cap.clone().unsplay().get_tag() == cap_tag::cap_null_cap {
@@ -332,18 +332,26 @@ fn init_sched_control(root_cnode_cap: &cap_cnode_cap, num_nodes: usize) -> bool 
     let slot_pos_before = unsafe { ndks_boot.slot_pos_cur };
 
     /* create a sched control cap for each core */
-	for i in 0..num_nodes{
-        if !provide_cap(root_cnode_cap, cap_sched_control_cap::new(i as u64).unsplay()) {
-            println!("can't init sched_control for node {}, provide_cap() failed\n", i);
+    for i in 0..num_nodes {
+        if !provide_cap(
+            root_cnode_cap,
+            cap_sched_control_cap::new(i as u64).unsplay(),
+        ) {
+            println!(
+                "can't init sched_control for node {}, provide_cap() failed\n",
+                i
+            );
             return false;
         }
     }
 
     /* update boot info with slot region for sched control caps */
-    unsafe{(*ndks_boot.bi_frame).schedcontrol = seL4_SlotRegion {
-        start: slot_pos_before,
-        end : ndks_boot.slot_pos_cur
-    }};
+    unsafe {
+        (*ndks_boot.bi_frame).schedcontrol = seL4_SlotRegion {
+            start: slot_pos_before,
+            end: ndks_boot.slot_pos_cur,
+        }
+    };
 
     true
 }

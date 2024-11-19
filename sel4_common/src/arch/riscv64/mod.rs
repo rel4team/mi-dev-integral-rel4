@@ -7,6 +7,7 @@ mod message_info;
 mod object;
 mod registers;
 mod vm_rights;
+use crate::platform::time_def::ticks_t;
 pub use arch_tcb::ArchTCB;
 pub use message_info::*;
 pub use object::*;
@@ -38,7 +39,7 @@ pub fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
     ret
 }
 
-pub fn set_timer(timer: usize) {
+pub fn set_timer(timer: ticks_t) {
     sbi_call(SBI_SET_TIMER, timer, 0, 0);
 }
 

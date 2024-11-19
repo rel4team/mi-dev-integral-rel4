@@ -10,16 +10,16 @@
 #![allow(non_upper_case_globals)]
 
 mod deps;
+mod ffi;
 mod scheduler;
 mod structures;
 pub mod tcb;
 mod tcb_queue;
 mod thread_state;
-mod ffi;
 
+pub use ffi::*;
 pub use scheduler::*;
 pub use structures::*;
 pub use tcb::*;
 pub use tcb_queue::*;
 pub use thread_state::*;
-pub use ffi::*;

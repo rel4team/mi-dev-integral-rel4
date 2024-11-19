@@ -522,7 +522,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
         slowpath(SysReplyRecv as usize);
     }
 
-    if unlikely(caller.tcbSchedContext !=0){
+    if unlikely(caller.tcbSchedContext != 0) {
         slowpath(SysReplyRecv as usize);
     }
 
@@ -538,8 +538,10 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     //     thread_state_ptr_set_replyObject_np(&NODE_STATE(ksCurThread)->tcbState, REPLY_REF(reply_ptr));
     //     reply_ptr->replyTCB = NODE_STATE(ksCurThread);
     caller.tcbState.set_replyObject(0);
-    current.tcbState.set_replyObject(reply_cap.get_capReplyPtr());
-    reply_ptr.replyTCB = unsafe{current as *mut _ as usize};
+    current
+        .tcbState
+        .set_replyObject(reply_cap.get_capReplyPtr());
+    reply_ptr.replyTCB = unsafe { current as *mut _ as usize };
     // #else
     //     thread_state_ptr_set_blockingIPCCanGrant(&NODE_STATE(ksCurThread)->tcbState,
     //                                              cap_endpoint_cap_get_capCanGrant(ep_cap));;
@@ -551,13 +553,9 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
     if let Some(ep_tail_tcb) =
         convert_to_option_mut_type_ref::<tcb_t>(ep.get_epQueue_tail() as usize)
     {
-        let queue = unsafe{tcbEPAppend(current, ep.get_queue())};
+        let queue = unsafe { tcbEPAppend(current, ep.get_queue()) };
         ep.set_epQueue_head(queue.head as u64);
-        endpoint_ptr_mset_epQueue_tail_state(
-            ep as *mut endpoint,
-            queue.head,
-            EPState_Recv,
-        );
+        endpoint_ptr_mset_epQueue_tail_state(ep as *mut endpoint, queue.head, EPState_Recv);
     } else {
         current.tcbEPPrev = 0;
         current.tcbEPNext = 0;
@@ -568,7 +566,6 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
             EPState_Recv,
         );
     }
-    
 
     // #ifdef CONFIG_KERNEL_MCS
     //     /* update call stack */

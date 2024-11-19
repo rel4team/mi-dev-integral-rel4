@@ -35,5 +35,5 @@ pub extern "C" fn setPriority() {
 }
 
 extern "C" {
-    pub fn tcbEPAppend(tcb: &mut tcb_t, queue: tcb_queue_t)->tcb_queue_t;
+    pub fn tcbEPAppend(tcb: &mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
 }
