@@ -96,7 +96,6 @@ pub static mut ksCurThread: usize = 0;
 pub static mut ksIdleThread: usize = 0;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksSchedulerAction: usize = 1;
 
 #[no_mangle]

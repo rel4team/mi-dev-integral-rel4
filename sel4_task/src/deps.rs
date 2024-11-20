@@ -1,5 +1,7 @@
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::sel4_config::seL4_MinSchedContextBits;
 use sel4_common::{
-    sel4_config::{seL4_MinSchedContextBits, seL4_TCBBits, CONFIG_MAX_NUM_NODES},
+    sel4_config::{seL4_TCBBits, CONFIG_MAX_NUM_NODES},
     BIT,
 };
 #[repr(align(2048))]
@@ -21,6 +23,7 @@ pub static mut ksIdleThreadTCB: ksIdleThreadTCB_data = ksIdleThreadTCB_data {
 };
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksIdleThreadSC: ksIdleThreadSC_data = ksIdleThreadSC_data {
     data: [[0; CONFIG_MAX_NUM_NODES]; BIT!(seL4_MinSchedContextBits)],
 };

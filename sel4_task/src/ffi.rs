@@ -1,3 +1,4 @@
+#[cfg(feature = "KERNEL_MCS")]
 use sel4_common::structures_gen::{endpoint, notification};
 
 use crate::{prio_t, tcb_t};
