@@ -18,16 +18,17 @@ use sel4_common::sel4_config::{
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
 use sel4_common::{BIT, MASK};
 
+use crate::tcb::{set_thread_state, tcb_t};
+use crate::tcb_queue::tcb_queue_t;
+use crate::thread_state::ThreadState;
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::platform::time_def::time_t;
+#[cfg(feature = "ENABLE_SMP")]
+use sel4_common::utils::cpu_id;
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::{
     get_arm_global_user_vspace_base, kpptr_to_paddr, setCurrentUserVSpaceRoot, ttbr_new,
 };
-
-use crate::tcb::{set_thread_state, tcb_t};
-use crate::tcb_queue::tcb_queue_t;
-use crate::thread_state::ThreadState;
-#[cfg(feature = "ENABLE_SMP")]
-use sel4_common::utils::cpu_id;
 
 #[cfg(feature = "ENABLE_SMP")]
 #[derive(Debug, Copy, Clone)]
@@ -95,7 +96,32 @@ pub static mut ksCurThread: usize = 0;
 pub static mut ksIdleThread: usize = 0;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksSchedulerAction: usize = 1;
+
+#[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
+pub static mut ksReleaseHead: usize = 0;
+
+#[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
+pub static mut ksCurSC: usize = 0;
+
+#[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
+pub static mut ksConsumed: time_t = 0;
+
+#[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
+pub static mut ksCurTime: time_t = 0;
+
+#[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
+pub static mut ksReprogram: bool = false;
+
+#[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
+pub static mut ksIdleSC: usize = 0;
 
 #[no_mangle]
 pub static mut ksReadyQueues: [tcb_queue_t; NUM_READY_QUEUES] =

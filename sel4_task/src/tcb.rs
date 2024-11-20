@@ -899,6 +899,15 @@ impl tcb_t {
     }
     pub fn DebugAppend(&mut self) {}
     pub fn DebugRemove(&mut self) {}
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn Release_Remove(&mut self) {}
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn Release_Enqueue(&mut self) {}
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn ReleaseDequeue(&mut self) {}
 }
 
 #[inline]

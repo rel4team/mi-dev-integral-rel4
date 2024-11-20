@@ -354,8 +354,8 @@ impl endpoint_func for endpoint {
     #[no_mangle]
     fn reorder_EP(&mut self, thread: &mut tcb_t) {
         let mut queue = self.get_queue();
-		queue.ep_dequeue(thread);
-		queue.ep_append(thread);
-		self.set_queue(&queue);
+        queue.ep_dequeue(thread);
+        queue.ep_append(thread);
+        self.set_queue(&queue);
     }
 }

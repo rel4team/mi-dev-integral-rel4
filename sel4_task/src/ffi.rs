@@ -1,6 +1,6 @@
 use sel4_common::structures_gen::{endpoint, notification};
 
-use crate::{prio_t, tcb_queue_t, tcb_t};
+use crate::{prio_t, tcb_t};
 
 //TODO: MCS
 #[no_mangle]

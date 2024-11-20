@@ -21,14 +21,18 @@ pub fn invokeSchedContext_UnbindObject(sc: &mut sched_context, capability: cap) 
 }
 
 pub fn invokeSchedContext_Bind(sc: &mut sched_context) -> exception_t {
+    // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_Unbind(sc: &mut sched_context) -> exception_t {
+    // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_Consumed(sc: &mut sched_context) -> exception_t {
+    // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_YieldTo(sc: &mut sched_context) -> exception_t {
+    // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
