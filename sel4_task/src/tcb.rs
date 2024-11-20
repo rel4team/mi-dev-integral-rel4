@@ -23,6 +23,7 @@ use sel4_vspace::{
 };
 use sel4_vspace::{pptr_t, set_vm_root};
 
+use crate::prio_t;
 use crate::tcb_queue::tcb_queue_t;
 use sel4_common::sel4_config::*;
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
@@ -141,13 +142,14 @@ impl tcb_t {
     }
 
     #[inline]
-    pub fn set_mcp_priority(&mut self, mcp: usize) {
+    pub fn set_mc_priority(&mut self, mcp: prio_t) {
         self.tcbMCP = mcp;
     }
 
     #[inline]
+    #[cfg(not(feature = "KERNEL_MCS"))]
     /// Set the priority of the TCB, and reschedule if the thread is runnable and not current
-    pub fn set_priority(&mut self, priority: usize) {
+    pub fn set_priority(&mut self, priority: prio_t) {
         self.sched_dequeue();
         self.tcbPriority = priority;
         if self.is_runnable() {
@@ -155,6 +157,51 @@ impl tcb_t {
                 rescheduleRequired();
             } else {
                 possible_switch_to(self)
+            }
+        }
+    }
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn set_priority(&mut self, priority: prio_t) {
+        use sel4_common::structures_gen::{endpoint_t, notification_t};
+
+        use crate::{reorder_EP, reorder_NTFN};
+
+        match self.get_state() {
+            ThreadState::ThreadStateRunning | ThreadState::ThreadStateRestart => {
+                if self.tcbState.get_tcbQueued() != 0 || self.is_current() {
+                    self.sched_dequeue();
+                    self.tcbPriority = priority;
+                    self.sched_enqueue();
+                    rescheduleRequired();
+                } else {
+                    self.tcbPriority = priority;
+                }
+            }
+            ThreadState::ThreadStateBlockedOnReceive | ThreadState::ThreadStateBlockedOnSend => {
+                self.tcbPriority = priority;
+                unsafe {
+                    reorder_EP(
+                        convert_to_mut_type_ref::<endpoint_t>(
+                            self.tcbState.get_blockingObject() as usize
+                        ),
+                        self,
+                    )
+                };
+            }
+            ThreadState::ThreadStateBlockedOnNotification => {
+                self.tcbPriority = priority;
+                unsafe {
+                    reorder_NTFN(
+                        convert_to_mut_type_ref::<notification_t>(
+                            self.tcbState.get_blockingObject() as usize,
+                        ),
+                        self,
+                    )
+                };
+            }
+            _ => {
+                self.tcbPriority = priority;
             }
         }
     }

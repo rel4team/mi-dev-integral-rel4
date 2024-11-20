@@ -3,6 +3,7 @@ pub mod decode;
 mod invoke_cnode;
 pub mod invoke_irq;
 mod invoke_mmu_op;
+mod invoke_sched;
 mod invoke_tcb;
 mod invoke_untyped;
 

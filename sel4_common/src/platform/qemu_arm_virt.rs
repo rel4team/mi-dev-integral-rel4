@@ -1,11 +1,15 @@
 pub(crate) const CONFIGURE_TIMER_FREQUENCY: usize = 62500000;
+#[cfg(feature = "KERNEL_MCS")]
 pub(crate) const CLK_MAGIC: usize = 4611686019;
+#[cfg(feature = "KERNEL_MCS")]
 pub(crate) const CLK_SHIFT: usize = 58;
 use core::arch::asm;
 
 use aarch64_cpu::registers::{Writeable, CNTV_CTL_EL0, CNTV_CVAL_EL0, CNTV_TVAL_EL0};
 
-use crate::{sel4_config::UINT64_MAX, BIT};
+use crate::sel4_config::UINT64_MAX;
+#[cfg(feature = "KERNEL_MCS")]
+use crate::BIT;
 
 use super::{
     time_def::{ticks_t, TIMER_CLOCK_HZ},

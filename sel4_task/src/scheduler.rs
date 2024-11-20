@@ -119,7 +119,7 @@ pub static mut ksDomSchedule: [dschedule_t; ksDomScheduleLength] = [dschedule_t 
 }; ksDomScheduleLength];
 
 #[allow(non_camel_case_types)]
-type prio_t = usize;
+pub type prio_t = usize;
 
 #[inline]
 /// Get the idle thread, and returns a mutable tcb reference to the idle thread.

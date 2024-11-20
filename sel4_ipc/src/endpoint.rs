@@ -38,6 +38,8 @@ pub trait endpoint_func {
         can_grant_reply: bool,
     );
     fn receive_ipc(&mut self, thread: &mut tcb_t, is_blocking: bool, grant: bool);
+    #[cfg(feature = "KERNEL_MCS")]
+    fn reorder_EP(&mut self, thread: &mut tcb_t);
 }
 impl endpoint_func for endpoint {
     #[inline]
@@ -347,5 +349,13 @@ impl endpoint_func for endpoint {
                 // TODO: MCS
             }
         }
+    }
+    #[cfg(feature = "KERNEL_MCS")]
+    #[no_mangle]
+    fn reorder_EP(&mut self, thread: &mut tcb_t) {
+        let mut queue = self.get_queue();
+		queue.ep_dequeue(thread);
+		queue.ep_append(thread);
+		self.set_queue(&queue);
     }
 }

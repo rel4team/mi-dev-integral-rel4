@@ -1,9 +1,10 @@
+use log::debug;
 use sel4_common::{
     arch::{getMaxTicksToUs, ticksToUs},
     platform::time_def::{ticks_t, time_t},
     structures::exception_t,
-    structures_gen::{cap, cap_tag, notification_t},
-    utils::convert_to_mut_type_ref,
+    structures_gen::{cap, cap_tag, notification, notification_t},
+    utils::{convert_to_mut_type_ref, global_ops},
 };
 
 use crate::{tcb, tcb_t};
@@ -27,46 +28,27 @@ pub struct sched_context {
     pub scSporadic: bool,
 }
 impl sched_context {
-    pub fn invokeSchedContext_UnbindObject(&mut self, capability: cap) -> exception_t {
-        match capability.get_tag() {
-            cap_tag::cap_thread_cap => {
-                self.schedContext_unbindTCB(convert_to_mut_type_ref::<tcb_t>(self.scTcb));
-            }
-            cap_tag::cap_notification_cap => {
-                self.schedContext_unbindNtfn();
-            }
-            _ => {
-                panic!("invalid cap type");
-            }
-        }
-        exception_t::EXCEPTION_NONE
-    }
-    pub fn decodeSchedContext_UnbindObject(&mut self) -> exception_t {
-        exception_t::EXCEPTION_NONE
-    }
-    pub fn invokeSchedContext_Bind(&mut self) -> exception_t {
-        exception_t::EXCEPTION_NONE
-    }
-    pub fn decodeSchedContext_Bind(&mut self) -> exception_t {
-        exception_t::EXCEPTION_NONE
-    }
-    pub fn invokeSchedContext_Unbind(&mut self) -> exception_t {
-        exception_t::EXCEPTION_NONE
-    }
-    pub fn invokeSchedContext_Consumed(&mut self) -> exception_t {
-        exception_t::EXCEPTION_NONE
-    }
-    pub fn invokeSchedContext_YieldTo(&mut self) -> exception_t {
-        exception_t::EXCEPTION_NONE
-    }
     pub fn schedContext_resume(&mut self) {}
-    pub fn decodeSchedContext_YieldTo(&mut self) {}
     pub fn schedContext_bindTCB(&mut self, tcb: &mut tcb_t) {}
     pub fn schedContext_unbindTCB(&mut self, tcb: &mut tcb_t) {}
     pub fn schedContext_unbindAllTCBs(&mut self) {}
-    pub fn schedContext_donate(&mut self, to: &mut tcb_t) {}
-    pub fn schedContext_bindNtfn(&mut self, ntfn: &mut notification_t) {}
-    pub fn schedContext_unbindNtfn(&mut self) {}
+    pub fn schedContext_donate(&mut self, to: &mut tcb_t) {
+        if self.scTcb != 0 {
+            let from: &mut tcb_t = convert_to_mut_type_ref::<tcb_t>(self.scTcb);
+            from.sched_dequeue();
+            from.tcbSchedContext = 0;
+        }
+    }
+    pub fn schedContext_bindNtfn(&mut self, ntfn: &mut notification_t) {
+        ntfn.set_ntfnSchedContext(self as *mut _ as u64);
+        self.scNotification = ntfn as *mut _ as usize;
+    }
+    pub fn schedContext_unbindNtfn(&mut self) {
+        if self.scNotification != 0 {
+            convert_to_mut_type_ref::<notification>(self.scNotification).set_ntfnSchedContext(0);
+            self.scNotification = 0;
+        }
+    }
     pub fn setConsumed(&mut self, buffer: usize) {}
     pub fn schedContext_updateConsumed(&mut self) -> time_t {
         let consumed: ticks_t = self.scConsumed;
