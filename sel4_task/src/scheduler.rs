@@ -18,12 +18,22 @@ use sel4_common::sel4_config::{
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
 use sel4_common::{BIT, MASK};
 
+#[cfg(feature = "KERNEL_MCS")]
+use crate::deps::ksIdleThreadSC;
+use crate::deps::ksIdleThreadTCB;
+#[cfg(feature = "KERNEL_MCS")]
+use crate::sched_context::{sched_context_t, MIN_REFILLS};
 use crate::tcb::{set_thread_state, tcb_t};
 use crate::tcb_queue::tcb_queue_t;
 use crate::thread_state::ThreadState;
-use sel4_common::platform::time_def::time_t;
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::utils::cpu_id;
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::{
+    arch::usToTicks,
+    platform::time_def::{ticks_t, time_t, US_IN_MS},
+    sel4_config::CONFIG_BOOT_THREAD_TIME_SLICE,
+};
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::{
     get_arm_global_user_vspace_base, kpptr_to_paddr, setCurrentUserVSpaceRoot, ttbr_new,
@@ -98,21 +108,27 @@ pub static mut ksIdleThread: usize = 0;
 pub static mut ksSchedulerAction: usize = 1;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksReleaseHead: usize = 0;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksCurSC: usize = 0;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksConsumed: time_t = 0;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksCurTime: time_t = 0;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksReprogram: bool = false;
 
 #[no_mangle]
+#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksIdleSC: usize = 0;
 
 #[no_mangle]
@@ -589,12 +605,16 @@ pub fn activateThread() {
         ),
     }
 }
+#[cfg(feature = "KERNEL_MCS")]
+pub fn configure_sched_context(tcb: &mut tcb_t, sc_pptr: &mut sched_context_t, timeslice: ticks_t) {
+    tcb.tcbSchedContext = sc_pptr.get_ptr();
+    sc_pptr.refill_new(MIN_REFILLS, timeslice, 0);
+    sc_pptr.scTcb = tcb.get_ptr();
+}
 
 #[cfg(not(feature = "ENABLE_SMP"))]
 /// Create the idle thread.
 pub fn create_idle_thread() {
-    use crate::deps::ksIdleThreadTCB;
-
     unsafe {
         let pptr = &mut ksIdleThreadTCB.data[0][0] as *mut u8 as *mut usize;
         // let pptr = ksIdleThreadTCB as usize as *mut usize;
@@ -604,6 +624,17 @@ pub fn create_idle_thread() {
         // Arch_configureIdleThread(tcb.tcbArch);
         tcb.tcbArch.config_idle_thread(idle_thread as usize);
         set_thread_state(tcb, ThreadState::ThreadStateIdleThreadState);
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            configure_sched_context(
+                convert_to_mut_type_ref::<tcb_t>(ksIdleThread),
+                convert_to_mut_type_ref::<sched_context_t>(
+                    &mut ksIdleThreadSC.data[0][0] as *mut u8 as usize,
+                ),
+                usToTicks(CONFIG_BOOT_THREAD_TIME_SLICE * US_IN_MS),
+            );
+            ksIdleSC = &mut ksIdleThreadSC.data[0][0] as *mut u8 as usize;
+        }
     }
 }
 

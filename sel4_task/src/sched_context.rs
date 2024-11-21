@@ -15,7 +15,7 @@ use sel4_common::{
 
 use crate::{
     get_currenct_thread, ksCurSC, ksCurTime, ksReprogram, ksSchedulerAction, rescheduleRequired,
-    tcb, tcb_t,
+    tcb_t,
 };
 
 pub type sched_context_t = sched_context;
@@ -39,7 +39,7 @@ pub struct sched_context {
 pub(crate) const MIN_REFILLS: usize = 2;
 pub(crate) type refill_t = refill;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct refill {
     rTime: ticks_t,
     rAmount: ticks_t,
@@ -69,7 +69,6 @@ impl sched_context {
         self.get_ptr() != 0 && self.sc_active() && self.scSporadic
     }
     #[inline]
-	#[no_mangle]
     pub fn postpone(&self) {
         convert_to_mut_type_ref::<tcb_t>(self.scTcb).sched_dequeue();
         convert_to_mut_type_ref::<tcb_t>(self.scTcb).Release_Enqueue();
@@ -95,11 +94,41 @@ impl sched_context {
         }
     }
     #[inline]
+    pub fn refill_add_tail(&mut self, rTime: ticks_t, rAmount: ticks_t) {
+        assert!(self.refill_size() < self.scRefillMax);
+        let new_tail = self.refill_next(self.scRefillTail);
+        self.scRefillTail = new_tail;
+        unsafe {
+            (*self.refill_tail()).rAmount = rAmount;
+            (*self.refill_tail()).rTime = rTime;
+        }
+        assert!(new_tail < self.scRefillMax);
+    }
+    #[inline]
+    pub fn maybe_add_empty_tail(&mut self) {
+        if self.is_round_robin() {
+            self.refill_add_tail(unsafe { (*self.refill_head()).rTime }, 0);
+        }
+    }
+    #[inline]
+    pub fn refill_new(&mut self, max_refills: usize, budget: usize, period: ticks_t) {
+        self.scPeriod = period;
+        self.scRefillHead = 0;
+        self.scRefillTail = 0;
+        self.scRefillMax = max_refills;
+        assert!(budget >= MIN_BUDGET());
+        unsafe {
+            (*self.refill_head()).rAmount = budget;
+            (*self.refill_head()).rTime = ksCurTime;
+        }
+        self.maybe_add_empty_tail();
+    }
+    #[inline]
     pub fn refill_head_overlapping(&mut self) -> bool {
         if !self.refill_single() {
-            let amount = (unsafe { *self.refill_head() }).rAmount;
-            let tail = (unsafe { *self.refill_head() }).rTime + amount;
-            return (unsafe { *self.refill_index(self.refill_next(self.scRefillHead)) }).rTime
+            let amount = unsafe { (*self.refill_head()).rAmount };
+            let tail = unsafe { (*self.refill_head()).rTime } + amount;
+            return unsafe { (*self.refill_index(self.refill_next(self.scRefillHead))).rTime }
                 <= tail;
         } else {
             return false;
@@ -111,7 +140,7 @@ impl sched_context {
             return;
         }
         if self.refill_ready() {
-            (unsafe { *self.refill_head() }).rTime = unsafe { ksCurTime };
+            unsafe { (*self.refill_head()).rTime = ksCurTime };
             unsafe { ksReprogram = true };
             while self.refill_head_overlapping() {
                 let old_head = self.refill_pop_head();
@@ -124,7 +153,7 @@ impl sched_context {
     }
     #[inline]
     pub fn refill_ready(&mut self) -> bool {
-        (unsafe { *self.refill_head() }).rTime <= unsafe { ksCurTime } + getKernelWcetTicks()
+        unsafe { (*self.refill_head()).rTime <= ksCurTime + getKernelWcetTicks() }
     }
     #[inline]
     fn refill_index(&self, index: usize) -> *mut refill_t {
@@ -155,10 +184,10 @@ impl sched_context {
     }
     #[inline]
     pub fn refill_capacity(&mut self, usage: ticks_t) -> ticks_t {
-        if unlikely(usage > unsafe { *self.refill_head() }.rAmount) {
+        if unlikely(usage > unsafe { (*self.refill_head()).rAmount }) {
             return 0;
         }
-        return (unsafe { *self.refill_head() }).rAmount - usage;
+        return unsafe { (*self.refill_head()).rAmount } - usage;
     }
     #[inline]
     pub fn refill_sufficient(&mut self, usage: ticks_t) -> bool {

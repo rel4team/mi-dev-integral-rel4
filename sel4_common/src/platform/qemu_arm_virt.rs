@@ -52,7 +52,7 @@ impl Timer_func for timer {
         let time: ticks_t;
         unsafe {
             asm!(
-                "mrs {}, cnt_ct",
+                "mrs {}, cntvct_el0",
                 out(reg) time,
             );
         }

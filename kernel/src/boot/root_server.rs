@@ -9,6 +9,8 @@ use crate::structures::{
 use crate::{BIT, ROUND_DOWN};
 use log::debug;
 use sel4_common::arch::{ArchReg, ArchTCB};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::platform::{timer, Timer_func};
 #[cfg(target_arch = "riscv64")]
 use sel4_common::sel4_config::CONFIG_PT_LEVELS;
 #[cfg(target_arch = "aarch64")]
@@ -121,6 +123,10 @@ pub fn root_server_init(
     if !asid_init(&root_cnode_cap, &it_pd_cap) {
         return None;
     }
+    #[cfg(feature = "KERNEL_MCS")]
+    unsafe {
+        ksCurTime = timer.getCurrentTime()
+    };
 
     let initial = unsafe {
         create_initial_thread(

@@ -162,7 +162,7 @@ pub fn init_core_state(scheduler_action: *mut tcb_t) {
 
     set_current_scheduler_action(scheduler_action as usize);
     set_current_thread(get_idle_thread());
-	// TODO: MCS
+    // TODO: MCS
 }
 
 #[cfg(feature = "ENABLE_SMP")]
