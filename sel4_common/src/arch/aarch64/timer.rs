@@ -9,6 +9,8 @@ use crate::{
     sel4_config::UINT64_MAX,
 };
 #[cfg(feature = "KERNEL_MCS")]
+use crate::platform::CONFIGURE_KERNEL_WCET;
+#[cfg(feature = "KERNEL_MCS")]
 pub fn getMaxTicksToUs() -> ticks_t {
     if USE_KHZ {
         UINT64_MAX / TIMER_CLOCK_KHZ
@@ -43,4 +45,8 @@ pub fn usToTicks(us: time_t) -> ticks_t {
 #[cfg(feature = "KERNEL_MCS")]
 pub fn getTimerPrecision() -> ticks_t {
     usToTicks(TIMER_PRECISION) + TIMER_OVERHEAD_TICKS
+}
+#[cfg(feature = "KERNEL_MCS")]
+pub fn getKernelWcetUs() -> time_t {
+    CONFIGURE_KERNEL_WCET
 }

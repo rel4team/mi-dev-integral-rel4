@@ -69,17 +69,8 @@ pub enum ArchReg {
 }
 
 #[cfg(feature = "KERNEL_MCS")]
-use crate::{
-    platform::{
-        time_def::{ticks_t, time_t},
-        CONFIGURE_KERNEL_WCET,
-    },
-    sel4_config::CONFIG_KERNEL_WCET_SCALE,
-};
-#[cfg(feature = "KERNEL_MCS")]
-pub fn getKernelWcetUs() -> time_t {
-    CONFIGURE_KERNEL_WCET
-}
+use crate::platform::time_def::ticks_t;
+
 #[cfg(feature = "KERNEL_MCS")]
 pub fn getKernelWcetTicks() -> ticks_t {
     usToTicks(getKernelWcetUs())
