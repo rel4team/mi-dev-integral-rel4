@@ -12,15 +12,18 @@ pub fn decode_sched_control_invocation() -> exception_t {
 }
 pub fn decodeSchedContext_UnbindObject(sc: &mut sched_context) -> exception_t {
     // TODO: MCS
+    unimplemented!("MCS");
     if global_ops!(current_extra_caps.excaprefs[0] == 0) {
         debug!("")
     }
     exception_t::EXCEPTION_NONE
 }
 pub fn decodeSchedContext_Bind(sc: &mut sched_context) -> exception_t {
+    unimplemented!("MCS");
     // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
 pub fn decodeSchedContext_YieldTo(sc: &mut sched_context) {
+    unimplemented!("MCS");
     // TODO: MCS
 }

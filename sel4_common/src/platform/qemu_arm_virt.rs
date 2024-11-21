@@ -1,8 +1,14 @@
 pub(crate) const CONFIGURE_TIMER_FREQUENCY: usize = 62500000;
 #[cfg(feature = "KERNEL_MCS")]
-pub(crate) const CLK_MAGIC: usize = 4611686019;
+pub(crate) const CONFIGURE_CLK_MAGIC: usize = 4611686019;
 #[cfg(feature = "KERNEL_MCS")]
-pub(crate) const CLK_SHIFT: usize = 58;
+pub(crate) const CONFIGURE_CLK_SHIFT: usize = 58;
+#[cfg(feature = "KERNEL_MCS")]
+pub(crate) const CONFIGURE_KERNEL_WCET: usize = 10;
+#[cfg(feature = "KERNEL_MCS")]
+pub(crate) const TIMER_PRECISION: usize = 0;
+#[cfg(feature = "KERNEL_MCS")]
+pub(crate) const TIMER_OVERHEAD_TICKS: usize = 0;
 use core::arch::asm;
 
 use aarch64_cpu::registers::{Writeable, CNTV_CTL_EL0, CNTV_CVAL_EL0, CNTV_TVAL_EL0};

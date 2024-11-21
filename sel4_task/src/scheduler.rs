@@ -21,7 +21,6 @@ use sel4_common::{BIT, MASK};
 use crate::tcb::{set_thread_state, tcb_t};
 use crate::tcb_queue::tcb_queue_t;
 use crate::thread_state::ThreadState;
-#[cfg(feature = "KERNEL_MCS")]
 use sel4_common::platform::time_def::time_t;
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::utils::cpu_id;
@@ -99,27 +98,21 @@ pub static mut ksIdleThread: usize = 0;
 pub static mut ksSchedulerAction: usize = 1;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksReleaseHead: usize = 0;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksCurSC: usize = 0;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksConsumed: time_t = 0;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksCurTime: time_t = 0;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksReprogram: bool = false;
 
 #[no_mangle]
-#[cfg(feature = "KERNEL_MCS")]
 pub static mut ksIdleSC: usize = 0;
 
 #[no_mangle]

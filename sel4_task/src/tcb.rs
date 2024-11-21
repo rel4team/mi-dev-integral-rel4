@@ -901,13 +901,19 @@ impl tcb_t {
     pub fn DebugRemove(&mut self) {}
     #[inline]
     #[cfg(feature = "KERNEL_MCS")]
-    pub fn Release_Remove(&mut self) {}
+    pub fn Release_Remove(&mut self) {
+        unimplemented!("MCS");
+    }
     #[inline]
     #[cfg(feature = "KERNEL_MCS")]
-    pub fn Release_Enqueue(&mut self) {}
+    pub fn Release_Enqueue(&mut self) {
+        unimplemented!("MCS")
+    }
     #[inline]
     #[cfg(feature = "KERNEL_MCS")]
-    pub fn ReleaseDequeue(&mut self) {}
+    pub fn Release_Dequeue(&mut self) {
+        unimplemented!("MCS")
+    }
 }
 
 #[inline]
