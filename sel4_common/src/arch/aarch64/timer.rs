@@ -1,4 +1,6 @@
 #[cfg(feature = "KERNEL_MCS")]
+use crate::platform::CONFIGURE_KERNEL_WCET;
+#[cfg(feature = "KERNEL_MCS")]
 use crate::{
     platform::{
         time_def::{
@@ -8,8 +10,6 @@ use crate::{
     },
     sel4_config::UINT64_MAX,
 };
-#[cfg(feature = "KERNEL_MCS")]
-use crate::platform::CONFIGURE_KERNEL_WCET;
 #[cfg(feature = "KERNEL_MCS")]
 pub fn getMaxTicksToUs() -> ticks_t {
     if USE_KHZ {

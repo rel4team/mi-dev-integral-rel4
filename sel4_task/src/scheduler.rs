@@ -465,6 +465,10 @@ pub fn rescheduleRequired() {
 #[no_mangle]
 /// Schedule threads.
 pub fn schedule() {
+    #[cfg(feature = "KERNEL_MCS")]
+    {
+        // TODO: MCS
+    }
     if get_ks_scheduler_action() != SchedulerAction_ResumeCurrentThread {
         let was_runnable: bool;
         let current_tcb = get_currenct_thread();
@@ -501,6 +505,10 @@ pub fn schedule() {
     unsafe {
         doMaskReschedule(ksSMP[cpu_id()].ipiReschedulePending);
         ksSMP[cpu_id()].ipiReschedulePending = 0;
+    }
+    #[cfg(feature = "KERNEL_MCS")]
+    {
+        // TODO: MCS
     }
 }
 
