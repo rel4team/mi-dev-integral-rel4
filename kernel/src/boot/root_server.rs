@@ -11,14 +11,16 @@ use log::debug;
 use sel4_common::arch::{ArchReg, ArchTCB};
 #[cfg(feature = "KERNEL_MCS")]
 use sel4_common::platform::{timer, Timer_func};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::sel4_config::seL4_MinSchedContextBits;
 #[cfg(target_arch = "riscv64")]
 use sel4_common::sel4_config::CONFIG_PT_LEVELS;
 #[cfg(target_arch = "aarch64")]
 use sel4_common::sel4_config::PT_INDEX_BITS;
 use sel4_common::sel4_config::{
-    asidLowBits, seL4_MinSchedContextBits, seL4_PageBits, seL4_PageTableBits, seL4_SlotBits,
-    seL4_TCBBits, tcbBuffer, tcbCTable, tcbVTable, wordBits, CONFIG_MAX_NUM_NODES,
-    CONFIG_NUM_DOMAINS, IT_ASID, PAGE_BITS, TCB_OFFSET,
+    asidLowBits, seL4_PageBits, seL4_PageTableBits, seL4_SlotBits, seL4_TCBBits, tcbBuffer,
+    tcbCTable, tcbVTable, wordBits, CONFIG_MAX_NUM_NODES, CONFIG_NUM_DOMAINS, IT_ASID, PAGE_BITS,
+    TCB_OFFSET,
 };
 use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 #[cfg(target_arch = "aarch64")]
@@ -544,7 +546,9 @@ fn calculate_rootserver_size(it_v_reg: v_region_t, extra_bi_size_bits: usize) ->
     };
     size += BIT!(seL4_VSpaceBits);
     #[cfg(feature = "KERNEL_MCS")]
-    size += BIT!(seL4_MinSchedContextBits);
+    {
+        size += BIT!(seL4_MinSchedContextBits);
+    }
     return size + arch_get_n_paging(it_v_reg) * BIT!(seL4_PageTableBits);
 }
 
@@ -610,7 +614,9 @@ unsafe fn create_rootserver_objects(start: usize, it_v_reg: v_region_t, extra_bi
     rootserver.tcb = alloc_rootserver_obj(seL4_TCBBits, 1);
 
     #[cfg(feature = "KERNEL_MCS")]
-    rootserver.sc = alloc_rootserver_obj(seL4_MinSchedContextBits, 1);
+    {
+        rootserver.sc = alloc_rootserver_obj(seL4_MinSchedContextBits, 1);
+    }
 
     assert_eq!(rootserver_mem.start, rootserver_mem.end);
 }

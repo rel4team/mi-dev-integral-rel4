@@ -1,3 +1,5 @@
+#[cfg(feature = "KERNEL_MCS")]
+use crate::ksReleaseHead;
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::{
     msgRegisterNum, n_exceptionMessage, n_syscallMessage, vm_rights_t, ArchReg, ArchTCB,
@@ -909,11 +911,6 @@ impl tcb_t {
     pub fn Release_Enqueue(&mut self) {
         unimplemented!("MCS")
     }
-    #[inline]
-    #[cfg(feature = "KERNEL_MCS")]
-    pub fn Release_Dequeue(&mut self) {
-        unimplemented!("MCS")
-    }
 }
 
 #[inline]
@@ -924,4 +921,49 @@ impl tcb_t {
 pub fn set_thread_state(tcb: &mut tcb_t, state: ThreadState) {
     tcb.tcbState.set_tsType(state as u64);
     schedule_tcb(tcb);
+}
+
+#[cfg(feature = "KERNEL_MCS")]
+pub fn tcb_Release_Dequeue() -> *mut tcb_t {
+    use crate::{ksReprogram, sched_context::sched_context_t};
+
+    unsafe {
+        assert!(ksReleaseHead != 0);
+        assert!(convert_to_mut_type_ref::<tcb_t>(ksReleaseHead).tcbSchedPrev != 0);
+
+        // tcb_t *detached_head = NODE_STATE(ksReleaseHead);
+        // NODE_STATE(ksReleaseHead) = NODE_STATE(ksReleaseHead)->tcbSchedNext;
+
+        // if (NODE_STATE(ksReleaseHead))
+        // {
+        //     NODE_STATE(ksReleaseHead)->tcbSchedPrev = NULL;
+        // }
+
+        // if (detached_head->tcbSchedNext)
+        // {
+        //     detached_head->tcbSchedNext->tcbSchedPrev = NULL;
+        //     detached_head->tcbSchedNext = NULL;
+        // }
+
+        // thread_state_ptr_set_tcbInReleaseQueue(&detached_head->tcbState, false);
+        // NODE_STATE(ksReprogram) = true;
+
+        // return detached_head;
+
+        let detached_head = ksReleaseHead as *mut tcb_t;
+        ksReleaseHead = (*detached_head).tcbSchedNext;
+
+        if ksReleaseHead != 0 {
+            convert_to_mut_type_ref::<tcb_t>(ksReleaseHead).tcbSchedPrev = 0;
+        }
+        if (*detached_head).tcbSchedNext != 0 {
+            convert_to_mut_type_ref::<tcb_t>((*detached_head).tcbSchedNext).tcbSchedPrev = 0;
+            (*detached_head).tcbSchedNext = 0;
+        }
+
+        (*detached_head).tcbState.set_tcbInReleaseQueue(0);
+        ksReprogram = true;
+
+        return detached_head;
+    }
 }
