@@ -7,6 +7,7 @@ use sel4_common::{
     arch::{getKernelWcetTicks, getKernelWcetUs, getMaxTicksToUs, ticksToUs, ArchReg::MsgInfo},
     message_info::seL4_MessageInfo_func,
     platform::time_def::{ticks_t, time_t},
+    println,
     sel4_config::CONFIG_KERNEL_WCET_SCALE,
     shared_types_bf_gen::seL4_MessageInfo,
     structures_gen::{notification, notification_t},
@@ -41,8 +42,8 @@ pub(crate) type refill_t = refill;
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct refill {
-    rTime: ticks_t,
-    rAmount: ticks_t,
+    pub rTime: ticks_t,
+    pub rAmount: ticks_t,
 }
 pub fn MIN_BUDGET_US() -> time_t {
     2 * getKernelWcetUs() * CONFIG_KERNEL_WCET_SCALE
@@ -156,18 +157,18 @@ impl sched_context {
         unsafe { (*self.refill_head()).rTime <= ksCurTime + getKernelWcetTicks() }
     }
     #[inline]
-    fn refill_index(&self, index: usize) -> *mut refill_t {
+    pub fn refill_index(&self, index: usize) -> *mut refill_t {
         //&mut refill_t {
         convert_to_mut_type_ref::<refill_t>(
             (self.get_ptr() + size_of::<sched_context_t>()) + index * size_of::<refill_t>(),
         ) as *mut refill_t
     }
     #[inline]
-    fn refill_head(&self) -> *mut refill_t {
+    pub fn refill_head(&self) -> *mut refill_t {
         self.refill_index(self.scRefillHead)
     }
     #[inline]
-    fn refill_tail(&self) -> *mut refill_t {
+    pub fn refill_tail(&self) -> *mut refill_t {
         self.refill_index(self.scRefillTail)
     }
     pub fn refill_size(&mut self) -> usize {

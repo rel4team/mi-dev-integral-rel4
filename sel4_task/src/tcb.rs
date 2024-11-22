@@ -1,5 +1,5 @@
 #[cfg(feature = "KERNEL_MCS")]
-use crate::ksReleaseHead;
+use crate::{ksReleaseHead, sched_context::sched_context_t};
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::{
     msgRegisterNum, n_exceptionMessage, n_syscallMessage, vm_rights_t, ArchReg, ArchTCB,
@@ -910,6 +910,22 @@ impl tcb_t {
     #[cfg(feature = "KERNEL_MCS")]
     pub fn Release_Enqueue(&mut self) {
         unimplemented!("MCS")
+    }
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn schedContext_cancelYieldTo(&mut self) {
+        if self.get_ptr() != 0 && self.tcbYieldTo != 0 {
+            convert_to_mut_type_ref::<sched_context_t>(self.tcbYieldTo).scYieldFrom = 0;
+            self.tcbYieldTo = 0;
+        }
+    }
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn schedContext_completeYieldTo(&mut self) {
+        if self.get_ptr() != 0 && self.tcbYieldTo != 0 {
+            convert_to_mut_type_ref::<sched_context_t>(self.tcbYieldTo).setConsumed();
+            self.schedContext_cancelYieldTo();
+        }
     }
 }
 

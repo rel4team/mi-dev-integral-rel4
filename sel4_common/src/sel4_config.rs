@@ -143,3 +143,6 @@ pub const ID_AA64PFR0_EL1_FP: u32 = 16;
 pub const ID_AA64PFR0_EL1_ASIMD: u32 = 20;
 pub const CONFIG_KERNEL_WCET_SCALE: usize = 1;
 pub const CONFIG_BOOT_THREAD_TIME_SLICE: usize = 5;
+pub const minDom: usize = 0;
+pub const maxDom: usize = CONFIG_NUM_DOMAINS - 1;
+pub const numDomains: usize = CONFIG_NUM_DOMAINS;
