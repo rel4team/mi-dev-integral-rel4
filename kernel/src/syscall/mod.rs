@@ -12,20 +12,50 @@ use sel4_common::arch::ArchReg::*;
 use sel4_common::sel4_config::tcbCaller;
 
 pub const SysCall: isize = -1;
+pub const SYSCALL_MAX: isize = SysCall;
 pub const SysReplyRecv: isize = -2;
+
+#[cfg(not(feature="KERNEL_MCS"))]
 pub const SysSend: isize = -3;
+#[cfg(not(feature="KERNEL_MCS"))]
 pub const SysNBSend: isize = -4;
+#[cfg(not(feature="KERNEL_MCS"))]
 pub const SysRecv: isize = -5;
+#[cfg(not(feature="KERNEL_MCS"))]
 pub const SysReply: isize = -6;
+#[cfg(not(feature="KERNEL_MCS"))]
 pub const SysYield: isize = -7;
+
+#[cfg(feature="KERNEL_MCS")]
+pub const SysNBSendRecv: isize = -3;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysNBSendWait: isize = -4;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysSend: isize = -5;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysNBSend: isize = -6;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysRecv: isize = -7;
+
 pub const SysNBRecv: isize = -8;
 
-pub const SysDebugPutChar: isize = -9;
-pub const SysDebugDumpScheduler: isize = -10;
-pub const SysDebugHalt: isize = -11;
-pub const SysDebugCapIdentify: isize = -12;
-pub const SysDebugSnapshot: isize = -13;
-pub const SysDebugNameThread: isize = -14;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysWait: isize = -9;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysNBWait: isize = -10;
+#[cfg(feature="KERNEL_MCS")]
+pub const SysYield:isize = -11;
+#[cfg(feature="KERNEL_MCS")]
+pub const SYSCALL_MIN: isize = SysYield;
+#[cfg(not(feature="KERNEL_MCS"))]
+pub const SYSCALL_MIN: isize = SysNBRecv;
+
+pub const SysDebugPutChar: isize = SYSCALL_MIN-1;
+pub const SysDebugDumpScheduler: isize = SysDebugPutChar-1;
+pub const SysDebugHalt: isize = SysDebugDumpScheduler-1;
+pub const SysDebugCapIdentify: isize = SysDebugHalt-1;
+pub const SysDebugSnapshot: isize = SysDebugCapIdentify-1;
+pub const SysDebugNameThread: isize = SysDebugSnapshot-1;
 pub const SysGetClock: isize = -30;
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{
@@ -49,7 +79,7 @@ use self::invocation::handleInvocation;
 
 #[no_mangle]
 pub fn slowpath(syscall: usize) {
-    if (syscall as isize) < -8 || (syscall as isize) > -1 {
+    if (syscall as isize) < SYSCALL_MIN || (syscall as isize) > SYSCALL_MAX {
         // using ffi_call! macro to call c function
         handleUnknownSyscall(syscall as isize);
         // ffi_call!(handleUnknownSyscall(id: usize => syscall));
