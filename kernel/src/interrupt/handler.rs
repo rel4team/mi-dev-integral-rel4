@@ -8,6 +8,9 @@ use sel4_common::structures_gen::{cap, cap_tag, notification};
 use sel4_ipc::notification_func;
 use sel4_task::{activateThread, schedule, timerTick};
 
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::ksReprogram;
+
 #[no_mangle]
 pub fn handleInterruptEntry() -> exception_t {
     let irq = getActiveIRQ();
@@ -52,6 +55,11 @@ pub fn handleInterrupt(irq: usize) {
             }
         }
         IRQState::IRQTimer => {
+            #[cfg(feature = "KERNEL_MCS")]
+            {
+                timer.ackDeadlineIRQ();
+                unsafe { ksReprogram = true };
+            }
             timerTick();
             timer.resetTimer();
         }

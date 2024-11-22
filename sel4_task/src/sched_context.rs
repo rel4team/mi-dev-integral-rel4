@@ -95,6 +95,10 @@ impl sched_context {
         }
     }
     #[inline]
+    pub fn sc_constant_bandwidth(&mut self) -> bool {
+        !self.scSporadic
+    }
+    #[inline]
     pub fn refill_add_tail(&mut self, rTime: ticks_t, rAmount: ticks_t) {
         assert!(self.refill_size() < self.scRefillMax);
         let new_tail = self.refill_next(self.scRefillTail);
@@ -194,6 +198,10 @@ impl sched_context {
     pub fn refill_sufficient(&mut self, usage: ticks_t) -> bool {
         self.refill_capacity(usage) >= MIN_BUDGET()
     }
+    #[inline]
+    pub fn schedule_used(&mut self, new_rTime: ticks_t, new_rAmount: ticks_t) {
+        // TODO: MCS
+    }
 
     pub fn schedContext_resume(&mut self) {
         assert!(self.get_ptr() != 0 || self.scTcb != 0);
@@ -280,6 +288,38 @@ impl sched_context {
         } else {
             self.scConsumed = 0;
             return ticksToUs(consumed);
+        }
+    }
+}
+pub fn refill_budget_check(usage: ticks_t) {
+    unsafe {
+        let sc = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        assert!(!sc.is_round_robin());
+
+        while (sc.refill_head().rAmount <= usage && sc.refill_head().rTime < MAX_RELEASE_TIME) {
+            usage -= sc.refill_head().rAmount;
+
+            if (sc.refill_single()) {
+                sc.refill_head().rTime += sc.scPeriod;
+            } else {
+                let old_head = sc.refill_pop_head();
+                (*old_head).rTime += sc.scPeriod;
+                schedule_used(sc, (*old_head).rTime, (*old_head).rAmount);
+            }
+        }
+        if (usage > 0 && sc.refill_head().rTime < MAX_RELEASE_TIME) {
+            assert(sc.refill_head().rAmount > usage);
+            let new_rTime = sc.refill_head().rTime + sc.scPeriod;
+            let new_rAmount = usage;
+
+            sc.refill_head().rAmount -= usage;
+            sc.refill_head().rTime += usage;
+            schedule_used(sc, new_rTime, new_rAmount);
+        }
+        while (sc.refill_head().rAmount < MIN_BUDGET) {
+            let head = sc.refill_pop_head();
+            (*sc.refill_head()).rAmount += head.rAmount;
+            (*sc.refill_head()).rTime -= head.rAmount;
         }
     }
 }

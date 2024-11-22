@@ -16,7 +16,7 @@ use sel4_common::sel4_config::{
     L2_BITMAP_SIZE, NUM_READY_QUEUES, TCB_OFFSET,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
-use sel4_common::{BIT, MASK};
+use sel4_common::{println, BIT, MASK};
 
 use crate::deps::ksIdleThreadTCB;
 #[cfg(feature = "KERNEL_MCS")]
@@ -535,6 +535,58 @@ pub fn setNextInterrupt() {
         timer.setDeadline(next_interrupt - getTimerPrecision());
     }
 }
+#[cfg(feature = "KERNEL_MCS")]
+pub fn commitTime() {
+    unsafe {
+        let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        if likely(current_sched_context.scRefillMax != 0 && ksCurSC != ksIdleSC) {
+            if (likely(ksConsumed > 0)) {
+                assert!(current_sched_context.refill_sufficient(ksConsumed));
+                assert!(current_sched_context.refill_ready());
+
+                if (current_sched_context.is_round_robin()) {
+                    assert!(current_sched_context.refill_size() == MIN_REFILLS);
+                    (*current_sched_context.refill_head()).rAmount -= ksConsumed;
+                    (*current_sched_context.refill_tail()).rAmount += ksConsumed;
+                } else {
+                    current_sched_context.refill_budget_check();
+                }
+                assert!(current_sched_context.refill_sufficient(0));
+                assert!(current_sched_context.refill_ready());
+            }
+            current_sched_context.scConsumed += ksConsumed;
+        }
+    }
+}
+#[cfg(feature = "KERNEL_MCS")]
+pub fn switch_sched_context() {
+    let thread = get_currenct_thread();
+    unsafe {
+        if unlikely(ksCurSC != thread.tcbSchedContext) {
+            ksReprogram = true;
+            if convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
+                .sc_constant_bandwidth()
+            {
+                convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
+                    .refill_unblock_check();
+            }
+
+            assert!(
+                convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext).refill_ready()
+            );
+            assert!(
+                convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
+                    .refill_sufficient(0)
+            );
+        }
+
+        if ksReprogram {
+            commitTime();
+        }
+
+        ksCurSC = thread.tcbSchedContext;
+    }
+}
 
 #[no_mangle]
 /// Schedule threads.
@@ -583,8 +635,11 @@ pub fn schedule() {
     }
     #[cfg(feature = "KERNEL_MCS")]
     {
-        setNextInterrupt();
-        unsafe { ksReprogram = false };
+        switch_sched_context();
+        if unsafe { ksReprogram } {
+            setNextInterrupt();
+            unsafe { ksReprogram = false };
+        }
     }
 }
 
