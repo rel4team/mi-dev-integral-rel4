@@ -4,11 +4,14 @@ use core::{
 };
 
 use sel4_common::{
-    arch::{getKernelWcetTicks, getKernelWcetUs, getMaxTicksToUs, ticksToUs, ArchReg::MsgInfo},
+    arch::{
+        getKernelWcetTicks, getKernelWcetUs, getMaxTicksToUs, getMaxUsToTicks, ticksToUs,
+        usToTicks, ArchReg::MsgInfo,
+    },
     message_info::seL4_MessageInfo_func,
     platform::time_def::{ticks_t, time_t},
     println,
-    sel4_config::CONFIG_KERNEL_WCET_SCALE,
+    sel4_config::{CONFIG_KERNEL_WCET_SCALE, UINT64_MAX},
     shared_types_bf_gen::seL4_MessageInfo,
     structures_gen::{notification, notification_t},
     utils::convert_to_mut_type_ref,
@@ -50,6 +53,12 @@ pub fn MIN_BUDGET_US() -> time_t {
 }
 pub fn MIN_BUDGET() -> time_t {
     2 * getKernelWcetTicks() * CONFIG_KERNEL_WCET_SCALE
+}
+pub fn MAX_PERIOD_US() -> time_t {
+    getMaxUsToTicks() / 8
+}
+pub fn MAX_RELEASE_TIME() -> time_t {
+    UINT64_MAX - 5 * usToTicks(MAX_PERIOD_US())
 }
 
 impl sched_context {
@@ -201,6 +210,16 @@ impl sched_context {
     #[inline]
     pub fn schedule_used(&mut self, new_rTime: ticks_t, new_rAmount: ticks_t) {
         // TODO: MCS
+        unsafe {
+            if unlikely((*self.refill_tail()).rTime + (*self.refill_tail()).rAmount >= new_rTime) {
+                (*self.refill_tail()).rAmount += new_rAmount;
+            } else if likely(!self.refill_full()) {
+                self.refill_add_tail(new_rTime, new_rAmount);
+            } else {
+                (*self.refill_tail()).rTime = new_rTime - (*self.refill_tail()).rAmount;
+                (*self.refill_tail()).rAmount += new_rAmount;
+            }
+        }
     }
 
     pub fn schedContext_resume(&mut self) {
@@ -291,35 +310,37 @@ impl sched_context {
         }
     }
 }
-pub fn refill_budget_check(usage: ticks_t) {
+pub fn refill_budget_check(_usage: ticks_t) {
     unsafe {
+        let mut usage = _usage;
         let sc = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
         assert!(!sc.is_round_robin());
 
-        while (sc.refill_head().rAmount <= usage && sc.refill_head().rTime < MAX_RELEASE_TIME) {
-            usage -= sc.refill_head().rAmount;
+        while (*sc.refill_head()).rAmount <= usage && (*sc.refill_head()).rTime < MAX_RELEASE_TIME()
+        {
+            usage -= (*sc.refill_head()).rAmount;
 
-            if (sc.refill_single()) {
-                sc.refill_head().rTime += sc.scPeriod;
+            if sc.refill_single() {
+                (*sc.refill_head()).rTime += sc.scPeriod;
             } else {
                 let old_head = sc.refill_pop_head();
                 (*old_head).rTime += sc.scPeriod;
-                schedule_used(sc, (*old_head).rTime, (*old_head).rAmount);
+                sc.schedule_used((*old_head).rTime, (*old_head).rAmount);
             }
         }
-        if (usage > 0 && sc.refill_head().rTime < MAX_RELEASE_TIME) {
-            assert(sc.refill_head().rAmount > usage);
-            let new_rTime = sc.refill_head().rTime + sc.scPeriod;
+        if usage > 0 && (*sc.refill_head()).rTime < MAX_RELEASE_TIME() {
+            assert!((*sc.refill_head()).rAmount > usage);
+            let new_rTime = (*sc.refill_head()).rTime + sc.scPeriod;
             let new_rAmount = usage;
 
-            sc.refill_head().rAmount -= usage;
-            sc.refill_head().rTime += usage;
-            schedule_used(sc, new_rTime, new_rAmount);
+            (*sc.refill_head()).rAmount -= usage;
+            (*sc.refill_head()).rTime += usage;
+            sc.schedule_used(new_rTime, new_rAmount);
         }
-        while (sc.refill_head().rAmount < MIN_BUDGET) {
+        while (*sc.refill_head()).rAmount < MIN_BUDGET() {
             let head = sc.refill_pop_head();
-            (*sc.refill_head()).rAmount += head.rAmount;
-            (*sc.refill_head()).rTime -= head.rAmount;
+            (*sc.refill_head()).rAmount += (*head).rAmount;
+            (*sc.refill_head()).rTime -= (*head).rAmount;
         }
     }
 }

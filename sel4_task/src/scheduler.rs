@@ -25,7 +25,7 @@ use crate::tcb::{set_thread_state, tcb_t};
 use crate::tcb_queue::tcb_queue_t;
 use crate::thread_state::ThreadState;
 #[cfg(feature = "KERNEL_MCS")]
-use crate::{deps::ksIdleThreadSC, tcb_Release_Dequeue};
+use crate::{deps::ksIdleThreadSC, sched_context::refill_budget_check, tcb_Release_Dequeue};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::utils::cpu_id;
 #[cfg(feature = "KERNEL_MCS")]
@@ -540,7 +540,7 @@ pub fn commitTime() {
     unsafe {
         let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
         if likely(current_sched_context.scRefillMax != 0 && ksCurSC != ksIdleSC) {
-            if (likely(ksConsumed > 0)) {
+            if likely(ksConsumed > 0) {
                 assert!(current_sched_context.refill_sufficient(ksConsumed));
                 assert!(current_sched_context.refill_ready());
 
@@ -549,7 +549,7 @@ pub fn commitTime() {
                     (*current_sched_context.refill_head()).rAmount -= ksConsumed;
                     (*current_sched_context.refill_tail()).rAmount += ksConsumed;
                 } else {
-                    current_sched_context.refill_budget_check();
+                    refill_budget_check(ksConsumed);
                 }
                 assert!(current_sched_context.refill_sufficient(0));
                 assert!(current_sched_context.refill_ready());
