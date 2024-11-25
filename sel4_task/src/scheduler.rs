@@ -451,6 +451,7 @@ fn chooseThread() {
 }
 
 #[no_mangle]
+#[cfg(not(feature="KERNEL_MCS"))]
 /// Reschedule threads, and enqueue the current thread if current ks scheduler action is not to resume the current thread and choose new thread.
 pub fn rescheduleRequired() {
     if get_ks_scheduler_action() != SchedulerAction_ResumeCurrentThread
@@ -459,6 +460,24 @@ pub fn rescheduleRequired() {
         convert_to_mut_type_ref::<tcb_t>(get_ks_scheduler_action()).sched_enqueue();
     }
     // ksSchedulerAction = SchedulerAction_ChooseNewThread;
+    set_ks_scheduler_action(SchedulerAction_ChooseNewThread);
+}
+#[no_mangle]
+#[cfg(feature="KERNEL_MCS")]
+/// Reschedule threads, and enqueue the current thread if current ks scheduler action is not to resume the current thread and choose new thread.
+pub fn rescheduleRequired() {
+	let action = get_ks_scheduler_action();
+    if action != SchedulerAction_ResumeCurrentThread
+        && action != SchedulerAction_ChooseNewThread
+    {
+		let action_tcb = convert_to_mut_type_ref::<tcb_t>(action);
+		if action_tcb.is_schedulable(){
+			let action_sched_context = convert_to_mut_type_ref::<sched_context_t>(action_tcb.tcbSchedContext);
+			assert!(action_sched_context.refill_sufficient(0));
+			assert!(action_sched_context.refill_ready());
+			action_tcb.sched_enqueue();
+		}
+    }
     set_ks_scheduler_action(SchedulerAction_ChooseNewThread);
 }
 #[cfg(feature = "KERNEL_MCS")]
@@ -595,7 +614,7 @@ pub fn chargeBudget(consumed: ticks_t, canTimeoutFault: bool) {
         }
         ksConsumed = 0;
         let thread = get_currenct_thread();
-        if likely(thread.is_runnable()) {
+        if likely(thread.is_schedulable()) {
             assert!(thread.tcbSchedContext == ksCurSC);
             endTimeslice(canTimeoutFault);
             rescheduleRequired();
@@ -667,7 +686,7 @@ pub fn schedule() {
     if get_ks_scheduler_action() != SchedulerAction_ResumeCurrentThread {
         let was_runnable: bool;
         let current_tcb = get_currenct_thread();
-        if current_tcb.is_runnable() {
+        if current_tcb.is_schedulable() {
             was_runnable = true;
             current_tcb.sched_enqueue();
         } else {
@@ -679,6 +698,7 @@ pub fn schedule() {
         } else {
             // let candidate = ksSchedulerAction as *mut tcb_t;
             let candidate = convert_to_mut_type_ref::<tcb_t>(get_ks_scheduler_action());
+			assert!(candidate.is_schedulable());
             let fastfail = get_currenct_thread().get_ptr() == get_idle_thread().get_ptr()
                 || candidate.tcbPriority < get_currenct_thread().tcbPriority;
             if fastfail && !isHighestPrio(unsafe { ksCurDomain }, candidate.tcbPriority) {
@@ -716,7 +736,7 @@ pub fn schedule() {
 pub fn schedule_tcb(tcb_ref: &tcb_t) {
     if tcb_ref.get_ptr() == get_currenct_thread_unsafe().get_ptr()
         && get_ks_scheduler_action() == SchedulerAction_ResumeCurrentThread
-        && !tcb_ref.is_runnable()
+        && !tcb_ref.is_schedulable()
     {
         rescheduleRequired();
     }

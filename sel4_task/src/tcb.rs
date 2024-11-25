@@ -136,6 +136,19 @@ impl tcb_t {
             _ => false,
         }
     }
+    #[inline]
+    #[cfg(not(feature = "KERNEL_MCS"))]
+    pub fn is_schedulable(&self) -> bool {
+        self.is_runnable()
+    }
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn is_schedulable(&self) -> bool {
+        self.is_runnable()
+            && self.tcbSchedContext != 0
+            && convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).scRefillMax > 0
+            && self.tcbState.get_tcbInReleaseQueue() == 0
+    }
 
     #[inline]
     /// Check if the TCB is current by comparing the tcb pointer
@@ -227,7 +240,7 @@ impl tcb_t {
     pub fn set_domain(&mut self, dom: usize) {
         self.sched_dequeue();
         self.domain = dom;
-        if self.is_runnable() {
+        if self.is_schedulable() {
             self.sched_enqueue();
         }
 
@@ -238,6 +251,11 @@ impl tcb_t {
 
     /// Enqueue the TCB to the scheduling queue
     pub fn sched_enqueue(&mut self) {
+		#[cfg(feature="KERNEL_MCS")]
+		{
+			assert!(self.is_schedulable());
+			assert!(convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_sufficient(0));
+		}
         let self_ptr = self as *mut tcb_t;
         if self.tcbState.get_tcbQueued() == 0 {
             let dom = self.domain;
@@ -321,6 +339,12 @@ impl tcb_t {
     /// # Note
     /// This function is as same as `sched_enqueue`, but it is used for the EP queue
     pub fn sched_append(&mut self) {
+		#[cfg(feature="KERNEL_MCS")]
+		{
+			assert!(self.is_schedulable());
+			assert!(convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_sufficient(0));
+			assert!(convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_ready());
+		}
         let self_ptr = self as *mut tcb_t;
         if self.tcbState.get_tcbQueued() == 0 {
             let dom = self.domain;
@@ -930,8 +954,10 @@ impl tcb_t {
     #[inline]
     #[cfg(feature = "KERNEL_MCS")]
     pub fn validTimeoutHandler(&mut self) -> bool {
-        let cte = convert_to_mut_type_ref::<cte_t>(self.get_ptr() & ! MASK!(seL4_TCBBits) + tcbTimeoutHandler);
-		cte.capability.get_tag() == cap_tag::cap_endpoint_cap
+        let cte = convert_to_mut_type_ref::<cte_t>(
+            self.get_ptr() & !MASK!(seL4_TCBBits) + tcbTimeoutHandler,
+        );
+        cte.capability.get_tag() == cap_tag::cap_endpoint_cap
     }
 }
 
