@@ -8,11 +8,18 @@ use sel4_common::structures_gen::{cap, cap_tag, notification};
 use sel4_ipc::notification_func;
 use sel4_task::{activateThread, schedule, timerTick};
 
+#[cfg(feature="KERNEL_MCS")]
+use sel4_task::{checkBudget,updateTimestamp};
 #[cfg(feature = "KERNEL_MCS")]
 use sel4_task::ksReprogram;
 
 #[no_mangle]
 pub fn handleInterruptEntry() -> exception_t {
+    #[cfg(feature = "KERNEL_MCS")]
+    {
+        updateTimestamp();
+        checkBudget();
+    }
     let irq = getActiveIRQ();
 
     if irq != irqInvalid {

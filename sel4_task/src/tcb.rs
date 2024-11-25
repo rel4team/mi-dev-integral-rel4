@@ -927,6 +927,12 @@ impl tcb_t {
             self.schedContext_cancelYieldTo();
         }
     }
+    #[inline]
+    #[cfg(feature = "KERNEL_MCS")]
+    pub fn validTimeoutHandler(&mut self) -> bool {
+        let cte = convert_to_mut_type_ref::<cte_t>(self.get_ptr() & ! MASK!(seL4_TCBBits) + tcbTimeoutHandler);
+		cte.capability.get_tag() == cap_tag::cap_endpoint_cap
+    }
 }
 
 #[inline]

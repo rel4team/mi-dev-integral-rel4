@@ -255,6 +255,36 @@ pub fn handle_fault(thread: &mut tcb_t) {
         set_thread_state(thread, ThreadState::ThreadStateInactive);
     }
 }
+#[inline]
+#[cfg(feature = "KERNEL_MCS")]
+pub fn handleTimeout(tptr: &mut tcb_t) {
+    assert!(tptr.validTimeoutHandler());
+    send_fault_ipc(tptr);
+}
+#[inline]
+#[cfg(feature = "KERNEL_MCS")]
+#[no_mangle]
+pub fn endTimeslice(can_timeout_fault: bool) {
+    use sel4_common::structures_gen::seL4_Fault_Timeout;
+    use sel4_task::{ksCurSC, sched_context::sched_context_t};
+
+    unsafe {
+        let thread = get_currenct_thread();
+        let sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        if can_timeout_fault && !sched_context.is_round_robin() && thread.validTimeoutHandler() {
+            current_fault = seL4_Fault_Timeout::new(sched_context.scBadge as u64).unsplay();
+            handleTimeout(thread);
+        } else if sched_context.refill_ready() && sched_context.refill_sufficient(0) {
+            /* apply round robin */
+            assert!(sched_context.refill_sufficient(0));
+            assert!(thread.tcbState.get_tcbQueued() != 0);
+            thread.sched_append();
+        } else {
+            /* postpone until ready */
+            sched_context.postpone();
+        }
+    }
+}
 // #[cfg(feature="KERNEL_MCS")]
 // #[inline]
 // pub fn lookupReply() -> lookupCap_ret_t

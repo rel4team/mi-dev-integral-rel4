@@ -16,7 +16,7 @@ use sel4_common::sel4_config::{
     L2_BITMAP_SIZE, NUM_READY_QUEUES, TCB_OFFSET,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
-use sel4_common::{println, BIT, MASK};
+use sel4_common::{BIT, MASK};
 
 use crate::deps::ksIdleThreadTCB;
 #[cfg(feature = "KERNEL_MCS")]
@@ -498,11 +498,50 @@ pub fn isCurDomainExpired() -> bool {
     numDomains > 1 && unsafe { ksDomainTime } == 0
 }
 #[cfg(feature = "KERNEL_MCS")]
+pub fn updateTimestamp() {
+    use sel4_common::{
+        platform::{timer, Timer_func},
+        sel4_config::numDomains,
+    };
+
+    use crate::sched_context::{MAX_RELEASE_TIME, MIN_BUDGET};
+
+    unsafe {
+        let prev = ksCurTime;
+        ksCurTime = timer.getCurrentTime();
+        assert!(ksCurTime < MAX_RELEASE_TIME());
+        let consumed = ksCurTime - prev;
+        ksConsumed += consumed;
+        if numDomains > 1 {
+            if consumed + MIN_BUDGET() >= ksDomainTime {
+                ksDomainTime = 0;
+            } else {
+                ksDomainTime -= consumed;
+            }
+        }
+    }
+}
+#[cfg(feature = "KERNEL_MCS")]
 pub fn checkDomainTime() {
     if unlikely(isCurDomainExpired()) {
         unsafe { ksReprogram = true };
         rescheduleRequired();
     }
+}
+#[cfg(feature = "KERNEL_MCS")]
+pub fn checkBudget() -> bool {
+    unsafe {
+        let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        assert!(current_sched_context.refill_ready());
+        if likely(current_sched_context.refill_sufficient(ksConsumed)) {
+            if unlikely(isCurDomainExpired()) {
+                return false;
+            }
+            return true;
+        }
+        chargeBudget(ksConsumed, true);
+    }
+    false
 }
 #[cfg(feature = "KERNEL_MCS")]
 pub fn setNextInterrupt() {
@@ -533,6 +572,35 @@ pub fn setNextInterrupt() {
             );
         }
         timer.setDeadline(next_interrupt - getTimerPrecision());
+    }
+}
+#[cfg(feature = "KERNEL_MCS")]
+pub fn chargeBudget(consumed: ticks_t, canTimeoutFault: bool) {
+    use crate::{endTimeslice, sched_context::MIN_BUDGET};
+
+    unsafe {
+        if likely(ksCurSC != ksIdleSC) {
+            let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+            if current_sched_context.is_round_robin() {
+                assert!(current_sched_context.refill_size() == MIN_REFILLS);
+                (*current_sched_context.refill_head()).rAmount +=
+                    (*current_sched_context.refill_tail()).rAmount;
+                (*current_sched_context.refill_tail()).rAmount = 0;
+            } else {
+                refill_budget_check(consumed);
+            }
+
+            assert!((*current_sched_context.refill_head()).rAmount >= MIN_BUDGET());
+            current_sched_context.scConsumed += consumed;
+        }
+        ksConsumed = 0;
+        let thread = get_currenct_thread();
+        if likely(thread.is_runnable()) {
+            assert!(thread.tcbSchedContext == ksCurSC);
+            endTimeslice(canTimeoutFault);
+            rescheduleRequired();
+            ksReprogram = true;
+        }
     }
 }
 #[cfg(feature = "KERNEL_MCS")]

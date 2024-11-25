@@ -36,11 +36,10 @@ pub extern "C" fn setMCPriority(tcb: &mut tcb_t, prio: prio_t) {
 pub extern "C" fn setPriority(tcb: &mut tcb_t, prio: prio_t) {
     tcb.set_priority(prio);
 }
-
+#[cfg(feature = "KERNEL_MCS")]
 extern "C" {
     // reorder ep and reorder ntfn is a circular reference problem
-    #[cfg(feature = "KERNEL_MCS")]
     pub fn reorder_EP(ep: &mut endpoint, thread: &mut tcb_t);
-    #[cfg(feature = "KERNEL_MCS")]
     pub fn reorder_NTFN(ntfn: &mut notification, thread: &mut tcb_t);
+    pub fn endTimeslice(can_timeout_fault: bool);
 }
