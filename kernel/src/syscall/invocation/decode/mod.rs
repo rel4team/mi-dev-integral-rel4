@@ -104,21 +104,29 @@ pub fn decode_invocation(
         }
 
         cap_Splayed::reply_cap(data) => {
-            if unlikely(data.get_capReplyMaster() != 0) {
-                debug!("Attempted to invoke an invalid reply cap {}.", cap_index);
-                unsafe {
-                    current_syscall_error._type = seL4_InvalidCapability;
-                    current_syscall_error.invalidCapNumber = 0;
-                    return exception_t::EXCEPTION_SYSCALL_ERROR;
-                }
+            #[cfg(feature = "KERNEL_MCS")]
+            {
+                // TODO: MCS
+                exception_t::EXCEPTION_NONE
             }
-            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            get_currenct_thread().do_reply(
-                convert_to_mut_type_ref::<tcb_t>(data.get_capTCBPtr() as usize),
-                slot,
-                data.get_capReplyCanGrant() != 0,
-            );
-            exception_t::EXCEPTION_NONE
+            #[cfg(not(feature = "KERNEL_MCS"))]
+            {
+                if unlikely(data.get_capReplyMaster() != 0) {
+                    debug!("Attempted to invoke an invalid reply cap {}.", cap_index);
+                    unsafe {
+                        current_syscall_error._type = seL4_InvalidCapability;
+                        current_syscall_error.invalidCapNumber = 0;
+                        return exception_t::EXCEPTION_SYSCALL_ERROR;
+                    }
+                }
+                set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+                get_currenct_thread().do_reply(
+                    convert_to_mut_type_ref::<tcb_t>(data.get_capTCBPtr() as usize),
+                    slot,
+                    data.get_capReplyCanGrant() != 0,
+                );
+                exception_t::EXCEPTION_NONE
+            }
         }
         cap_Splayed::thread_cap(data) => {
             decode_tcb_invocation(label, length, &data, slot, call, buffer)
