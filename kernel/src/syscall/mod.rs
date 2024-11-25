@@ -56,7 +56,10 @@ pub const SysDebugHalt: isize = SysDebugDumpScheduler - 1;
 pub const SysDebugCapIdentify: isize = SysDebugHalt - 1;
 pub const SysDebugSnapshot: isize = SysDebugCapIdentify - 1;
 pub const SysDebugNameThread: isize = SysDebugSnapshot - 1;
+#[cfg(not(feature = "KERNEL_MCS"))]
 pub const SysGetClock: isize = -30;
+#[cfg(feature = "KERNEL_MCS")]
+pub const SysGetClock: isize = -33;
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{
     cap, cap_Splayed, cap_tag, endpoint, lookup_fault_missing_capability, notification,
