@@ -277,7 +277,7 @@ pub fn endTimeslice(can_timeout_fault: bool) {
         } else if sched_context.refill_ready() && sched_context.refill_sufficient(0) {
             /* apply round robin */
             assert!(sched_context.refill_sufficient(0));
-            assert!(thread.tcbState.get_tcbQueued() != 0);
+            assert!(thread.tcbState.get_tcbQueued() == 0);
             thread.sched_append();
         } else {
             /* postpone until ready */
