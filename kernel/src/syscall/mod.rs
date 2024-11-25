@@ -203,7 +203,21 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
             // TODO: MCS
             handle_recv(true, true);
         }
-        // TODO: MCS
+		SysWait => {
+			handle_recv(true,false);
+		}
+		SysNBWait => {
+			handle_recv(false,false);
+		}
+		SysReplyRecv => {
+			// TODO: MCS
+		}
+		SysNBSendRecv => {
+			// TODO: MCS
+		}
+		SysNBSendWait => {
+			// TODO: MCS
+		}
         SysNBRecv => {
             // TODO: MCS
             handle_recv(true, true)
