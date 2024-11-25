@@ -451,7 +451,7 @@ fn chooseThread() {
 }
 
 #[no_mangle]
-#[cfg(not(feature="KERNEL_MCS"))]
+#[cfg(not(feature = "KERNEL_MCS"))]
 /// Reschedule threads, and enqueue the current thread if current ks scheduler action is not to resume the current thread and choose new thread.
 pub fn rescheduleRequired() {
     if get_ks_scheduler_action() != SchedulerAction_ResumeCurrentThread
@@ -463,20 +463,19 @@ pub fn rescheduleRequired() {
     set_ks_scheduler_action(SchedulerAction_ChooseNewThread);
 }
 #[no_mangle]
-#[cfg(feature="KERNEL_MCS")]
+#[cfg(feature = "KERNEL_MCS")]
 /// Reschedule threads, and enqueue the current thread if current ks scheduler action is not to resume the current thread and choose new thread.
 pub fn rescheduleRequired() {
-	let action = get_ks_scheduler_action();
-    if action != SchedulerAction_ResumeCurrentThread
-        && action != SchedulerAction_ChooseNewThread
-    {
-		let action_tcb = convert_to_mut_type_ref::<tcb_t>(action);
-		if action_tcb.is_schedulable(){
-			let action_sched_context = convert_to_mut_type_ref::<sched_context_t>(action_tcb.tcbSchedContext);
-			assert!(action_sched_context.refill_sufficient(0));
-			assert!(action_sched_context.refill_ready());
-			action_tcb.sched_enqueue();
-		}
+    let action = get_ks_scheduler_action();
+    if action != SchedulerAction_ResumeCurrentThread && action != SchedulerAction_ChooseNewThread {
+        let action_tcb = convert_to_mut_type_ref::<tcb_t>(action);
+        if action_tcb.is_schedulable() {
+            let action_sched_context =
+                convert_to_mut_type_ref::<sched_context_t>(action_tcb.tcbSchedContext);
+            assert!(action_sched_context.refill_sufficient(0));
+            assert!(action_sched_context.refill_ready());
+            action_tcb.sched_enqueue();
+        }
     }
     set_ks_scheduler_action(SchedulerAction_ChooseNewThread);
 }
@@ -698,7 +697,7 @@ pub fn schedule() {
         } else {
             // let candidate = ksSchedulerAction as *mut tcb_t;
             let candidate = convert_to_mut_type_ref::<tcb_t>(get_ks_scheduler_action());
-			assert!(candidate.is_schedulable());
+            assert!(candidate.is_schedulable());
             let fastfail = get_currenct_thread().get_ptr() == get_idle_thread().get_ptr()
                 || candidate.tcbPriority < get_currenct_thread().tcbPriority;
             if fastfail && !isHighestPrio(unsafe { ksCurDomain }, candidate.tcbPriority) {

@@ -224,7 +224,8 @@ impl sched_context {
 
     pub fn schedContext_resume(&mut self) {
         assert!(self.get_ptr() != 0 || self.scTcb != 0);
-        if likely(self.get_ptr() != 0) && convert_to_mut_type_ref::<tcb_t>(self.scTcb).is_schedulable()
+        if likely(self.get_ptr() != 0)
+            && convert_to_mut_type_ref::<tcb_t>(self.scTcb).is_schedulable()
         {
             if !(self.refill_ready() && self.refill_sufficient(0)) {
                 assert!(

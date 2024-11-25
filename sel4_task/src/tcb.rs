@@ -251,11 +251,14 @@ impl tcb_t {
 
     /// Enqueue the TCB to the scheduling queue
     pub fn sched_enqueue(&mut self) {
-		#[cfg(feature="KERNEL_MCS")]
-		{
-			assert!(self.is_schedulable());
-			assert!(convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_sufficient(0));
-		}
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            assert!(self.is_schedulable());
+            assert!(
+                convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext)
+                    .refill_sufficient(0)
+            );
+        }
         let self_ptr = self as *mut tcb_t;
         if self.tcbState.get_tcbQueued() == 0 {
             let dom = self.domain;
@@ -339,12 +342,17 @@ impl tcb_t {
     /// # Note
     /// This function is as same as `sched_enqueue`, but it is used for the EP queue
     pub fn sched_append(&mut self) {
-		#[cfg(feature="KERNEL_MCS")]
-		{
-			assert!(self.is_schedulable());
-			assert!(convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_sufficient(0));
-			assert!(convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_ready());
-		}
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            assert!(self.is_schedulable());
+            assert!(
+                convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext)
+                    .refill_sufficient(0)
+            );
+            assert!(
+                convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_ready()
+            );
+        }
         let self_ptr = self as *mut tcb_t;
         if self.tcbState.get_tcbQueued() == 0 {
             let dom = self.domain;
@@ -954,9 +962,7 @@ impl tcb_t {
     #[inline]
     #[cfg(feature = "KERNEL_MCS")]
     pub fn validTimeoutHandler(&mut self) -> bool {
-        let cte = convert_to_mut_type_ref::<cte_t>(
-            self.get_ptr() & !MASK!(seL4_TCBBits) + tcbTimeoutHandler,
-        );
+        let cte = self.get_cspace(tcbTimeoutHandler);
         cte.capability.get_tag() == cap_tag::cap_endpoint_cap
     }
 }

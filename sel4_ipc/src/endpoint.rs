@@ -28,6 +28,7 @@ pub trait endpoint_func {
     fn cancel_ipc(&mut self, tcb: &mut tcb_t);
     fn cancel_all_ipc(&mut self);
     fn cancel_badged_sends(&mut self, badge: usize);
+    #[cfg(not(feature = "KERNEL_MCS"))]
     fn send_ipc(
         &mut self,
         src_thread: &mut tcb_t,
@@ -36,6 +37,17 @@ pub trait endpoint_func {
         can_grant: bool,
         badge: usize,
         can_grant_reply: bool,
+    );
+    #[cfg(feature = "KERNEL_MCS")]
+    fn send_ipc(
+        &mut self,
+        src_thread: &mut tcb_t,
+        blocking: bool,
+        do_call: bool,
+        can_grant: bool,
+        badge: usize,
+        can_grant_reply: bool,
+        canDonate: bool,
     );
     fn receive_ipc(&mut self, thread: &mut tcb_t, is_blocking: bool, grant: bool);
     #[cfg(feature = "KERNEL_MCS")]
@@ -213,6 +225,7 @@ impl endpoint_func for endpoint {
         can_grant: bool,
         badge: usize,
         can_grant_reply: bool,
+        canDonate: bool,
     ) {
         match self.get_ep_state() {
             EPState::Idle | EPState::Send => {

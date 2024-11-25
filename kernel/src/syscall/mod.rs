@@ -213,7 +213,35 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
     activateThread();
     exception_t::EXCEPTION_NONE
 }
-
+#[cfg(feature = "KERNEL_MCS")]
+fn send_fault_ipc(thread: &mut tcb_t, handlerCap: &cap, can_donate: bool) -> bool {
+    // TODO: MCS
+    if handlerCap.get_tag() == cap_tag::cap_endpoint_cap {
+        assert!(cap::cap_endpoint_cap(&handlerCap).get_capCanSend() != 0);
+        assert!(
+            cap::cap_endpoint_cap(&handlerCap).get_capCanGrant() != 0
+                || cap::cap_endpoint_cap(&handlerCap).get_capCanGrantReply() != 0
+        );
+        thread.tcbFault = unsafe { current_fault.clone() };
+        convert_to_mut_type_ref::<endpoint>(
+            cap::cap_endpoint_cap(&handlerCap).get_capEPPtr() as usize
+        )
+        .send_ipc(
+            thread,
+            true,
+            false,
+            cap::cap_endpoint_cap(&handlerCap).get_capCanGrant() != 0,
+            cap::cap_endpoint_cap(&handlerCap).get_capEPBadge() as usize,
+            cap::cap_endpoint_cap(&handlerCap).get_capCanGrantReply() != 0,
+            can_donate,
+        );
+        return true;
+    } else {
+        assert!(handlerCap.get_tag() == cap_tag::cap_null_cap);
+        return false;
+    }
+}
+#[cfg(not(feature = "KERNEL_MCS"))]
 fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
     let origin_lookup_fault = unsafe { current_lookup_fault.clone() };
     let lu_ret = thread.lookup_slot(thread.tcbFaultHandler);
@@ -250,6 +278,7 @@ fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
 }
 
 #[inline]
+#[cfg(not(feature = "KERNEL_MCS"))]
 pub fn handle_fault(thread: &mut tcb_t) {
     if send_fault_ipc(thread) != exception_t::EXCEPTION_NONE {
         set_thread_state(thread, ThreadState::ThreadStateInactive);
@@ -257,9 +286,22 @@ pub fn handle_fault(thread: &mut tcb_t) {
 }
 #[inline]
 #[cfg(feature = "KERNEL_MCS")]
+pub fn handle_fault(thread: &mut tcb_t) {
+    use sel4_common::sel4_config::tcbFaultHandler;
+    let cte = thread.get_cspace(tcbFaultHandler);
+    let hasFaultHandler = send_fault_ipc(thread, &cte.capability, thread.tcbSchedContext != 0);
+    if !hasFaultHandler {
+        set_thread_state(thread, ThreadState::ThreadStateInactive);
+    }
+}
+#[inline]
+#[cfg(feature = "KERNEL_MCS")]
 pub fn handleTimeout(tptr: &mut tcb_t) {
+    use sel4_common::sel4_config::tcbTimeoutHandler;
+
     assert!(tptr.validTimeoutHandler());
-    send_fault_ipc(tptr);
+    let cte = tptr.get_cspace(tcbTimeoutHandler);
+    send_fault_ipc(tptr, &cte.capability, false);
 }
 #[inline]
 #[cfg(feature = "KERNEL_MCS")]

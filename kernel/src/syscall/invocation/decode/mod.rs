@@ -187,6 +187,7 @@ pub fn decode_invocation(
                 data.get_capCanGrant() != 0,
                 data.get_capEPBadge() as usize,
                 data.get_capCanGrantReply() != 0,
+                canDonate,
             );
             return exception_t::EXCEPTION_NONE;
         }
