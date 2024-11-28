@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         arch: [riscv64, aarch64]
+        mcs: [OFF, ON]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +35,7 @@ jobs:
       - name: Make rel4_kernel
         run: cd rel4_kernel/kernel && make ARCH=${{ matrix.arch }} run
       - name: Build kernel
-        run: cd kernel && cmake cmake -DCROSS_COMPILER_PREFIX=${{ matrix.arch }}-linux-gnu- -C kernel-settings-${{ matrix.arch }}.cmake -G Ninja -S . -B build
+        run: cd kernel && cmake cmake -DCROSS_COMPILER_PREFIX=${{ matrix.arch }}-linux-gnu- -DMCS=${{matrix.mcs}} -C kernel-settings-${{ matrix.arch }}.cmake -G Ninja -S . -B build
       - name: Build Kernel
         run: cd kernel && ninja -C build
   sel4-test:
