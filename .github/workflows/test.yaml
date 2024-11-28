@@ -44,6 +44,7 @@ jobs:
     strategy:
       matrix:
         platform: [spike, qemu-arm-virt]
+        mcs: [off, on]
         include:
           - platform: qemu-arm-virt
             arch: aarch64
@@ -77,10 +78,11 @@ jobs:
         env:
           ARCH: ${{ matrix.arch  }}
           PLATFORM: ${{ matrix.platform }}
+          MCS: ${{ matrix.mcs }}
         run: |
           echo $ARCH
           echo $PLATFORM
-          cd rel4_kernel && ./build.py -p $PLATFORM
+          cd rel4_kernel && ./build.py -p $PLATFORM -m $MCS
       - name: simulate
         env:
           ARCH: ${{ matrix.arch  }}
