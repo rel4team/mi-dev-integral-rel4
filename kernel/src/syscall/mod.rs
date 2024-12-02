@@ -68,8 +68,8 @@ use sel4_common::structures_gen::{
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
 use sel4_ipc::{endpoint_func, notification_func, Transfer};
 use sel4_task::{
-    activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
-    ThreadState,
+    activateThread, get_currenct_thread, mcs_preemption_point, rescheduleRequired, schedule,
+    set_thread_state, tcb_t, ThreadState,
 };
 pub use utils::*;
 
@@ -200,28 +200,48 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
             }
         }
         SysRecv => {
-            // TODO: MCS
             handle_recv(true, true);
         }
-		SysWait => {
-			handle_recv(true,false);
-		}
-		SysNBWait => {
-			handle_recv(false,false);
-		}
-		SysReplyRecv => {
-			// TODO: MCS
-		}
-		SysNBSendRecv => {
-			// TODO: MCS
-		}
-		SysNBSendWait => {
-			// TODO: MCS
-		}
-        SysNBRecv => {
-            // TODO: MCS
-            handle_recv(true, true)
+        SysWait => {
+            handle_recv(true, false);
         }
+        SysNBWait => {
+            handle_recv(false, false);
+        }
+        SysReplyRecv => {
+            let reply = get_currenct_thread().tcbArch.get_register(Reply);
+            let ret = handleInvocation(false, false, true, true, reply);
+            assert!(ret == exception_t::EXCEPTION_NONE);
+            handle_recv(true, true);
+        }
+        SysNBSendRecv => {
+            // TODO: MCS
+            let dest = get_currenct_thread().tcbArch.get_register(nbsRecvDest);
+            let ret = handleInvocation(false, false, true, true, dest);
+            if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                mcs_preemption_point();
+                let irq = getActiveIRQ();
+                if irq != irqInvalid {
+                    handleInterrupt(irq);
+                }
+            } else {
+                handle_recv(true, true);
+            }
+        }
+        SysNBSendWait => {
+            let reply = get_currenct_thread().tcbArch.get_register(Reply);
+            let ret = handleInvocation(false, false, true, true, reply);
+            if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                mcs_preemption_point();
+                let irq = getActiveIRQ();
+                if irq != irqInvalid {
+                    handleInterrupt(irq);
+                }
+            } else {
+                handle_recv(true, false);
+            }
+        }
+        SysNBRecv => handle_recv(false, true),
         SysYield => handle_yield(),
         _ => panic!("Invalid syscall"),
     }

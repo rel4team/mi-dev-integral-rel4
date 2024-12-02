@@ -561,6 +561,19 @@ pub fn checkBudget() -> bool {
     }
     false
 }
+#[inline]
+pub fn mcs_preemption_point() {
+    #[cfg(feature = "KERNEL_MCS")]
+    unsafe {
+        if get_currenct_thread().is_schedulable() {
+            checkBudget();
+        } else if convert_to_mut_type_ref::<sched_context_t>(ksCurSC).scRefillMax != 0 {
+            chargeBudget(ksConsumed, false);
+        } else {
+            ksConsumed = 0;
+        }
+    }
+}
 #[cfg(feature = "KERNEL_MCS")]
 pub fn setNextInterrupt() {
     use sel4_common::{
