@@ -227,6 +227,11 @@ impl endpoint_func for endpoint {
         can_grant_reply: bool,
         canDonate: bool,
     ) {
+        use sel4_common::{
+            structures_gen::seL4_Fault_tag, types_gen::seL4_Fault_tag::seL4_Fault_NullFault,
+        };
+        use sel4_task::{ksCurSC, reply::reply_t, sched_context::sched_context_t};
+
         match self.get_ep_state() {
             EPState::Idle | EPState::Send => {
                 if blocking {
@@ -265,7 +270,43 @@ impl endpoint_func for endpoint {
                 }
                 src_thread.do_ipc_transfer(dest_thread, Some(self), badge, can_grant);
 
-                // TODO: MCS
+                let reply = convert_to_mut_type_ref::<reply_t>(
+                    dest_thread.tcbState.get_replyObject() as usize,
+                );
+                if reply.get_ptr() != 0 {
+                    reply.unlink(dest_thread);
+                }
+                if do_call || src_thread.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault
+                {
+                    if reply.get_ptr() != 0 && (can_grant || can_grant_reply) {
+                        reply.push(src_thread, dest_thread, canDonate);
+                    } else {
+                        set_thread_state(dest_thread, ThreadState::ThreadStateInactive);
+                    }
+                } else if canDonate && dest_thread.tcbSchedContext == 0 {
+                    convert_to_mut_type_ref::<sched_context_t>(src_thread.tcbSchedContext)
+                        .schedContext_donate(dest_thread);
+                }
+
+                assert!(
+                    dest_thread.tcbSchedContext == 0
+                        || convert_to_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext)
+                            .refill_sufficient(0)
+                );
+                assert!(
+                    dest_thread.tcbSchedContext == 0
+                        || convert_to_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext)
+                            .refill_ready()
+                );
+                set_thread_state(dest_thread, ThreadState::ThreadStateRunning);
+                if convert_to_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext)
+                    .sc_sporadic()
+                    && dest_thread.tcbSchedContext != unsafe { ksCurSC }
+                {
+                    convert_to_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext)
+                        .refill_unblock_check();
+                }
+                possible_switch_to(dest_thread);
             }
         }
     }

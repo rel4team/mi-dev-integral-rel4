@@ -1021,3 +1021,7 @@ pub fn tcb_Release_Dequeue() -> *mut tcb_t {
         return detached_head;
     }
 }
+#[cfg(feature = "KERNEL_MCS")]
+pub fn reply_remove_tcb(tcb: &mut tcb_t) {
+    // TODO: MCS
+}

@@ -67,9 +67,11 @@ use sel4_common::structures_gen::{
 };
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
 use sel4_ipc::{endpoint_func, notification_func, Transfer};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::mcs_preemption_point;
 use sel4_task::{
-    activateThread, get_currenct_thread, mcs_preemption_point, rescheduleRequired, schedule,
-    set_thread_state, tcb_t, ThreadState,
+    activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
+    ThreadState,
 };
 pub use utils::*;
 
@@ -345,11 +347,11 @@ pub fn handleTimeout(tptr: &mut tcb_t) {
 #[no_mangle]
 pub fn endTimeslice(can_timeout_fault: bool) {
     use sel4_common::structures_gen::seL4_Fault_Timeout;
-    use sel4_task::{ksCurSC, sched_context::sched_context_t};
+    use sel4_task::get_current_sc;
 
     unsafe {
         let thread = get_currenct_thread();
-        let sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        let sched_context = get_current_sc();
         if can_timeout_fault && !sched_context.is_round_robin() && thread.validTimeoutHandler() {
             current_fault = seL4_Fault_Timeout::new(sched_context.scBadge as u64).unsplay();
             handleTimeout(thread);

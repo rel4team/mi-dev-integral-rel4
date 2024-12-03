@@ -18,8 +18,8 @@ use sel4_common::{
 };
 
 use crate::{
-    get_currenct_thread, ksCurSC, ksCurTime, ksReprogram, ksSchedulerAction, rescheduleRequired,
-    tcb_t,
+    get_currenct_thread, get_current_sc, ksCurSC, ksCurTime, ksReprogram, ksSchedulerAction,
+    rescheduleRequired, tcb_t,
 };
 
 pub type sched_context_t = sched_context;
@@ -283,7 +283,7 @@ impl sched_context {
         to.tcbSchedContext = self.get_ptr()
     }
     pub fn schedContext_bindNtfn(&mut self, ntfn: &mut notification_t) {
-        ntfn.set_ntfnSchedContext(self as *mut _ as u64);
+        ntfn.set_ntfnSchedContext(self.get_ptr() as u64);
         self.scNotification = ntfn as *mut _ as usize;
     }
     pub fn schedContext_unbindNtfn(&mut self) {
@@ -314,7 +314,7 @@ impl sched_context {
 pub fn refill_budget_check(_usage: ticks_t) {
     unsafe {
         let mut usage = _usage;
-        let sc = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        let sc = get_current_sc();
         assert!(!sc.is_round_robin());
 
         while (*sc.refill_head()).rAmount <= usage && (*sc.refill_head()).rTime < MAX_RELEASE_TIME()

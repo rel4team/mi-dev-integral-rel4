@@ -271,6 +271,21 @@ pub fn get_current_domain() -> usize {
 }
 
 #[inline]
+#[cfg(feature = "KERNEL_MCS")]
+pub fn get_current_sc() -> &'static mut sched_context_t {
+    unsafe {
+        #[cfg(feature = "ENABLE_SMP")]
+        {
+            //TODO: SMP
+        }
+        #[cfg(not(feature = "ENABLE_SMP"))]
+        {
+            convert_to_mut_type_ref_unsafe::<sched_context_t>(ksCurSC)
+        }
+    }
+}
+
+#[inline]
 /// Get the index of the ready queue for the given domain and priority level.
 pub fn ready_queues_index(dom: usize, prio: usize) -> usize {
     dom * CONFIG_NUM_PRIORITIES + prio
@@ -549,7 +564,7 @@ pub fn checkDomainTime() {
 #[cfg(feature = "KERNEL_MCS")]
 pub fn checkBudget() -> bool {
     unsafe {
-        let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        let current_sched_context = get_current_sc();
         assert!(current_sched_context.refill_ready());
         if likely(current_sched_context.refill_sufficient(ksConsumed)) {
             if unlikely(isCurDomainExpired()) {
@@ -567,7 +582,7 @@ pub fn mcs_preemption_point() {
     unsafe {
         if get_currenct_thread().is_schedulable() {
             checkBudget();
-        } else if convert_to_mut_type_ref::<sched_context_t>(ksCurSC).scRefillMax != 0 {
+        } else if get_current_sc().scRefillMax != 0 {
             chargeBudget(ksConsumed, false);
         } else {
             ksConsumed = 0;
@@ -611,7 +626,7 @@ pub fn chargeBudget(consumed: ticks_t, canTimeoutFault: bool) {
 
     unsafe {
         if likely(ksCurSC != ksIdleSC) {
-            let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+            let current_sched_context = get_current_sc();
             if current_sched_context.is_round_robin() {
                 assert!(current_sched_context.refill_size() == MIN_REFILLS);
                 (*current_sched_context.refill_head()).rAmount +=
@@ -637,7 +652,7 @@ pub fn chargeBudget(consumed: ticks_t, canTimeoutFault: bool) {
 #[cfg(feature = "KERNEL_MCS")]
 pub fn commitTime() {
     unsafe {
-        let current_sched_context = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+        let current_sched_context = get_current_sc();
         if likely(current_sched_context.scRefillMax != 0 && ksCurSC != ksIdleSC) {
             if likely(ksConsumed > 0) {
                 assert!(current_sched_context.refill_sufficient(ksConsumed));

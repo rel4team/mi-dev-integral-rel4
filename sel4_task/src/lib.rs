@@ -19,7 +19,8 @@ pub mod tcb;
 mod tcb_queue;
 mod thread_state;
 pub use ffi::*;
-pub use ffi::*;
+#[cfg(feature = "KERNEL_MCS")]
+pub mod reply;
 pub use scheduler::*;
 pub use structures::*;
 pub use tcb::*;
