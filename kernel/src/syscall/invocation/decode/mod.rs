@@ -263,7 +263,7 @@ pub fn decode_invocation(
                 }
                 return exception_t::EXCEPTION_NONE;
             }
-            decode_sched_control_invocation(label,length,&data,buffer)
+            decode_sched_control_invocation(label, length, &data, buffer)
         }
         cap_Splayed::sched_context_cap(data) => {
             if unlikely(firstPhase) {
@@ -276,7 +276,7 @@ pub fn decode_invocation(
                 }
                 return exception_t::EXCEPTION_NONE;
             }
-            decode_sched_context_invocation(label,&data,buffer)
+            decode_sched_context_invocation(label, &data, buffer)
         }
         _ => decode_mmu_invocation(label, length, slot, call, buffer),
     }
