@@ -77,8 +77,9 @@ pub use utils::*;
 
 use crate::arch::restore_user_context;
 use crate::interrupt::handler::handleInterrupt;
-use crate::kernel::boot::{current_fault, current_lookup_fault};
+use crate::kernel::boot::current_lookup_fault;
 use crate::{config::irqInvalid, interrupt::getActiveIRQ};
+use sel4_common::ffi::current_fault;
 
 use self::invocation::handleInvocation;
 
@@ -335,6 +336,7 @@ pub fn handle_fault(thread: &mut tcb_t) {
 }
 #[inline]
 #[cfg(feature = "KERNEL_MCS")]
+#[no_mangle]
 pub fn handleTimeout(tptr: &mut tcb_t) {
     use sel4_common::sel4_config::tcbTimeoutHandler;
 
