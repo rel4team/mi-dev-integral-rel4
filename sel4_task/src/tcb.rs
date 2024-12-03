@@ -1024,4 +1024,29 @@ pub fn tcb_Release_Dequeue() -> *mut tcb_t {
 #[cfg(feature = "KERNEL_MCS")]
 pub fn reply_remove_tcb(tcb: &mut tcb_t) {
     // TODO: MCS
+
+    use sel4_common::structures_gen::call_stack;
+
+    use crate::reply::reply_t;
+    assert!(tcb.tcbState.get_tsType() == ThreadState::ThreadStateBlockedOnReply as u64);
+    let reply = convert_to_mut_type_ref::<reply_t>(tcb.tcbState.get_replyObject() as usize);
+
+    let next_ptr = reply.replyNext.get_callStackPtr() as usize;
+    let prev_ptr = reply.replyPrev.get_callStackPtr() as usize;
+
+    if next_ptr != 0 {
+        if reply.replyNext.get_isHead() != 0 {
+            convert_to_mut_type_ref::<sched_context_t>(next_ptr).scReply = 0;
+        } else {
+            convert_to_mut_type_ref::<reply_t>(next_ptr).replyPrev = call_stack::new(0, 0);
+        }
+    }
+
+    if prev_ptr != 0 {
+        convert_to_mut_type_ref::<reply_t>(prev_ptr).replyNext = call_stack::new(0, 0);
+    }
+
+    reply.replyPrev = call_stack::new(0, 0);
+    reply.replyNext = call_stack::new(0, 0);
+    reply.unlink(tcb);
 }
