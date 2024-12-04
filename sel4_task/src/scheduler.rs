@@ -89,6 +89,8 @@ pub const SchedulerAction_ResumeCurrentThread: usize = 0;
 pub const SchedulerAction_ChooseNewThread: usize = 1;
 pub const ksDomScheduleLength: usize = 1;
 
+pub const seL4_SchedContext_NoFlag: usize = 0;
+pub const seL4_SchedContext_Sporadic: usize = 1;
 #[no_mangle]
 pub static mut ksDomainTime: usize = 0;
 

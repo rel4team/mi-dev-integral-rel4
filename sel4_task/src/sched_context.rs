@@ -213,6 +213,44 @@ impl sched_context {
         self.refill_capacity(usage) >= MIN_BUDGET()
     }
     #[inline]
+    pub fn refill_update(
+        &mut self,
+        new_period: ticks_t,
+        new_budget: ticks_t,
+        new_max_refills: usize,
+    ) {
+        /* refill must be initialised in order to be updated - otherwise refill_new should be used */
+        assert!(self.scRefillMax > 0);
+
+        unsafe {
+            (*self.refill_index(0)).rAmount = (*self.refill_head()).rAmount;
+            (*self.refill_index(0)).rTime = (*self.refill_head()).rTime;
+            self.scRefillHead = 0;
+            /* truncate refill list to size 1 */
+            self.scRefillTail = self.scRefillHead;
+            /* update max refills */
+            self.scRefillMax = new_max_refills;
+            /* update period */
+            self.scPeriod = new_period;
+
+            if self.refill_ready() {
+                (*self.refill_head()).rTime = ksCurTime;
+            }
+
+            if (*self.refill_head()).rAmount >= new_budget {
+                /* if the heads budget exceeds the new budget just trim it */
+                (*self.refill_head()).rAmount = new_budget;
+                self.maybe_add_empty_tail();
+            } else {
+                /* otherwise schedule the rest for the next period */
+                self.refill_add_tail(
+                    (*self.refill_head()).rTime + new_period,
+                    new_budget - (*self.refill_head()).rAmount,
+                );
+            }
+        }
+    }
+    #[inline]
     pub fn schedule_used(&mut self, new_rTime: ticks_t, new_rAmount: ticks_t) {
         // TODO: MCS
         unsafe {
