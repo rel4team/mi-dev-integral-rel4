@@ -13,8 +13,9 @@ use sel4_common::{
     println,
     sel4_config::{CONFIG_KERNEL_WCET_SCALE, UINT64_MAX},
     shared_types_bf_gen::seL4_MessageInfo,
-    structures_gen::{notification, notification_t},
+    structures_gen::{cap_sched_context_cap, notification, notification_t},
     utils::convert_to_mut_type_ref,
+    BIT,
 };
 
 use crate::{
@@ -40,7 +41,7 @@ pub struct sched_context {
     pub scRefillTail: usize,
     pub scSporadic: bool,
 }
-pub(crate) const MIN_REFILLS: usize = 2;
+pub const MIN_REFILLS: usize = 2;
 pub(crate) type refill_t = refill;
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -59,6 +60,10 @@ pub fn MAX_PERIOD_US() -> time_t {
 }
 pub fn MAX_RELEASE_TIME() -> time_t {
     UINT64_MAX - 5 * usToTicks(MAX_PERIOD_US())
+}
+pub fn refill_absolute_max(sc_cap: &cap_sched_context_cap) -> usize {
+    return (BIT!(sc_cap.get_capSCSizeBits() as usize) - size_of::<sched_context_t>())
+        / size_of::<refill_t>();
 }
 
 impl sched_context {
