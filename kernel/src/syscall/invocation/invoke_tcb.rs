@@ -221,7 +221,7 @@ pub fn installTCBCap(
     return e;
 }
 #[cfg(feature = "KERNEL_MCS")]
-pub fn invoke_tcb_set_space(
+pub fn invoke_tcb_thread_control_caps(
     target: &mut tcb_t,
     slot: &mut cte_t,
     fh_newCap: &cap,
