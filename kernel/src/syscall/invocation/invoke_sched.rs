@@ -1,6 +1,6 @@
 use sel4_common::{
     platform::time_def::ticks_t,
-    structures::exception_t,
+    structures::{exception_t, seL4_IPCBuffer},
     structures_gen::{cap, cap_tag},
     utils::convert_to_mut_type_ref,
 };
@@ -32,7 +32,7 @@ pub fn invokeSchedContext_Unbind(sc: &mut sched_context) -> exception_t {
     // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
-pub fn invokeSchedContext_Consumed(sc: &mut sched_context) -> exception_t {
+pub fn invokeSchedContext_Consumed(sc: &mut sched_context, buffer: &seL4_IPCBuffer) -> exception_t {
     // TODO: MCS
     exception_t::EXCEPTION_NONE
 }

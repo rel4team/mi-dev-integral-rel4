@@ -12,7 +12,7 @@ use sel4_common::{
 };
 use sel4_cspace::interface::cte_t;
 use sel4_task::{
-    get_currenct_thread,
+    get_currenct_thread, ksCurThread,
     sched_context::{
         refill_absolute_max, sched_context, sched_context_t, MAX_PERIOD_US, MIN_BUDGET,
         MIN_BUDGET_US, MIN_REFILLS,
@@ -22,7 +22,13 @@ use sel4_task::{
 
 use crate::{
     kernel::boot::{current_extra_caps, current_syscall_error},
-    syscall::{get_syscall_arg, invocation::invoke_sched::invokeSchedControl_ConfigureFlags},
+    syscall::{
+        get_syscall_arg,
+        invocation::invoke_sched::{
+            invokeSchedContext_Consumed, invokeSchedContext_Unbind,
+            invokeSchedControl_ConfigureFlags,
+        },
+    },
 };
 
 pub fn decode_sched_context_invocation(
@@ -31,7 +37,34 @@ pub fn decode_sched_context_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     println!("go into decode sched context invocation");
-    exception_t::EXCEPTION_NONE
+    let sc = convert_to_mut_type_ref::<sched_context_t>(capability.get_capSCPtr() as usize);
+    match inv_label {
+        MessageLabel::SchedContextConsumed => {
+            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+            invokeSchedContext_Consumed(sc, buffer)
+        }
+        MessageLabel::SchedContextBind => decodeSchedContext_Bind(sc),
+        MessageLabel::SchedContextUnbindObject => decodeSchedContext_UnbindObject(sc),
+        MessageLabel::SchedContextUnbind => {
+            if sc.scTcb == unsafe { ksCurThread } {
+                debug!("SchedContext UnbindObject: cannot unbind sc of current thread");
+                unsafe {
+                    current_syscall_error._type = seL4_IllegalOperation;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+            invokeSchedContext_Unbind(sc)
+        }
+        MessageLabel::SchedContextYieldTo => decodeSchedContext_YieldTo(sc, buffer),
+        _ => {
+            debug!("SchedContext invocation: Illegal operation attempted.");
+            unsafe {
+                current_syscall_error._type = seL4_IllegalOperation;
+            }
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
+    }
 }
 pub fn decode_sched_control_invocation(
     inv_label: MessageLabel,
@@ -148,18 +181,18 @@ pub fn decode_sched_control_invocation(
 }
 pub fn decodeSchedContext_UnbindObject(sc: &mut sched_context) -> exception_t {
     // TODO: MCS
-    unimplemented!("MCS");
+    unimplemented!("MCS unbind object");
     if global_ops!(current_extra_caps.excaprefs[0] == 0) {
         debug!("")
     }
     exception_t::EXCEPTION_NONE
 }
 pub fn decodeSchedContext_Bind(sc: &mut sched_context) -> exception_t {
-    unimplemented!("MCS");
+    unimplemented!("MCS bind");
     // TODO: MCS
     exception_t::EXCEPTION_NONE
 }
-pub fn decodeSchedContext_YieldTo(sc: &mut sched_context) {
-    unimplemented!("MCS");
+pub fn decodeSchedContext_YieldTo(sc: &mut sched_context, buffer: &seL4_IPCBuffer) -> exception_t {
+    unimplemented!("MCS yield to");
     // TODO: MCS
 }
