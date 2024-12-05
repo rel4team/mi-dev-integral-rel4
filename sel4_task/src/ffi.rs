@@ -9,10 +9,6 @@ pub extern "C" fn sendIPC() {
     unimplemented!("MCS");
 }
 #[no_mangle]
-pub extern "C" fn installTCBCap() {
-    unimplemented!("MCS");
-}
-#[no_mangle]
 pub extern "C" fn tcbSchedDequeue(tcb: &mut tcb_t) {
     (*tcb).sched_dequeue();
 }
