@@ -578,6 +578,15 @@ pub fn checkBudget() -> bool {
     }
     false
 }
+#[cfg(feature = "KERNEL_MCS")]
+pub fn checkBudgetRestart() -> bool {
+    assert!(get_currenct_thread().is_runnable());
+    let result = checkBudget();
+    if !result && get_currenct_thread().is_runnable() {
+        set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+    }
+    result
+}
 #[inline]
 pub fn mcs_preemption_point() {
     #[cfg(feature = "KERNEL_MCS")]

@@ -149,106 +149,110 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
 #[no_mangle]
 #[cfg(feature = "KERNEL_MCS")]
 pub fn handleSyscall(_syscall: usize) -> exception_t {
+    use core::intrinsics::likely;
+
+    use sel4_task::{checkBudgetRestart, updateTimestamp};
+
     let syscall: isize = _syscall as isize;
     // if hart_id() == 0 {
     //     debug!("handle syscall: {}", syscall);
     // }
-    // TODO: MCS
-    // updateTimestamp();
-    // if (likely(checkBudgetRestart())) {
-    match syscall {
-        SysSend => {
-            let ret = handleInvocation(
-                false,
-                true,
-                false,
-                false,
-                get_currenct_thread().tcbArch.get_register(Cap),
-            );
-            if unlikely(ret != exception_t::EXCEPTION_NONE) {
-                let irq = getActiveIRQ();
-                if irq != irqInvalid {
-                    handleInterrupt(irq);
+    // sel4_common::println!("handle syscall");
+    updateTimestamp();
+    if likely(checkBudgetRestart()) {
+        match syscall {
+            SysSend => {
+                let ret = handleInvocation(
+                    false,
+                    true,
+                    false,
+                    false,
+                    get_currenct_thread().tcbArch.get_register(Cap),
+                );
+                if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    let irq = getActiveIRQ();
+                    if irq != irqInvalid {
+                        handleInterrupt(irq);
+                    }
                 }
             }
-        }
-        SysNBSend => {
-            let ret = handleInvocation(
-                false,
-                false,
-                false,
-                false,
-                get_currenct_thread().tcbArch.get_register(Cap),
-            );
-            if unlikely(ret != exception_t::EXCEPTION_NONE) {
-                let irq = getActiveIRQ();
-                if irq != irqInvalid {
-                    handleInterrupt(irq);
+            SysNBSend => {
+                let ret = handleInvocation(
+                    false,
+                    false,
+                    false,
+                    false,
+                    get_currenct_thread().tcbArch.get_register(Cap),
+                );
+                if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    let irq = getActiveIRQ();
+                    if irq != irqInvalid {
+                        handleInterrupt(irq);
+                    }
                 }
             }
-        }
-        SysCall => {
-            let ret = handleInvocation(
-                true,
-                true,
-                true,
-                false,
-                get_currenct_thread().tcbArch.get_register(Cap),
-            );
-            if unlikely(ret != exception_t::EXCEPTION_NONE) {
-                let irq = getActiveIRQ();
-                if irq != irqInvalid {
-                    handleInterrupt(irq);
+            SysCall => {
+                let ret = handleInvocation(
+                    true,
+                    true,
+                    true,
+                    false,
+                    get_currenct_thread().tcbArch.get_register(Cap),
+                );
+                if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    let irq = getActiveIRQ();
+                    if irq != irqInvalid {
+                        handleInterrupt(irq);
+                    }
                 }
             }
-        }
-        SysRecv => {
-            handle_recv(true, true);
-        }
-        SysWait => {
-            handle_recv(true, false);
-        }
-        SysNBWait => {
-            handle_recv(false, false);
-        }
-        SysReplyRecv => {
-            let reply = get_currenct_thread().tcbArch.get_register(Reply);
-            let ret = handleInvocation(false, false, true, true, reply);
-            assert!(ret == exception_t::EXCEPTION_NONE);
-            handle_recv(true, true);
-        }
-        SysNBSendRecv => {
-            // TODO: MCS
-            let dest = get_currenct_thread().tcbArch.get_register(nbsRecvDest);
-            let ret = handleInvocation(false, false, true, true, dest);
-            if unlikely(ret != exception_t::EXCEPTION_NONE) {
-                mcs_preemption_point();
-                let irq = getActiveIRQ();
-                if irq != irqInvalid {
-                    handleInterrupt(irq);
-                }
-            } else {
+            SysRecv => {
                 handle_recv(true, true);
             }
-        }
-        SysNBSendWait => {
-            let reply = get_currenct_thread().tcbArch.get_register(Reply);
-            let ret = handleInvocation(false, false, true, true, reply);
-            if unlikely(ret != exception_t::EXCEPTION_NONE) {
-                mcs_preemption_point();
-                let irq = getActiveIRQ();
-                if irq != irqInvalid {
-                    handleInterrupt(irq);
-                }
-            } else {
+            SysWait => {
                 handle_recv(true, false);
             }
+            SysNBWait => {
+                handle_recv(false, false);
+            }
+            SysReplyRecv => {
+                let reply = get_currenct_thread().tcbArch.get_register(Reply);
+                let ret = handleInvocation(false, false, true, true, reply);
+                assert!(ret == exception_t::EXCEPTION_NONE);
+                handle_recv(true, true);
+            }
+            SysNBSendRecv => {
+                // TODO: MCS
+                let dest = get_currenct_thread().tcbArch.get_register(nbsRecvDest);
+                let ret = handleInvocation(false, false, true, true, dest);
+                if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    mcs_preemption_point();
+                    let irq = getActiveIRQ();
+                    if irq != irqInvalid {
+                        handleInterrupt(irq);
+                    }
+                } else {
+                    handle_recv(true, true);
+                }
+            }
+            SysNBSendWait => {
+                let reply = get_currenct_thread().tcbArch.get_register(Reply);
+                let ret = handleInvocation(false, false, true, true, reply);
+                if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    mcs_preemption_point();
+                    let irq = getActiveIRQ();
+                    if irq != irqInvalid {
+                        handleInterrupt(irq);
+                    }
+                } else {
+                    handle_recv(true, false);
+                }
+            }
+            SysNBRecv => handle_recv(false, true),
+            SysYield => handle_yield(),
+            _ => panic!("Invalid syscall"),
         }
-        SysNBRecv => handle_recv(false, true),
-        SysYield => handle_yield(),
-        _ => panic!("Invalid syscall"),
     }
-    // }
     schedule();
     activateThread();
     exception_t::EXCEPTION_NONE
