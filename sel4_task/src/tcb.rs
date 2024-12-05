@@ -137,6 +137,16 @@ impl tcb_t {
         }
     }
     #[inline]
+    pub fn is_blocked(&self) -> bool {
+        match self.get_state() {
+            ThreadState::ThreadStateBlockedOnReceive
+            | ThreadState::ThreadStateBlockedOnSend
+            | ThreadState::ThreadStateBlockedOnNotification
+            | ThreadState::ThreadStateBlockedOnReply => true,
+            _ => false,
+        }
+    }
+    #[inline]
     #[cfg(not(feature = "KERNEL_MCS"))]
     pub fn is_schedulable(&self) -> bool {
         self.is_runnable()

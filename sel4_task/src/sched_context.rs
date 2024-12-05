@@ -76,6 +76,15 @@ impl sched_context {
         self.scPeriod == 0
     }
     #[inline]
+    pub fn sc_released(&mut self) -> bool {
+        if self.sc_active() {
+            assert!(self.refill_sufficient(0));
+            return self.refill_ready();
+        } else {
+            return false;
+        }
+    }
+    #[inline]
     pub fn sc_active(&self) -> bool {
         self.scRefillMax > 0
     }

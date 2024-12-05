@@ -1,7 +1,7 @@
 use sel4_common::{
     platform::time_def::ticks_t,
     structures::{exception_t, seL4_IPCBuffer},
-    structures_gen::{cap, cap_tag},
+    structures_gen::{cap, cap_Splayed, cap_tag, notification_t},
     utils::convert_to_mut_type_ref,
 };
 use sel4_task::{
@@ -24,8 +24,20 @@ pub fn invokeSchedContext_UnbindObject(sc: &mut sched_context, capability: cap) 
     exception_t::EXCEPTION_NONE
 }
 
-pub fn invokeSchedContext_Bind(sc: &mut sched_context) -> exception_t {
-    // TODO: MCS
+pub fn invokeSchedContext_Bind(sc: &mut sched_context, capability: &cap) -> exception_t {
+    match capability.clone().splay() {
+        cap_Splayed::thread_cap(data) => sc.schedContext_bindTCB(convert_to_mut_type_ref::<tcb_t>(
+            data.get_capTCBPtr() as usize,
+        )),
+        cap_Splayed::notification_cap(data) => {
+            sc.schedContext_bindNtfn(convert_to_mut_type_ref::<notification_t>(
+                data.get_capNtfnPtr() as usize,
+            ))
+        }
+        _ => {
+            panic!("invalid cap type of invoke sched context bind")
+        }
+    }
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_Unbind(sc: &mut sched_context) -> exception_t {
