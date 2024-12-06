@@ -41,7 +41,7 @@ pub fn decode_sched_context_invocation(
     capability: &cap_sched_context_cap,
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
-    println!("go into decode sched context invocation");
+    // println!("go into decode sched context invocation");
     let sc = convert_to_mut_type_ref::<sched_context_t>(capability.get_capSCPtr() as usize);
     match inv_label {
         MessageLabel::SchedContextConsumed => {

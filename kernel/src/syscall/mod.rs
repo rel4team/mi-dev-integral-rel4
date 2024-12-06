@@ -157,7 +157,7 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
     // if hart_id() == 0 {
     //     debug!("handle syscall: {}", syscall);
     // }
-    // sel4_common::println!("handle syscall");
+    // sel4_common::println!("handle syscall {}",syscall);
     updateTimestamp();
     if likely(checkBudgetRestart()) {
         match syscall {
