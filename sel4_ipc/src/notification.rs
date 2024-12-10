@@ -29,6 +29,8 @@ pub trait notification_func {
     fn receive_signal(&mut self, recv_thread: &mut tcb_t, is_blocking: bool);
     #[cfg(feature = "KERNEL_MCS")]
     fn reorder_NTFN(&mut self, thread: &mut tcb_t);
+    #[cfg(feature = "KERNEL_MCS")]
+    fn maybeReturnSchedContext(&mut self, thread: &mut tcb_t);
 }
 impl notification_func for notification {
     #[inline]
@@ -208,5 +210,19 @@ impl notification_func for notification {
         queue.ep_dequeue(thread);
         queue.ep_append(thread);
         self.set_queue(&queue);
+    }
+    #[cfg(feature = "KERNEL_MCS")]
+    #[inline]
+    fn maybeReturnSchedContext(&mut self, thread: &mut tcb_t) {
+        use sel4_task::sched_context::sched_context_t;
+
+        let sc = convert_to_mut_type_ref::<sched_context_t>(self.get_ntfnSchedContext() as usize);
+        if sc.get_ptr() != 0 && sc.get_ptr() == thread.tcbSchedContext {
+            thread.tcbSchedContext = 0;
+            sc.scTcb = 0;
+            if thread.is_current() {
+                rescheduleRequired();
+            }
+        }
     }
 }

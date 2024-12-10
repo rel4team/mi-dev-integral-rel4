@@ -151,7 +151,7 @@ pub fn decode_invocation(
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     // TODO: MCS , in this function, there's lot's of mcs codes
-    // sel4_common::println!("decode invocation {}",capability.get_tag());
+    // sel4_common::println!("decode invocation {}", capability.get_tag());
 
     use sel4_task::reply::reply_t;
 

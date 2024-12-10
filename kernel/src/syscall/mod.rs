@@ -60,6 +60,8 @@ pub const SysDebugNameThread: isize = SysDebugSnapshot - 1;
 pub const SysGetClock: isize = -30;
 #[cfg(feature = "KERNEL_MCS")]
 pub const SysGetClock: isize = -33;
+#[cfg(feature = "KERNEL_MCS")]
+use crate::structures::lookupCap_ret_t;
 use sel4_common::structures::exception_t;
 use sel4_common::structures_gen::{
     cap, cap_Splayed, cap_tag, endpoint, lookup_fault_missing_capability, notification,
@@ -157,7 +159,7 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
     // if hart_id() == 0 {
     //     debug!("handle syscall: {}", syscall);
     // }
-    // sel4_common::println!("handle syscall {}",syscall);
+    // sel4_common::println!("handle syscall {}", syscall);
     updateTimestamp();
     if likely(checkBudgetRestart()) {
         match syscall {
@@ -372,9 +374,32 @@ pub fn endTimeslice(can_timeout_fault: bool) {
         }
     }
 }
-// #[cfg(feature="KERNEL_MCS")]
-// #[inline]
-// pub fn lookupReply() -> lookupCap_ret_t
+#[cfg(feature = "KERNEL_MCS")]
+#[inline]
+pub fn lookupReply() -> lookupCap_ret_t {
+    use log::debug;
+
+    use crate::object::lookup_cap;
+
+    let reply_ptr = get_currenct_thread().tcbArch.get_register(ArchReg::Reply);
+    let mut lu_ret = lookup_cap(get_currenct_thread(), reply_ptr);
+
+    if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("Reply cap lookup failed");
+        unsafe { current_fault = seL4_Fault_CapFault::new(reply_ptr as u64, 1).unsplay() };
+        handle_fault(get_currenct_thread());
+        return lu_ret;
+    }
+
+    if unlikely(lu_ret.capability.get_tag() != cap_tag::cap_reply_cap) {
+        debug!("Cap in reply slot is not a reply");
+        unsafe { current_fault = seL4_Fault_CapFault::new(reply_ptr as u64, 1).unsplay() };
+        handle_fault(get_currenct_thread());
+        lu_ret.status = exception_t::EXCEPTION_FAULT;
+        return lu_ret;
+    }
+    lu_ret
+}
 // TODO: MCS
 #[cfg(not(feature = "KERNEL_MCS"))]
 fn handle_reply() {
@@ -391,6 +416,8 @@ fn handle_reply() {
 }
 #[cfg(feature = "KERNEL_MCS")]
 fn handle_recv(block: bool, canReply: bool) {
+    use sel4_common::structures_gen::cap_null_cap;
+
     let current_thread = get_currenct_thread();
     let ep_cptr = current_thread.tcbArch.get_register(ArchReg::Cap);
     let lu_ret = current_thread.lookup_slot(ep_cptr);
@@ -411,6 +438,20 @@ fn handle_recv(block: bool, canReply: bool) {
                 return handle_fault(current_thread);
             }
             // TODO: MCS
+            let mut reply_cap = cap_null_cap::new().unsplay();
+            if canReply {
+                let lu_ret = lookupReply();
+                if lu_ret.status != exception_t::EXCEPTION_NONE {
+                    return;
+                } else {
+                    reply_cap = lu_ret.capability;
+                }
+            }
+            convert_to_mut_type_ref::<endpoint>(data.get_capEPPtr() as usize).receive_ipc(
+                current_thread,
+                block,
+                cap::cap_reply_cap(&reply_cap),
+            );
         }
 
         cap_Splayed::notification_cap(data) => {
@@ -495,6 +536,7 @@ fn handle_recv(block: bool) {
 fn handle_yield() {
     #[cfg(feature = "KERNEL_MCS")]
     {
+        sel4_common::println!("todo: mcs handle yield");
         // TODO: MCS
     }
     #[cfg(not(feature = "KERNEL_MCS"))]
