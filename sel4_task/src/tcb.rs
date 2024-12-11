@@ -1,4 +1,8 @@
 #[cfg(feature = "KERNEL_MCS")]
+use crate::ksCurSC;
+use crate::prio_t;
+use crate::tcb_queue::tcb_queue_t;
+#[cfg(feature = "KERNEL_MCS")]
 use crate::{ksReleaseHead, sched_context::sched_context_t};
 use core::intrinsics::{likely, unlikely};
 use sel4_common::arch::{
@@ -6,7 +10,9 @@ use sel4_common::arch::{
 };
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_func;
+use sel4_common::sel4_config::*;
 use sel4_common::shared_types_bf_gen::seL4_MessageInfo;
+use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 use sel4_common::structures_gen::{
     cap, cap_reply_cap, cap_tag, lookup_fault, lookup_fault_Splayed, mdb_node, seL4_Fault,
     seL4_Fault_CapFault, seL4_Fault_tag, thread_state,
@@ -24,12 +30,6 @@ use sel4_vspace::{
     setCurrentUserVSpaceRoot, ttbr_new,
 };
 use sel4_vspace::{pptr_t, set_vm_root};
-#[cfg(feature="KERNEL_MCS")]
-use crate::ksCurSC;
-use crate::prio_t;
-use crate::tcb_queue::tcb_queue_t;
-use sel4_common::sel4_config::*;
-use sel4_common::structures::{exception_t, seL4_IPCBuffer};
 
 use super::scheduler::{
     addToBitmap, get_currenct_thread, possible_switch_to, ready_queues_index, removeFromBitmap,
@@ -542,11 +542,15 @@ impl tcb_t {
             {
                 // MCS
                 set_thread_state(self, ThreadState::ThreadStateRestart);
-                if convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).sc_sporadic() && self.tcbSchedContext != unsafe{ksCurSC}{
-                    convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).refill_unblock_check();
+                if convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).sc_sporadic()
+                    && self.tcbSchedContext != unsafe { ksCurSC }
+                {
+                    convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext)
+                        .refill_unblock_check();
                 }
-                convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext).schedContext_resume();
-                if self.is_schedulable(){
+                convert_to_mut_type_ref::<sched_context_t>(self.tcbSchedContext)
+                    .schedContext_resume();
+                if self.is_schedulable() {
                     possible_switch_to(self);
                 }
             }

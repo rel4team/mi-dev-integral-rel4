@@ -232,9 +232,7 @@ impl endpoint_func for endpoint {
         can_grant_reply: bool,
         canDonate: bool,
     ) {
-        use sel4_common::{
-            structures_gen::seL4_Fault_tag, types_gen::seL4_Fault_tag::seL4_Fault_NullFault,
-        };
+        use sel4_common::structures_gen::seL4_Fault_tag;
         use sel4_task::{ksCurSC, reply::reply_t, sched_context::sched_context_t};
 
         match self.get_ep_state() {

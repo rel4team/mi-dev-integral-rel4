@@ -98,7 +98,7 @@ pub fn invoke_tcb_write_registers(
 
     if resumeTarget != 0 {
         // cancel_ipc(dest);
-        if dest.is_stopped(){
+        if dest.is_stopped() {
             dest.cancel_ipc();
         }
         dest.restart();

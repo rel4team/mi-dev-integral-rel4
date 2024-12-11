@@ -10,6 +10,7 @@ use sel4_common::arch::ArchReg;
 use sel4_common::arch::ArchReg::*;
 #[cfg(not(feature = "KERNEL_MCS"))]
 use sel4_common::sel4_config::tcbCaller;
+use sel4_task::sched_context::sched_context_t;
 
 pub const SysCall: isize = -1;
 pub const SYSCALL_MAX: isize = SysCall;
@@ -72,8 +73,8 @@ use sel4_ipc::{endpoint_func, notification_func, Transfer};
 #[cfg(feature = "KERNEL_MCS")]
 use sel4_task::mcs_preemption_point;
 use sel4_task::{
-    activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
-    ThreadState,
+    activateThread, chargeBudget, get_currenct_thread, ksConsumed, ksCurSC, rescheduleRequired,
+    schedule, set_thread_state, tcb_t, ThreadState,
 };
 pub use utils::*;
 
@@ -536,8 +537,15 @@ fn handle_recv(block: bool) {
 fn handle_yield() {
     #[cfg(feature = "KERNEL_MCS")]
     {
-        sel4_common::println!("todo: mcs handle yield");
-        // TODO: MCS
+        unsafe {
+            let consumed =
+                convert_to_mut_type_ref::<sched_context_t>(ksCurSC).scConsumed + ksConsumed;
+            chargeBudget(
+                (*convert_to_mut_type_ref::<sched_context_t>(ksCurSC).refill_head()).rAmount,
+                false,
+            );
+            convert_to_mut_type_ref::<sched_context_t>(ksCurSC).scConsumed = consumed;
+        }
     }
     #[cfg(not(feature = "KERNEL_MCS"))]
     {
