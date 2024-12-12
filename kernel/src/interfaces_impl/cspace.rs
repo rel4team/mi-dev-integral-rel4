@@ -15,9 +15,9 @@ use sel4_cspace::capability::cap_func;
 use sel4_cspace::compatibility::{ZombieType_ZombieTCB, Zombie_new};
 use sel4_cspace::interface::finaliseCap_ret;
 use sel4_ipc::{endpoint_func, notification_func, Transfer};
-use sel4_task::reply::reply_t;
-use sel4_task::sched_context::sched_context_t;
 use sel4_task::{get_currenct_thread, ksWorkUnitsCompleted, tcb_t, ThreadState};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::{reply::reply_t, sched_context::sched_context_t};
 #[cfg(target_arch = "riscv64")]
 use sel4_vspace::find_vspace_for_asid;
 #[cfg(target_arch = "aarch64")]
@@ -207,7 +207,7 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
             return fc_ret;
         }
         cap_tag::cap_reply_cap => {
-            // TODO: MCS
+            #[cfg(feature = "KERNEL_MCS")]
             if _final {
                 if let Some(reply) = convert_to_option_mut_type_ref::<reply_t>(
                     cap::cap_reply_cap(capability).get_capReplyPtr() as usize,
