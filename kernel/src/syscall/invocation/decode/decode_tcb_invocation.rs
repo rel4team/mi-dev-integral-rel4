@@ -250,7 +250,11 @@ fn decode_tcb_configure(
     target_thread_slot: &mut cte_t,
     buffer: &seL4_IPCBuffer,
 ) -> exception_t {
-    if msg_length < 4
+    #[cfg(not(feature = "KERNEL_MCS"))]
+    let TCBCONFIGURE_ARGS = 3;
+    #[cfg(feature = "KERNEL_MCS")]
+    let TCBCONFIGURE_ARGS = 4;
+    if msg_length < TCBCONFIGURE_ARGS
         || get_extra_cap_by_index(0).is_none()
         || get_extra_cap_by_index(1).is_none()
         || get_extra_cap_by_index(2).is_none()
@@ -261,11 +265,22 @@ fn decode_tcb_configure(
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-
+    #[cfg(not(feature = "KERNEL_MCS"))]
     let fault_ep = get_syscall_arg(0, buffer);
+    #[cfg(not(feature = "KERNEL_MCS"))]
     let croot_data = get_syscall_arg(1, buffer);
+    #[cfg(not(feature = "KERNEL_MCS"))]
     let vroot_data = get_syscall_arg(2, buffer);
+    #[cfg(not(feature = "KERNEL_MCS"))]
     let new_buffer_addr = get_syscall_arg(3, buffer);
+
+    #[cfg(feature = "KERNEL_MCS")]
+    let croot_data = get_syscall_arg(0, buffer);
+    #[cfg(feature = "KERNEL_MCS")]
+    let vroot_data = get_syscall_arg(1, buffer);
+    #[cfg(feature = "KERNEL_MCS")]
+    let new_buffer_addr = get_syscall_arg(2, buffer);
+
     let croot_slot = get_extra_cap_by_index(0).unwrap();
     let mut croot_cap = &croot_slot.clone().capability;
     let vroot_slot = get_extra_cap_by_index(1).unwrap();

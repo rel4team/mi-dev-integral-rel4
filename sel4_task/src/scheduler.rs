@@ -877,6 +877,7 @@ pub fn activateThread() {
         ThreadState::ThreadStateRestart => {
             let pc = thread.tcbArch.get_register(ArchReg::FaultIP);
             // setNextPC(thread, pc);
+			// sel4_common::println!("restart pc is {:x}",pc);
             thread.tcbArch.set_register(ArchReg::NextIP, pc);
             // setThreadState(thread, ThreadStateRunning);
             set_thread_state(thread, ThreadState::ThreadStateRunning);

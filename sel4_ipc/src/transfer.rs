@@ -21,6 +21,8 @@ use sel4_common::utils::*;
 use sel4_cspace::interface::*;
 #[cfg(feature = "KERNEL_MCS")]
 use sel4_task::reply::reply_t;
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::reply_remove_tcb;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
 use sel4_vspace::pptr_t;
 
@@ -73,6 +75,10 @@ pub trait Transfer {
 impl Transfer for tcb_t {
     fn cancel_ipc(&mut self) {
         let state = &self.tcbState;
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            seL4_Fault_NullFault::new();
+        }
         match self.get_state() {
             ThreadState::ThreadStateBlockedOnSend | ThreadState::ThreadStateBlockedOnReceive => {
                 let ep = convert_to_mut_type_ref::<endpoint>(state.get_blockingObject() as usize);
@@ -89,6 +95,7 @@ impl Transfer for tcb_t {
                 #[cfg(feature = "KERNEL_MCS")]
                 {
                     //TODO
+                    reply_remove_tcb(self);
                 }
                 #[cfg(not(feature = "KERNEL_MCS"))]
                 {

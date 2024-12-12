@@ -10,6 +10,7 @@ use sel4_common::arch::ArchReg;
 use sel4_common::arch::ArchReg::*;
 #[cfg(not(feature = "KERNEL_MCS"))]
 use sel4_common::sel4_config::tcbCaller;
+#[cfg(feature = "KERNEL_MCS")]
 use sel4_task::sched_context::sched_context_t;
 
 pub const SysCall: isize = -1;
@@ -71,9 +72,9 @@ use sel4_common::structures_gen::{
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
 use sel4_ipc::{endpoint_func, notification_func, Transfer};
 #[cfg(feature = "KERNEL_MCS")]
-use sel4_task::mcs_preemption_point;
+use sel4_task::{mcs_preemption_point, chargeBudget, ksConsumed, ksCurSC};
 use sel4_task::{
-    activateThread, chargeBudget, get_currenct_thread, ksConsumed, ksCurSC, rescheduleRequired,
+    activateThread, get_currenct_thread, rescheduleRequired,
     schedule, set_thread_state, tcb_t, ThreadState,
 };
 pub use utils::*;

@@ -116,6 +116,7 @@ pub fn handleVMFaultEvent(vm_faultType: usize) -> exception_t {
     if status != exception_t::EXCEPTION_NONE {
         handle_fault(get_currenct_thread());
     }
+	// sel4_common::println!("handle vm fault event");
     schedule();
     activateThread();
     exception_t::EXCEPTION_NONE

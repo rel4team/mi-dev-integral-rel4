@@ -2,6 +2,8 @@ use crate::transfer::Transfer;
 use sel4_common::arch::ArchReg;
 use sel4_common::structures_gen::endpoint;
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::reply::reply_t;
 use sel4_task::{
     possible_switch_to, rescheduleRequired, schedule_tcb, set_thread_state, tcb_queue_t, tcb_t,
     ThreadState,
@@ -97,6 +99,13 @@ impl endpoint_func for endpoint {
         self.set_queue(&queue);
         if queue.head == 0 {
             self.set_state(EPState::Idle as u64);
+        }
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            let reply = convert_to_mut_type_ref::<reply_t>(tcb.tcbState.get_replyObject() as usize);
+            if reply.get_ptr() != 0 {
+                reply.unlink(tcb);
+            }
         }
         set_thread_state(tcb, ThreadState::ThreadStateInactive);
     }
@@ -378,7 +387,7 @@ impl endpoint_func for endpoint {
         use core::intrinsics::unlikely;
         use log::debug;
         use sel4_common::structures_gen::{cap_tag::cap_reply_cap, notification_t, seL4_Fault_tag};
-        use sel4_task::{ksCurSC, reply::reply_t, sched_context::sched_context_t};
+        use sel4_task::{ksCurSC, sched_context::sched_context_t};
 
         use crate::notification_func;
 
