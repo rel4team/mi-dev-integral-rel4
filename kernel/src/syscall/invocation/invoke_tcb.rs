@@ -151,7 +151,9 @@ pub fn invoke_tcb_suspend(thread: &mut tcb_t) -> exception_t {
 #[inline]
 pub fn invoke_tcb_resume(thread: &mut tcb_t) -> exception_t {
     // cancel_ipc(thread);
-    thread.cancel_ipc();
+    if thread.is_stopped() {
+        thread.cancel_ipc();
+    }
     thread.restart();
     exception_t::EXCEPTION_NONE
 }

@@ -69,7 +69,7 @@ pub fn invokeSchedControl_ConfigureFlags(
         convert_to_mut_type_ref::<tcb_t>(target.scTcb).Release_Remove();
         convert_to_mut_type_ref::<tcb_t>(target.scTcb).sched_dequeue();
         /* bill the current consumed amount before adjusting the params */
-        if unsafe { ksCurSC } == target.get_ptr() {
+        if target.is_current() {
             assert!(checkBudget());
             commitTime();
         }

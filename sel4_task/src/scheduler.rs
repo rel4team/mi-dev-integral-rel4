@@ -451,12 +451,18 @@ fn chooseThread() {
                 }
             };
             assert_ne!(thread, 0);
-			assert!(convert_to_mut_type_ref::<tcb_t>(thread).is_schedulable());
-			#[cfg(feature="KERNEL_MCS")]
-			{
-				assert!(convert_to_mut_type_ref::<sched_context_t>(convert_to_mut_type_ref::<tcb_t>(thread).tcbSchedContext).refill_sufficient(0));
-				assert!(convert_to_mut_type_ref::<sched_context_t>(convert_to_mut_type_ref::<tcb_t>(thread).tcbSchedContext).refill_ready());
-			}
+            assert!(convert_to_mut_type_ref::<tcb_t>(thread).is_schedulable());
+            #[cfg(feature = "KERNEL_MCS")]
+            {
+                assert!(convert_to_mut_type_ref::<sched_context_t>(
+                    convert_to_mut_type_ref::<tcb_t>(thread).tcbSchedContext
+                )
+                .refill_sufficient(0));
+                assert!(convert_to_mut_type_ref::<sched_context_t>(
+                    convert_to_mut_type_ref::<tcb_t>(thread).tcbSchedContext
+                )
+                .refill_ready());
+            }
             convert_to_mut_type_ref::<tcb_t>(thread).switch_to_this();
         } else {
             #[cfg(target_arch = "aarch64")]
@@ -883,7 +889,7 @@ pub fn activateThread() {
         ThreadState::ThreadStateRestart => {
             let pc = thread.tcbArch.get_register(ArchReg::FaultIP);
             // setNextPC(thread, pc);
-			// sel4_common::println!("restart pc is {:x}",pc);
+            // sel4_common::println!("restart pc is {:x}",pc);
             thread.tcbArch.set_register(ArchReg::NextIP, pc);
             // setThreadState(thread, ThreadStateRunning);
             set_thread_state(thread, ThreadState::ThreadStateRunning);

@@ -71,12 +71,12 @@ use sel4_common::structures_gen::{
 };
 use sel4_common::utils::{convert_to_mut_type_ref, ptr_to_mut};
 use sel4_ipc::{endpoint_func, notification_func, Transfer};
-#[cfg(feature = "KERNEL_MCS")]
-use sel4_task::{mcs_preemption_point, chargeBudget, ksConsumed, ksCurSC};
 use sel4_task::{
-    activateThread, get_currenct_thread, rescheduleRequired,
-    schedule, set_thread_state, tcb_t, ThreadState,
+    activateThread, get_currenct_thread, rescheduleRequired, schedule, set_thread_state, tcb_t,
+    ThreadState,
 };
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::{chargeBudget, get_current_sc, ksConsumed, ksCurSC, mcs_preemption_point};
 pub use utils::*;
 
 use crate::arch::restore_user_context;
@@ -539,13 +539,9 @@ fn handle_yield() {
     #[cfg(feature = "KERNEL_MCS")]
     {
         unsafe {
-            let consumed =
-                convert_to_mut_type_ref::<sched_context_t>(ksCurSC).scConsumed + ksConsumed;
-            chargeBudget(
-                (*convert_to_mut_type_ref::<sched_context_t>(ksCurSC).refill_head()).rAmount,
-                false,
-            );
-            convert_to_mut_type_ref::<sched_context_t>(ksCurSC).scConsumed = consumed;
+            let consumed = get_current_sc().scConsumed + ksConsumed;
+            chargeBudget((*get_current_sc().refill_head()).rAmount, false);
+            get_current_sc().scConsumed = consumed;
         }
     }
     #[cfg(not(feature = "KERNEL_MCS"))]

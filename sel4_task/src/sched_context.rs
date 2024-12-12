@@ -76,6 +76,10 @@ impl sched_context {
         self.scPeriod == 0
     }
     #[inline]
+    pub fn is_current(&self) -> bool {
+        self.get_ptr() == unsafe { ksCurSC }
+    }
+    #[inline]
     pub fn sc_released(&mut self) -> bool {
         if self.sc_active() {
             assert!(self.refill_sufficient(0));
@@ -295,7 +299,7 @@ impl sched_context {
         assert!(tcb.tcbSchedContext == 0);
         tcb.tcbSchedContext = self.get_ptr();
         self.scTcb = tcb.get_ptr();
-        if self.sc_sporadic() && self.sc_active() && self.get_ptr() != unsafe { ksCurSC } {
+        if self.sc_sporadic() && self.sc_active() && !self.is_current() {
             self.refill_unblock_check()
         }
         self.schedContext_resume();

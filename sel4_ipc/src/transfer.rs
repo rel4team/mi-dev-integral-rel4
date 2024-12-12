@@ -340,7 +340,7 @@ impl Transfer for tcb_t {
     #[cfg(feature = "KERNEL_MCS")]
     fn do_reply(&mut self, reply: &mut reply_t, grant: bool) {
         use sel4_common::{ffi::current_fault, structures_gen::seL4_Fault_Timeout};
-        use sel4_task::{handleTimeout, ksCurSC, sched_context::sched_context_t};
+        use sel4_task::{handleTimeout, sched_context::sched_context_t};
 
         if reply.replyTCB == 0
             || convert_to_mut_type_ref::<tcb_t>(reply.replyTCB)
@@ -358,7 +358,7 @@ impl Transfer for tcb_t {
         assert!(reply.replyTCB == 0);
 
         let sc = convert_to_mut_type_ref::<sched_context_t>(receiver.tcbSchedContext);
-        if sc.sc_sporadic() && sc.get_ptr() != unsafe { ksCurSC } {
+        if sc.sc_sporadic() && !sc.is_current() {
             sc.refill_unblock_check();
         }
         assert_eq!(receiver.get_state(), ThreadState::ThreadStateBlockedOnReply);
