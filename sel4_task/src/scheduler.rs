@@ -451,6 +451,12 @@ fn chooseThread() {
                 }
             };
             assert_ne!(thread, 0);
+			assert!(convert_to_mut_type_ref::<tcb_t>(thread).is_schedulable());
+			#[cfg(feature="KERNEL_MCS")]
+			{
+				assert!(convert_to_mut_type_ref::<sched_context_t>(convert_to_mut_type_ref::<tcb_t>(thread).tcbSchedContext).refill_sufficient(0));
+				assert!(convert_to_mut_type_ref::<sched_context_t>(convert_to_mut_type_ref::<tcb_t>(thread).tcbSchedContext).refill_ready());
+			}
             convert_to_mut_type_ref::<tcb_t>(thread).switch_to_this();
         } else {
             #[cfg(target_arch = "aarch64")]
@@ -669,7 +675,7 @@ pub fn commitTime() {
                 assert!(current_sched_context.refill_sufficient(ksConsumed));
                 assert!(current_sched_context.refill_ready());
 
-                if (current_sched_context.is_round_robin()) {
+                if current_sched_context.is_round_robin() {
                     assert!(current_sched_context.refill_size() == MIN_REFILLS);
                     (*current_sched_context.refill_head()).rAmount -= ksConsumed;
                     (*current_sched_context.refill_tail()).rAmount += ksConsumed;

@@ -212,7 +212,7 @@ pub fn installTCBCap(
     newCap: &cap,
     srcSlot: &mut cte_t,
 ) -> exception_t {
-    let mut rootSlot = target.get_cspace_mut_ref(tcbBuffer);
+    let mut rootSlot = target.get_cspace_mut_ref(index);
     let e = rootSlot.delete_all(true);
     if e != exception_t::EXCEPTION_NONE {
         return e;

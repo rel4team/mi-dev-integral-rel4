@@ -197,7 +197,10 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
             fc_ret.cleanupInfo = cap_null_cap::new().unsplay();
             return fc_ret;
         }
-        cap_tag::cap_reply_cap | cap_tag::cap_null_cap | cap_tag::cap_domain_cap => {
+        cap_tag::cap_reply_cap => {
+			// TODO: MCS
+		}
+		cap_tag::cap_null_cap | cap_tag::cap_domain_cap => {
             fc_ret.remainder = cap_null_cap::new().unsplay();
             fc_ret.cleanupInfo = cap_null_cap::new().unsplay();
             return fc_ret;
