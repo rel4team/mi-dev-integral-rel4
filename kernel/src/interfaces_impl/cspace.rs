@@ -197,8 +197,11 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
                     cap::cap_notification_cap(capability).get_capNtfnPtr() as usize,
                 );
                 #[cfg(feature = "KERNEL_MCS")]
-                convert_to_mut_type_ref::<sched_context_t>(ntfn.get_ntfnSchedContext() as usize)
-                    .schedContext_unbindNtfn();
+                if let Some(sc) = convert_to_option_mut_type_ref::<sched_context_t>(
+                    ntfn.get_ntfnSchedContext() as usize,
+                ) {
+                    sc.schedContext_unbindNtfn();
+                }
                 ntfn.safe_unbind_tcb();
                 ntfn.cacncel_all_signal();
             }
