@@ -157,14 +157,15 @@ impl notification_func for notification {
                             convert_to_option_mut_type_ref::<sched_context_t>(tcb.tcbSchedContext)
                         {
                             if tcbsc.sc_active() {
-                                let sc = convert_to_mut_type_ref::<sched_context_t>(
+                                if let Some(sc) = convert_to_option_mut_type_ref::<sched_context_t>(
                                     self.get_ntfnSchedContext() as usize,
-                                );
-                                if tcbsc.get_ptr() == sc.get_ptr()
-                                    && sc.sc_sporadic()
-                                    && !tcbsc.is_current()
-                                {
-                                    tcbsc.refill_unblock_check();
+                                ) {
+                                    if tcbsc.get_ptr() == sc.get_ptr()
+                                        && sc.sc_sporadic()
+                                        && !tcbsc.is_current()
+                                    {
+                                        tcbsc.refill_unblock_check();
+                                    }
                                 }
                             }
                         }

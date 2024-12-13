@@ -102,8 +102,9 @@ impl endpoint_func for endpoint {
         }
         #[cfg(feature = "KERNEL_MCS")]
         {
-            let reply = convert_to_mut_type_ref::<reply_t>(tcb.tcbState.get_replyObject() as usize);
-            if reply.get_ptr() != 0 {
+            if let Some(reply) =
+                convert_to_option_mut_type_ref::<reply_t>(tcb.tcbState.get_replyObject() as usize)
+            {
                 reply.unlink(tcb);
             }
         }
@@ -282,16 +283,21 @@ impl endpoint_func for endpoint {
                 }
                 src_thread.do_ipc_transfer(dest_thread, Some(self), badge, can_grant);
 
-                let reply = convert_to_mut_type_ref::<reply_t>(
+                if let Some(reply) = convert_to_option_mut_type_ref::<reply_t>(
                     dest_thread.tcbState.get_replyObject() as usize,
-                );
-                if reply.get_ptr() != 0 {
+                ) {
                     reply.unlink(dest_thread);
                 }
                 if do_call || src_thread.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault
                 {
-                    if reply.get_ptr() != 0 && (can_grant || can_grant_reply) {
-                        reply.push(src_thread, dest_thread, canDonate);
+                    if let Some(reply) = convert_to_option_mut_type_ref::<reply_t>(
+                        dest_thread.tcbState.get_replyObject() as usize,
+                    ) {
+                        if can_grant || can_grant_reply {
+                            reply.push(src_thread, dest_thread, canDonate);
+                        } else {
+                            set_thread_state(dest_thread, ThreadState::ThreadStateInactive);
+                        }
                     } else {
                         set_thread_state(dest_thread, ThreadState::ThreadStateInactive);
                     }
