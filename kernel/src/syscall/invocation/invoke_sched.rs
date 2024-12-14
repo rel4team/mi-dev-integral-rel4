@@ -1,12 +1,15 @@
 use sel4_common::{
     platform::time_def::ticks_t,
     structures::{exception_t, seL4_IPCBuffer},
-    structures_gen::{cap, cap_Splayed, cap_tag, notification_t},
+    structures_gen::{call_stack, cap, cap_Splayed, cap_tag, notification_t},
     utils::convert_to_mut_type_ref,
 };
 use sel4_task::{
-    checkBudget, commitTime, ksCurSC, ksCurThread, possible_switch_to, rescheduleRequired,
-    sched_context::sched_context, sched_context::MIN_REFILLS, seL4_SchedContext_Sporadic, tcb_t,
+    checkBudget, commitTime, ksCurSC, ksCurThread, possible_switch_to,
+    reply::reply_t,
+    rescheduleRequired,
+    sched_context::{sched_context, MIN_REFILLS},
+    seL4_SchedContext_Sporadic, tcb_t,
 };
 
 pub fn invokeSchedContext_UnbindObject(sc: &mut sched_context, capability: cap) -> exception_t {
@@ -41,15 +44,22 @@ pub fn invokeSchedContext_Bind(sc: &mut sched_context, capability: &cap) -> exce
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_Unbind(sc: &mut sched_context) -> exception_t {
-    // TODO: MCS
+    sc.schedContext_unbindAllTCBs();
+    sc.schedContext_unbindNtfn();
+    if sc.scReply != 0 {
+        convert_to_mut_type_ref::<reply_t>(sc.scReply).replyNext = call_stack::new(0, 0);
+        sc.scReply = 0;
+    }
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_Consumed(sc: &mut sched_context, buffer: &seL4_IPCBuffer) -> exception_t {
     // TODO: MCS
+    unimplemented!("invoke shced context consumed");
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedContext_YieldTo(sc: &mut sched_context) -> exception_t {
     // TODO: MCS
+    unimplemented!("invoke sched context yieldto");
     exception_t::EXCEPTION_NONE
 }
 pub fn invokeSchedControl_ConfigureFlags(
