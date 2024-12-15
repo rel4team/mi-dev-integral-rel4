@@ -361,13 +361,13 @@ impl Transfer for tcb_t {
         if sc.sc_sporadic() && !sc.is_current() {
             sc.refill_unblock_check();
         }
-        assert_eq!(receiver.get_state(), ThreadState::ThreadStateBlockedOnReply);
 
         let fault_type = receiver.tcbFault.get_tag();
         if likely(fault_type == seL4_Fault_tag::seL4_Fault_NullFault) {
             self.do_ipc_transfer(receiver, None, 0, grant);
             set_thread_state(receiver, ThreadState::ThreadStateRunning);
         } else {
+			receiver.tcbFault = seL4_Fault_NullFault::new().unsplay();
             if self.do_fault_reply_transfer(receiver) {
                 set_thread_state(receiver, ThreadState::ThreadStateRestart);
             } else {

@@ -283,21 +283,14 @@ impl endpoint_func for endpoint {
                 }
                 src_thread.do_ipc_transfer(dest_thread, Some(self), badge, can_grant);
 
-                if let Some(reply) = convert_to_option_mut_type_ref::<reply_t>(
-                    dest_thread.tcbState.get_replyObject() as usize,
-                ) {
-                    reply.unlink(dest_thread);
+				let replyptr = dest_thread.tcbState.get_replyObject() as usize;
+				if replyptr!=0{
+                    convert_to_mut_type_ref::<reply_t>(replyptr).unlink(dest_thread);
                 }
                 if do_call || src_thread.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault
                 {
-                    if let Some(reply) = convert_to_option_mut_type_ref::<reply_t>(
-                        dest_thread.tcbState.get_replyObject() as usize,
-                    ) {
-                        if can_grant || can_grant_reply {
-                            reply.push(src_thread, dest_thread, canDonate);
-                        } else {
-                            set_thread_state(dest_thread, ThreadState::ThreadStateInactive);
-                        }
+                    if replyptr != 0 && (can_grant || can_grant_reply) {
+                        convert_to_mut_type_ref::<reply_t>(replyptr).push(src_thread, dest_thread, canDonate);
                     } else {
                         set_thread_state(dest_thread, ThreadState::ThreadStateInactive);
                     }
