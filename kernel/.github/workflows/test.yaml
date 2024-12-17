@@ -27,7 +27,7 @@ jobs:
       run: apt update && apt install -y wget gcc-${{ matrix.arch }}-linux-gnu
     - uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2024-02-01
+        toolchain: nightly-2024-08-01
         components: rust-src
         rustflags: 
     - name: Make rel4_kernel
@@ -49,7 +49,7 @@ jobs:
       working-directory: .
     - uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2024-02-01
+        toolchain: nightly-2024-08-01
         components: rust-src
         rustflags: 
         target: riscv64imac-unknown-none-elf
