@@ -12,3 +12,4 @@ sel4_task = { git = "https://github.com/rel4team/sel4_task.git", branch = "mi_de
 
 [features]
 KERNEL_MCS = []
+default = ["KERNEL_MCS"]
