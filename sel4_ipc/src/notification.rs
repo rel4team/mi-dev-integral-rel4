@@ -3,10 +3,9 @@ use sel4_common::arch::ArchReg;
 use sel4_common::structures_gen::{notification, notification_t};
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref};
 #[cfg(feature = "KERNEL_MCS")]
-use sel4_task::sched_context::sched_context_t;
+use sel4_task::{ksCurSC, sched_context::sched_context_t};
 use sel4_task::{
-    ksCurSC, possible_switch_to, rescheduleRequired, set_thread_state, tcb_queue_t, tcb_t,
-    ThreadState,
+    possible_switch_to, rescheduleRequired, set_thread_state, tcb_queue_t, tcb_t, ThreadState,
 };
 
 #[derive(PartialEq, Eq, Debug)]

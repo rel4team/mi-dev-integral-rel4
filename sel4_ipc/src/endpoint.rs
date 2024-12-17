@@ -1,13 +1,14 @@
 use crate::transfer::Transfer;
 use sel4_common::arch::ArchReg;
 use sel4_common::structures_gen::endpoint;
-#[cfg(feature="KERNEL_MCS")]
+#[cfg(feature = "KERNEL_MCS")]
 use sel4_common::structures_gen::seL4_Fault_tag::seL4_Fault_NullFault;
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref};
 #[cfg(feature = "KERNEL_MCS")]
-use sel4_task::reply::reply_t;
+use sel4_task::{ksCurSC, reply::reply_t, sched_context::sched_context_t};
 use sel4_task::{
-    ksCurSC, possible_switch_to, rescheduleRequired, sched_context::sched_context_t, schedule_tcb, set_thread_state, tcb_queue_t, tcb_t, ThreadState
+    possible_switch_to, rescheduleRequired, schedule_tcb, set_thread_state, tcb_queue_t, tcb_t,
+    ThreadState,
 };
 use sel4_vspace::pptr_t;
 
@@ -124,33 +125,36 @@ impl endpoint_func for endpoint {
                 self.set_epQueue_head(0);
                 self.set_epQueue_tail(0);
                 while let Some(thread) = op_thread {
+                    #[cfg(feature = "KERNEL_MCS")]
+                    {
+                        let reply_ptr = thread.tcbState.get_replyObject() as usize;
+                        if reply_ptr != 0 {
+                            convert_to_mut_type_ref::<reply_t>(reply_ptr).unlink(thread);
+                        }
+                        if thread.tcbFault.get_tag() == seL4_Fault_NullFault as u64 {
+                            set_thread_state(thread, ThreadState::ThreadStateRestart);
+                            if convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
+                                .sc_sporadic()
+                            {
+                                assert!(thread.tcbSchedContext != unsafe { ksCurSC });
+                                if thread.tcbSchedContext != unsafe { ksCurSC } {
+                                    convert_to_mut_type_ref::<sched_context_t>(
+                                        thread.tcbSchedContext,
+                                    )
+                                    .refill_unblock_check();
+                                }
+                            }
+                            possible_switch_to(thread);
+                        } else {
+                            set_thread_state(thread, ThreadState::ThreadStateInactive);
+                        }
+                    }
+                    #[cfg(not(feature = "KERNEL_MCS"))]
+                    {
+                        set_thread_state(thread, ThreadState::ThreadStateRestart);
+                        thread.sched_enqueue();
+                    }
 
-					#[cfg(feature="KERNEL_MCS")]
-					{
-						let reply_ptr = thread.tcbState.get_replyObject() as usize;
-						if reply_ptr!=0{
-							convert_to_mut_type_ref::<reply_t>(reply_ptr).unlink(thread);
-						}
-						if thread.tcbFault.get_tag() == seL4_Fault_NullFault as u64{
-							set_thread_state(thread, ThreadState::ThreadStateRestart);
-							if convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext).sc_sporadic(){
-								assert!(thread.tcbSchedContext != unsafe{ksCurSC});
-								if thread.tcbSchedContext != unsafe{ksCurSC}{
-									convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext).refill_unblock_check();
-								}
-							}
-							possible_switch_to(thread);
-						}
-						else{
-							set_thread_state(thread, ThreadState::ThreadStateInactive);
-						}
-					}
-					#[cfg(not(feature="KERNEL_MCS"))]
-					{
-						set_thread_state(thread, ThreadState::ThreadStateRestart);
-						thread.sched_enqueue();
-					}
-                    
                     op_thread = convert_to_option_mut_type_ref::<tcb_t>(thread.tcbEPNext);
                 }
                 rescheduleRequired();
@@ -312,8 +316,7 @@ impl endpoint_func for endpoint {
                 if replyptr != 0 {
                     convert_to_mut_type_ref::<reply_t>(replyptr).unlink(dest_thread);
                 }
-                if do_call || src_thread.tcbFault.get_tag() != seL4_Fault_NullFault
-                {
+                if do_call || src_thread.tcbFault.get_tag() != seL4_Fault_NullFault {
                     if replyptr != 0 && (can_grant || can_grant_reply) {
                         convert_to_mut_type_ref::<reply_t>(replyptr).push(
                             src_thread,
