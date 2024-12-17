@@ -19,7 +19,10 @@ use sel4_cspace::interface::finaliseCap_ret;
 use sel4_ipc::{endpoint_func, notification_func, Transfer};
 use sel4_task::{get_currenct_thread, ksWorkUnitsCompleted, tcb_t, ThreadState};
 #[cfg(feature = "KERNEL_MCS")]
-use sel4_task::{reply::reply_t, sched_context::sched_context_t};
+use sel4_task::{
+    isCurDomainExpired, ksConsumed, ksCurSC, reply::reply_t, sched_context::sched_context_t,
+    updateTimestamp,
+};
 #[cfg(target_arch = "riscv64")]
 use sel4_vspace::find_vspace_for_asid;
 #[cfg(target_arch = "aarch64")]
@@ -365,6 +368,18 @@ pub fn preemptionPoint() -> exception_t {
         if ksWorkUnitsCompleted >= CONFIG_MAX_NUM_WORK_UNITS_PER_PREEMPTION {
             ksWorkUnitsCompleted = 0;
 
+            #[cfg(feature = "KERNEL_MCS")]
+            {
+                updateTimestamp();
+                let sc = convert_to_mut_type_ref::<sched_context_t>(ksCurSC);
+                if !sc.sc_active() && sc.refill_sufficient(ksConsumed)
+                    || isCurDomainExpired()
+                    || isIRQPending()
+                {
+                    return exception_t::EXCEPTION_PREEMTED;
+                }
+            }
+            #[cfg(not(feature = "KERNEL_MCS"))]
             if isIRQPending() {
                 return exception_t::EXCEPTION_PREEMTED;
             }
