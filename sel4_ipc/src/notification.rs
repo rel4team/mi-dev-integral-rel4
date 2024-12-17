@@ -5,7 +5,8 @@ use sel4_common::utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref
 #[cfg(feature = "KERNEL_MCS")]
 use sel4_task::sched_context::sched_context_t;
 use sel4_task::{
-    possible_switch_to, rescheduleRequired, set_thread_state, tcb_queue_t, tcb_t, ThreadState,
+    ksCurSC, possible_switch_to, rescheduleRequired, set_thread_state, tcb_queue_t, tcb_t,
+    ThreadState,
 };
 
 #[derive(PartialEq, Eq, Debug)]
@@ -236,6 +237,8 @@ impl notification_func for notification {
                     queue.ep_append(recv_thread);
                     self.set_state(NtfnState::Waiting as u64);
                     self.set_queue(&queue);
+                    #[cfg(feature = "KERNEL_MCS")]
+                    self.maybeReturnSchedContext(recv_thread);
                 } else {
                     recv_thread.tcbArch.set_register(ArchReg::Badge, 0);
                 }
@@ -246,6 +249,17 @@ impl notification_func for notification {
                     .tcbArch
                     .set_register(ArchReg::Badge, self.get_ntfnMsgIdentifier() as usize);
                 self.set_state(NtfnState::Idle as u64);
+                #[cfg(feature = "KERNEL_MCS")]
+                {
+                    self.maybeReturnSchedContext(recv_thread);
+                    if recv_thread.tcbSchedContext != unsafe { ksCurSC }
+                        && convert_to_mut_type_ref::<sched_context_t>(recv_thread.tcbSchedContext)
+                            .sc_sporadic()
+                    {
+                        convert_to_mut_type_ref::<sched_context_t>(recv_thread.tcbSchedContext)
+                            .refill_unblock_check();
+                    }
+                }
             }
         }
     }

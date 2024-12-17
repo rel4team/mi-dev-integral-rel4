@@ -508,6 +508,10 @@ impl tcb_t {
         // setThreadState(self as *mut Self, ThreadStateInactive);
         set_thread_state(self, ThreadState::ThreadStateInactive);
         self.sched_dequeue();
+        #[cfg(feature = "KERNEL_MCS")]
+        self.Release_Remove();
+        #[cfg(feature = "KERNEL_MCS")]
+        self.schedContext_cancelYieldTo();
     }
 
     #[inline]
@@ -1084,8 +1088,6 @@ pub fn tcb_Release_Dequeue() -> *mut tcb_t {
 }
 #[cfg(feature = "KERNEL_MCS")]
 pub fn reply_remove_tcb(tcb: &mut tcb_t) {
-    // TODO: MCS
-
     use sel4_common::structures_gen::call_stack;
 
     use crate::reply::reply_t;

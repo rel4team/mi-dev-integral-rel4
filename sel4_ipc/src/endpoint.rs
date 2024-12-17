@@ -283,14 +283,18 @@ impl endpoint_func for endpoint {
                 }
                 src_thread.do_ipc_transfer(dest_thread, Some(self), badge, can_grant);
 
-				let replyptr = dest_thread.tcbState.get_replyObject() as usize;
-				if replyptr!=0{
+                let replyptr = dest_thread.tcbState.get_replyObject() as usize;
+                if replyptr != 0 {
                     convert_to_mut_type_ref::<reply_t>(replyptr).unlink(dest_thread);
                 }
                 if do_call || src_thread.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault
                 {
                     if replyptr != 0 && (can_grant || can_grant_reply) {
-                        convert_to_mut_type_ref::<reply_t>(replyptr).push(src_thread, dest_thread, canDonate);
+                        convert_to_mut_type_ref::<reply_t>(replyptr).push(
+                            src_thread,
+                            dest_thread,
+                            canDonate,
+                        );
                     } else {
                         set_thread_state(dest_thread, ThreadState::ThreadStateInactive);
                     }
@@ -409,13 +413,14 @@ impl endpoint_func for endpoint {
         match self.get_ep_state() {
             EPState::Idle | EPState::Recv => {
                 if is_blocking {
+                    set_thread_state(thread, ThreadState::ThreadStateBlockedOnReceive);
                     thread.tcbState.set_blockingObject(self.get_ptr() as u64);
                     // MCS
                     thread.tcbState.set_replyObject(replyptr as u64);
                     if replyptr != 0 {
                         convert_to_mut_type_ref::<reply_t>(replyptr).replyTCB = thread.get_ptr();
                     }
-                    set_thread_state(thread, ThreadState::ThreadStateBlockedOnReceive);
+					schedule_tcb(&thread);
                     let mut queue = self.get_queue();
                     queue.ep_append(thread);
                     self.set_state(EPState::Recv as u64);
@@ -451,7 +456,7 @@ impl endpoint_func for endpoint {
                     }
                 }
                 if do_call || sender.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_NullFault {
-                    if can_grant || can_grant_reply && replyptr != 0 {
+                    if (can_grant || can_grant_reply) && replyptr != 0 {
                         let canDonate = sender.tcbSchedContext != 0
                             && sender.tcbFault.get_tag() != seL4_Fault_tag::seL4_Fault_Timeout;
                         convert_to_mut_type_ref::<reply_t>(replyptr)
