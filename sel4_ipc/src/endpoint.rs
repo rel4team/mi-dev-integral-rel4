@@ -133,7 +133,10 @@ impl endpoint_func for endpoint {
                         }
                         if thread.tcbFault.get_tag() == seL4_Fault_NullFault as u64 {
                             set_thread_state(thread, ThreadState::ThreadStateRestart);
-                            if convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
+                            if thread.tcbSchedContext != 0
+                                && convert_to_mut_type_ref::<sched_context_t>(
+                                    thread.tcbSchedContext,
+                                )
                                 .sc_sporadic()
                             {
                                 assert!(thread.tcbSchedContext != unsafe { ksCurSC });
