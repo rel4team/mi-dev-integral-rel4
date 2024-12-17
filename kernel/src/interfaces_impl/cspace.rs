@@ -7,7 +7,7 @@ use crate::kernel::boot::current_lookup_fault;
 use crate::syscall::safe_unbind_notification;
 use sel4_common::sel4_config::{tcbCNodeEntries, tcbCTable, tcbVTable};
 use sel4_common::structures::exception_t;
-use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag, endpoint, notification};
+use sel4_common::structures_gen::{call_stack, cap, cap_null_cap, cap_tag, endpoint, notification};
 use sel4_common::utils::{
     convert_to_mut_type_ref, convert_to_option_mut_type_ref, convert_to_option_type_ref,
 };
@@ -291,6 +291,34 @@ pub fn finaliseCap(capability: &cap, _final: bool, _exposed: bool) -> finaliseCa
                 // }
                 fc_ret.remainder =
                     Zombie_new(tcbCNodeEntries, ZombieType_ZombieTCB, cte_ptr.get_ptr());
+                fc_ret.cleanupInfo = cap_null_cap::new().unsplay();
+                return fc_ret;
+            }
+        }
+        #[cfg(feature = "KERNEL_MCS")]
+        cap_tag::cap_sched_context_cap => {
+            if _final {
+                let sc = convert_to_mut_type_ref::<sched_context_t>(
+                    cap::cap_sched_context_cap(capability).get_capSCPtr() as usize,
+                );
+                sc.schedContext_unbindAllTCBs();
+                sc.schedContext_unbindNtfn();
+                if sc.scReply != 0 {
+                    assert!(
+                        convert_to_mut_type_ref::<reply_t>(sc.scReply)
+                            .replyNext
+                            .get_isHead()
+                            != 0
+                    );
+                    convert_to_mut_type_ref::<reply_t>(sc.scReply).replyNext =
+                        call_stack::new(0, 0);
+                    sc.scReply = 0;
+                }
+                if sc.scYieldFrom != 0 {
+                    convert_to_mut_type_ref::<tcb_t>(sc.scYieldFrom).schedContext_completeYieldTo();
+                }
+                sc.scRefillMax = 0;
+                fc_ret.remainder = cap_null_cap::new().unsplay();
                 fc_ret.cleanupInfo = cap_null_cap::new().unsplay();
                 return fc_ret;
             }
