@@ -7,6 +7,6 @@
 # Match the rust toolchain with that in the rust-sel4 repository for best results.
 
 [toolchain]
-channel = "nightly-2024-08-01"
+channel = "nightly-2024-02-01"
 components = ["rustfmt", "rust-src"]
 targets = ["riscv64imac-unknown-none-elf", "aarch64-unknown-none-softfloat"]

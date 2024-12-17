@@ -32,6 +32,8 @@ jobs:
           toolchain: nightly-2024-02-01
           components: rust-src
           rustflags:
+      - name: Adapt dependencies
+        run: cargo update -p home --precise 0.5.5
       - name: Make rel4_kernel
         run: cd rel4_kernel/kernel && make ARCH=${{ matrix.arch }} run
       - name: Build kernel
