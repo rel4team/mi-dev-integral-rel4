@@ -693,6 +693,7 @@ pub fn commitTime() {
             }
             current_sched_context.scConsumed += ksConsumed;
         }
+        ksConsumed = 0;
     }
 }
 #[cfg(feature = "KERNEL_MCS")]

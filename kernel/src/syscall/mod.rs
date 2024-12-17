@@ -174,6 +174,7 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
                     get_currenct_thread().tcbArch.get_register(Cap),
                 );
                 if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    mcs_preemption_point();
                     let irq = getActiveIRQ();
                     if irq != irqInvalid {
                         handleInterrupt(irq);
@@ -189,6 +190,7 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
                     get_currenct_thread().tcbArch.get_register(Cap),
                 );
                 if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    mcs_preemption_point();
                     let irq = getActiveIRQ();
                     if irq != irqInvalid {
                         handleInterrupt(irq);
@@ -204,6 +206,7 @@ pub fn handleSyscall(_syscall: usize) -> exception_t {
                     get_currenct_thread().tcbArch.get_register(Cap),
                 );
                 if unlikely(ret != exception_t::EXCEPTION_NONE) {
+                    mcs_preemption_point();
                     let irq = getActiveIRQ();
                     if irq != irqInvalid {
                         handleInterrupt(irq);
