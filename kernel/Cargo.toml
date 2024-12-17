@@ -25,8 +25,17 @@ sel4_ipc = { git = "https://github.com/rel4team/sel4_ipc.git", branch = "mi_dev"
 driver-collect = { git = "https://github.com/rel4team/driver-collect.git", branch = "mi_dev" }
 
 [features]
-ENABLE_SMP = ["sel4_common/ENABLE_SMP", "sel4_task/ENABLE_SMP", "sel4_vspace/ENABLE_SMP"]
-KERNEL_MCS = ["sel4_common/KERNEL_MCS", "sel4_task/KERNEL_MCS", "sel4_cspace/KERNEL_MCS"]
+ENABLE_SMP = [
+    "sel4_common/ENABLE_SMP",
+    "sel4_task/ENABLE_SMP",
+    "sel4_vspace/ENABLE_SMP",
+]
+KERNEL_MCS = [
+    "sel4_common/KERNEL_MCS",
+    "sel4_task/KERNEL_MCS",
+    "sel4_cspace/KERNEL_MCS",
+]
+default = ["KERNEL_MCS"]
 
 [profile.release]
 lto = true
