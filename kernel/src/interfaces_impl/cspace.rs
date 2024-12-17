@@ -7,7 +7,9 @@ use crate::kernel::boot::current_lookup_fault;
 use crate::syscall::safe_unbind_notification;
 use sel4_common::sel4_config::{tcbCNodeEntries, tcbCTable, tcbVTable};
 use sel4_common::structures::exception_t;
-use sel4_common::structures_gen::{call_stack, cap, cap_null_cap, cap_tag, endpoint, notification};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::structures_gen::call_stack;
+use sel4_common::structures_gen::{cap, cap_null_cap, cap_tag, endpoint, notification};
 use sel4_common::utils::{
     convert_to_mut_type_ref, convert_to_option_mut_type_ref, convert_to_option_type_ref,
 };
