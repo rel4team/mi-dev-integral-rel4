@@ -143,13 +143,13 @@ pub fn reset_untyped_cap(srcSlot: &mut cte_t) -> exception_t {
                 GET_OFFSET_FREE_PTR(region_base, offset as usize) as *mut u8,
                 chunk,
             );
+			prev_cap.set_capFreeIndex((offset as u64) >> seL4_MinUntypedBits);
             let status = unsafe { preemptionPoint() };
             if status != exception_t::EXCEPTION_NONE {
                 return status;
             }
             offset -= BIT!(chunk) as isize;
         }
-        prev_cap.set_capFreeIndex(OFFSET_TO_FREE_IDNEX(offset as usize) as u64);
     }
     exception_t::EXCEPTION_NONE
 }
