@@ -91,7 +91,24 @@ impl notification_func for notification {
             self.set_ntfnQueue_tail(0);
             while let Some(thread) = op_thread {
                 set_thread_state(thread, ThreadState::ThreadStateRestart);
-                thread.sched_enqueue();
+                #[cfg(feature = "KERNEL_MCS")]
+                {
+                    if let Some(sc) =
+                        convert_to_option_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
+                    {
+                        if sc.sc_sporadic() {
+                            unsafe {
+                                assert!(thread.tcbSchedContext != ksCurSC);
+                                sc.refill_unblock_check();
+                            }
+                        }
+                    }
+                    possible_switch_to(thread);
+                }
+                #[cfg(not(feature = "KERNEL_MCS"))]
+                {
+                    thread.sched_enqueue();
+                }
                 op_thread = convert_to_option_mut_type_ref::<tcb_t>(thread.tcbEPNext);
             }
             rescheduleRequired();
