@@ -345,13 +345,11 @@ impl endpoint_func for endpoint {
                             .refill_ready()
                 );
                 set_thread_state(dest_thread, ThreadState::ThreadStateRunning);
-                if convert_to_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext)
-                    .sc_sporadic()
-                    && dest_thread.tcbSchedContext != unsafe { ksCurSC }
-                {
-                    convert_to_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext)
-                        .refill_unblock_check();
-                }
+				if let Some(sc) = convert_to_option_mut_type_ref::<sched_context_t>(dest_thread.tcbSchedContext){
+					if sc.sc_sporadic() &&dest_thread.tcbSchedContext != unsafe { ksCurSC }{
+						sc.refill_unblock_check();
+					}
+				}
                 possible_switch_to(dest_thread);
             }
         }
