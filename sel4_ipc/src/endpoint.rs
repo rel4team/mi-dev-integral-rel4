@@ -476,13 +476,15 @@ impl endpoint_func for endpoint {
                 sender.do_ipc_transfer(thread, Some(self), badge, can_grant);
                 let do_call = sender.tcbState.get_blockingIPCIsCall() != 0;
                 // MCS
-                if convert_to_mut_type_ref::<sched_context_t>(sender.tcbSchedContext).sc_sporadic()
+                if let Some(sc) =
+                    convert_to_option_mut_type_ref::<sched_context_t>(sender.tcbSchedContext)
                 {
-                    unsafe {
-                        assert!(sender.tcbSchedContext != ksCurSC);
-                        if sender.tcbSchedContext != ksCurSC {
-                            convert_to_mut_type_ref::<sched_context_t>(sender.tcbSchedContext)
-                                .refill_unblock_check();
+                    if sc.sc_sporadic() {
+                        unsafe {
+                            assert!(sender.tcbSchedContext != ksCurSC);
+                            if sender.tcbSchedContext != ksCurSC {
+                                sc.refill_unblock_check();
+                            }
                         }
                     }
                 }
