@@ -205,6 +205,7 @@ pub fn fastpath_restore(_badge: usize, _msgInfo: usize, cur_thread: *mut tcb_t) 
 #[inline]
 #[no_mangle]
 pub fn fastpath_call(cptr: usize, msgInfo: usize) {
+	// sel4_common::println!("fastpath call");
     let current = get_currenct_thread();
     let mut info = seL4_MessageInfo::from_word(msgInfo);
     let length = info.get_length() as usize;
@@ -292,11 +293,10 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
         dest.tcbSchedContext = sc.get_ptr();
         current.tcbSchedContext = 0;
 
-        let old_caller = convert_to_mut_type_ref::<reply_t>(sc.scReply);
         convert_to_mut_type_ref::<reply_t>(reply as usize).replyPrev =
             call_stack::new(0, sc.scReply as u64);
-        if unlikely(old_caller.get_ptr() != 0) {
-            old_caller.replyNext = call_stack::new(0, reply);
+        if unlikely(sc.scReply != 0) {
+            convert_to_mut_type_ref::<reply_t>(sc.scReply).replyNext = call_stack::new(0, reply);
         }
         convert_to_mut_type_ref::<reply_t>(reply as usize).replyNext =
             call_stack::new(1, sc.get_ptr() as u64);
