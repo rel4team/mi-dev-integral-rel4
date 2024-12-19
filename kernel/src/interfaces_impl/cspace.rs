@@ -114,7 +114,7 @@ pub fn Arch_finaliseCap(capability: &cap, final_: bool) -> finaliseCap_ret {
         cap_tag::cap_vspace_cap => {
             if final_ && cap::cap_vspace_cap(capability).get_capVSIsMapped() == 1 {
                 deleteASID(
-                    cap::cap_vspace_cap(capability).get_capVSIsMapped() as usize,
+                    cap::cap_vspace_cap(capability).get_capVSMappedASID() as usize,
                     cap::cap_vspace_cap(capability).get_capVSBasePtr() as _,
                 );
             }
