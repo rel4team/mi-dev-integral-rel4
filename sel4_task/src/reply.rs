@@ -27,7 +27,6 @@ impl reply {
         set_thread_state(tcb, ThreadState::ThreadStateInactive);
     }
     pub fn push(&mut self, tcb_caller: &mut tcb_t, tcb_callee: &mut tcb_t, canDonate: bool) {
-
         assert!(tcb_caller.get_ptr() != 0);
         assert!(self.get_ptr() != 0);
         assert!(self.replyTCB == 0);

@@ -356,9 +356,12 @@ impl Transfer for tcb_t {
         assert!(receiver.tcbState.get_replyObject() == 0);
         assert!(reply.replyTCB == 0);
 
-        let sc = convert_to_mut_type_ref::<sched_context_t>(receiver.tcbSchedContext);
-        if sc.sc_sporadic() && !sc.is_current() {
-            sc.refill_unblock_check();
+        if let Some(sc) =
+            convert_to_option_mut_type_ref::<sched_context_t>(receiver.tcbSchedContext)
+        {
+            if sc.sc_sporadic() && !sc.is_current() {
+                sc.refill_unblock_check();
+            }
         }
 
         let fault_type = receiver.tcbFault.get_tag();
@@ -374,6 +377,7 @@ impl Transfer for tcb_t {
             }
         }
         if receiver.tcbSchedContext != 0 && receiver.is_runnable() {
+            let sc = convert_to_mut_type_ref::<sched_context_t>(receiver.tcbSchedContext);
             if sc.refill_ready() && sc.refill_sufficient(0) {
                 possible_switch_to(receiver);
             } else {

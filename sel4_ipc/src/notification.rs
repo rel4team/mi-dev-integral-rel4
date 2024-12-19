@@ -269,6 +269,7 @@ impl notification_func for notification {
                 {
                     self.maybeReturnSchedContext(recv_thread);
                     if recv_thread.tcbSchedContext != unsafe { ksCurSC }
+                        && recv_thread.tcbSchedContext != 0
                         && convert_to_mut_type_ref::<sched_context_t>(recv_thread.tcbSchedContext)
                             .sc_sporadic()
                     {

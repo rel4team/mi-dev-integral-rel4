@@ -94,7 +94,7 @@ impl sched_context {
     }
     #[inline]
     pub fn sc_sporadic(&self) -> bool {
-        self.get_ptr() != 0 && self.sc_active() && self.scSporadic
+        self.sc_active() && self.scSporadic
     }
     #[inline]
     pub fn postpone(&self) {

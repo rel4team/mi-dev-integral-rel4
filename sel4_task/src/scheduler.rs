@@ -698,24 +698,22 @@ pub fn commitTime() {
 }
 #[cfg(feature = "KERNEL_MCS")]
 pub fn switch_sched_context() {
+    use sel4_common::utils::convert_to_option_mut_type_ref;
+
     let thread = get_currenct_thread();
     unsafe {
         if unlikely(ksCurSC != thread.tcbSchedContext) {
             ksReprogram = true;
-            if convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
-                .sc_constant_bandwidth()
+            if let Some(sc) =
+                convert_to_option_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
             {
-                convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
-                    .refill_unblock_check();
-            }
+                if sc.sc_constant_bandwidth() {
+                    sc.refill_unblock_check();
+                }
 
-            assert!(
-                convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext).refill_ready()
-            );
-            assert!(
-                convert_to_mut_type_ref::<sched_context_t>(thread.tcbSchedContext)
-                    .refill_sufficient(0)
-            );
+                assert!(sc.refill_ready());
+                assert!(sc.refill_sufficient(0));
+            }
         }
 
         if ksReprogram {
