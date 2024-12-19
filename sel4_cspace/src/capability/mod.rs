@@ -227,14 +227,14 @@ pub fn same_region_as(cap1: &cap, cap2: &cap) -> bool {
             }
             false
         }
-		#[cfg(feature="KERNEL_MCS")]
-		cap_tag::cap_reply_cap => {
-			if cap2.get_tag() == cap_tag::cap_reply_cap{
-				return cap::cap_reply_cap(cap1).get_capReplyPtr()
-				== cap::cap_reply_cap(cap2).get_capReplyPtr();
-			}
-			false
-		}
+        #[cfg(feature = "KERNEL_MCS")]
+        cap_tag::cap_reply_cap => {
+            if cap2.get_tag() == cap_tag::cap_reply_cap {
+                return cap::cap_reply_cap(cap1).get_capReplyPtr()
+                    == cap::cap_reply_cap(cap2).get_capReplyPtr();
+            }
+            false
+        }
         _ => false,
     }
 }

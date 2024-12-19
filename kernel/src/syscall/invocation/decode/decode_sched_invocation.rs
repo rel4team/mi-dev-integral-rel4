@@ -30,7 +30,8 @@ use crate::{
     syscall::{
         get_syscall_arg,
         invocation::invoke_sched::{
-            invokeSchedContext_Bind, invokeSchedContext_Consumed, invokeSchedContext_Unbind, invokeSchedContext_UnbindObject, invokeSchedControl_ConfigureFlags
+            invokeSchedContext_Bind, invokeSchedContext_Consumed, invokeSchedContext_Unbind,
+            invokeSchedContext_UnbindObject, invokeSchedControl_ConfigureFlags,
         },
     },
 };
@@ -187,40 +188,49 @@ pub fn decodeSchedContext_UnbindObject(sc: &mut sched_context) -> exception_t {
     // TODO: MCS
     if get_extra_cap_by_index(0).is_none() {
         debug!("SchedContext_Unbind: Truncated message.");
-		unsafe{current_syscall_error._type= seL4_TruncatedMessage;}
-		return exception_t::EXCEPTION_SYSCALL_ERROR;
+        unsafe {
+            current_syscall_error._type = seL4_TruncatedMessage;
+        }
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-	let capability = &get_extra_cap_by_index(0).unwrap().capability;
-	match capability.clone().splay(){
-		cap_Splayed::thread_cap(data)=>{
-			if sc.scTcb != data.get_capTCBPtr() as usize{
-				debug!("SchedContext UnbindObject: object not bound");
-			unsafe{current_syscall_error._type= seL4_IllegalOperation;}
-			return exception_t::EXCEPTION_SYSCALL_ERROR;
-			}
-			if sc.scTcb == unsafe{ ksCurThread}{
-				debug!("SchedContext UnbindObject: cannot unbind sc of current thread");
-			unsafe{current_syscall_error._type= seL4_IllegalOperation;}
-			return exception_t::EXCEPTION_SYSCALL_ERROR;
-			}
-		}
-		cap_Splayed::notification_cap(data)=>{
-			if sc.scNotification != data.get_capNtfnPtr() as usize {
-				debug!("SchedContext UnbindObject: object not bound");
-			unsafe{current_syscall_error._type= seL4_IllegalOperation;}
-			return exception_t::EXCEPTION_SYSCALL_ERROR;
-			}
-		}
-		_=>{
-			debug!("SchedContext_Unbind: invalid cap");
-			unsafe{current_syscall_error._type= seL4_InvalidCapability;
-				current_syscall_error.invalidCapNumber = 1;
-			}
-			return exception_t::EXCEPTION_SYSCALL_ERROR;
-		}
-	}
-	set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-    return invokeSchedContext_UnbindObject(sc,capability.clone())
+    let capability = &get_extra_cap_by_index(0).unwrap().capability;
+    match capability.clone().splay() {
+        cap_Splayed::thread_cap(data) => {
+            if sc.scTcb != data.get_capTCBPtr() as usize {
+                debug!("SchedContext UnbindObject: object not bound");
+                unsafe {
+                    current_syscall_error._type = seL4_IllegalOperation;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+            if sc.scTcb == unsafe { ksCurThread } {
+                debug!("SchedContext UnbindObject: cannot unbind sc of current thread");
+                unsafe {
+                    current_syscall_error._type = seL4_IllegalOperation;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+        }
+        cap_Splayed::notification_cap(data) => {
+            if sc.scNotification != data.get_capNtfnPtr() as usize {
+                debug!("SchedContext UnbindObject: object not bound");
+                unsafe {
+                    current_syscall_error._type = seL4_IllegalOperation;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+        }
+        _ => {
+            debug!("SchedContext_Unbind: invalid cap");
+            unsafe {
+                current_syscall_error._type = seL4_InvalidCapability;
+                current_syscall_error.invalidCapNumber = 1;
+            }
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
+    }
+    set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+    return invokeSchedContext_UnbindObject(sc, capability.clone());
 }
 pub fn decodeSchedContext_Bind(sc: &mut sched_context) -> exception_t {
     if get_extra_cap_by_index(0).is_none() {

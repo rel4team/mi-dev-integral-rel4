@@ -294,12 +294,12 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
 
         let old_caller = convert_to_mut_type_ref::<reply_t>(sc.scReply);
         convert_to_mut_type_ref::<reply_t>(reply as usize).replyPrev =
-            call_stack::new(sc.scReply as u64, 0);
+            call_stack::new(0, sc.scReply as u64);
         if unlikely(old_caller.get_ptr() != 0) {
-            old_caller.replyNext = call_stack::new(reply, 0);
+            old_caller.replyNext = call_stack::new(0, reply);
         }
         convert_to_mut_type_ref::<reply_t>(reply as usize).replyNext =
-            call_stack::new(sc.get_ptr() as u64, 1);
+            call_stack::new(1, sc.get_ptr() as u64);
         sc.scReply = reply as usize;
     }
     #[cfg(not(feature = "KERNEL_MCS"))]
