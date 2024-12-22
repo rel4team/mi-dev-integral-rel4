@@ -19,12 +19,9 @@ use sel4_common::structures_gen::seL4_Fault_NullFault;
 use sel4_common::structures_gen::seL4_Fault_tag;
 use sel4_common::utils::*;
 use sel4_cspace::interface::*;
-#[cfg(feature = "KERNEL_MCS")]
-use sel4_task::reply::reply_t;
-#[cfg(feature = "KERNEL_MCS")]
-use sel4_task::reply_remove_tcb;
-use sel4_task::sched_context::sched_context_t;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_task::{reply::reply_t, reply_remove_tcb, sched_context::sched_context_t};
 use sel4_vspace::pptr_t;
 
 /// The trait for IPC transfer, please see doc.md for more details
@@ -252,19 +249,21 @@ impl Transfer for tcb_t {
                     seL4_Fault::seL4_Fault_VMFault(&self.tcbFault).get_FSR() as usize,
                 )
             }
-			seL4_Fault_tag::seL4_Fault_Timeout => {
-				let len = receiver.set_mr(
-					seL4_Timeout_Data,
-					seL4_Fault::seL4_Fault_Timeout(&self.tcbFault).get_badge() as usize
-				);
-				if let Some(sc) = convert_to_option_mut_type_ref::<sched_context_t>(self.tcbSchedContext){
-					let consumed = sc.schedContext_updateConsumed();
-					receiver.set_mr(len, consumed)
-				}
-				else {
-					len
-				}
-			}
+            #[cfg(feature = "KERNEL_MCS")]
+            seL4_Fault_tag::seL4_Fault_Timeout => {
+                let len = receiver.set_mr(
+                    seL4_Timeout_Data,
+                    seL4_Fault::seL4_Fault_Timeout(&self.tcbFault).get_badge() as usize,
+                );
+                if let Some(sc) =
+                    convert_to_option_mut_type_ref::<sched_context_t>(self.tcbSchedContext)
+                {
+                    let consumed = sc.schedContext_updateConsumed();
+                    receiver.set_mr(len, consumed)
+                } else {
+                    len
+                }
+            }
             _ => {
                 panic!("invalid fault")
             }
@@ -319,15 +318,15 @@ impl Transfer for tcb_t {
                 );
                 return label as usize == 0;
             }
-			#[cfg(feature="KERNEL_MCS")]
-			seL4_Fault_tag::seL4_Fault_Timeout => {
-				self.copy_fault_mrs_for_reply(
-					receiver,
-					MessageID_TimeoutReply,
-					core::cmp::min(length, n_exceptionMessage),
-				);
-				return label as usize == 0;
-			}
+            #[cfg(feature = "KERNEL_MCS")]
+            seL4_Fault_tag::seL4_Fault_Timeout => {
+                self.copy_fault_mrs_for_reply(
+                    receiver,
+                    MessageID_TimeoutReply,
+                    core::cmp::min(length, n_exceptionMessage),
+                );
+                return label as usize == 0;
+            }
             _ => true,
         }
     }

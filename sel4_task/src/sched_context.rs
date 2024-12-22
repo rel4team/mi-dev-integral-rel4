@@ -329,7 +329,7 @@ impl sched_context {
         assert!(to.tcbSchedContext == 0);
         if let Some(from) = convert_to_option_mut_type_ref::<tcb_t>(self.scTcb) {
             from.sched_dequeue();
-			from.Release_Remove();
+            from.Release_Remove();
             from.tcbSchedContext = 0;
             if from.is_current() || from.get_ptr() == unsafe { ksSchedulerAction } {
                 rescheduleRequired();
