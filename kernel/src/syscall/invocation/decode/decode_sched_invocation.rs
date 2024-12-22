@@ -31,7 +31,8 @@ use crate::{
         get_syscall_arg,
         invocation::invoke_sched::{
             invokeSchedContext_Bind, invokeSchedContext_Consumed, invokeSchedContext_Unbind,
-            invokeSchedContext_UnbindObject, invokeSchedControl_ConfigureFlags,
+            invokeSchedContext_UnbindObject, invokeSchedContext_YieldTo,
+            invokeSchedControl_ConfigureFlags,
         },
     },
 };
@@ -61,7 +62,7 @@ pub fn decode_sched_context_invocation(
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             invokeSchedContext_Unbind(sc)
         }
-        MessageLabel::SchedContextYieldTo => decodeSchedContext_YieldTo(sc, buffer),
+        MessageLabel::SchedContextYieldTo => decodeSchedContext_YieldTo(sc),
         _ => {
             debug!("SchedContext invocation: Illegal operation attempted.");
             unsafe {
@@ -302,7 +303,45 @@ pub fn decodeSchedContext_Bind(sc: &mut sched_context) -> exception_t {
         }
     }
 }
-pub fn decodeSchedContext_YieldTo(sc: &mut sched_context, buffer: &seL4_IPCBuffer) -> exception_t {
-    unimplemented!("MCS yield to");
-    // TODO: MCS
+pub fn decodeSchedContext_YieldTo(sc: &mut sched_context) -> exception_t {
+    let thread = get_currenct_thread();
+
+    if sc.scTcb == 0 {
+        debug!("SchedContext_YieldTo: cannot yield to an inactive sched context");
+        unsafe {
+            current_syscall_error._type = seL4_IllegalOperation;
+        }
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+    if sc.scTcb == thread.get_ptr() {
+        debug!("SchedContext_YieldTo: cannot seL4_SchedContext_YieldTo on self");
+        unsafe {
+            current_syscall_error._type = seL4_IllegalOperation;
+        }
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+    if convert_to_mut_type_ref::<tcb_t>(sc.scTcb).tcbPriority > thread.tcbMCP {
+        debug!(
+            "SchedContext_YieldTo: insufficient mcp {} to yield to a thread with prio {}",
+            thread.tcbMCP,
+            convert_to_mut_type_ref::<tcb_t>(sc.scTcb).tcbPriority
+        );
+        unsafe {
+            current_syscall_error._type = seL4_IllegalOperation;
+        }
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+    assert!(thread.tcbYieldTo == 0);
+    if thread.tcbYieldTo != 0 {
+        debug!(
+            "SchedContext_YieldTo: cannot seL4_SchedContext_YieldTo to more than on SC at a time"
+        );
+        unsafe {
+            current_syscall_error._type = seL4_IllegalOperation;
+        }
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+
+    set_thread_state(thread, ThreadState::ThreadStateRestart);
+    return invokeSchedContext_YieldTo(sc);
 }

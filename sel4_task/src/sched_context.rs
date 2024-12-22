@@ -288,7 +288,7 @@ impl sched_context {
                     convert_to_mut_type_ref::<tcb_t>(self.scTcb)
                         .tcbState
                         .get_tcbQueued()
-                        != 0
+                        == 0
                 );
                 self.postpone();
             }
