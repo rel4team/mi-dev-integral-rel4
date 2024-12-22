@@ -305,7 +305,6 @@ impl endpoint_func for endpoint {
         can_grant_reply: bool,
         canDonate: bool,
     ) {
-        use sel4_task::{ksCurSC, reply::reply_t, sched_context::sched_context_t};
         // sel4_common::println!("send ipc {}",self.get_ep_state() as usize);
         match self.get_ep_state() {
             EPState::Idle | EPState::Send => {
@@ -451,7 +450,6 @@ impl endpoint_func for endpoint {
         use core::intrinsics::unlikely;
         use log::debug;
         use sel4_common::structures_gen::{cap_tag::cap_reply_cap, notification_t, seL4_Fault_tag};
-        use sel4_task::{ksCurSC, sched_context::sched_context_t};
 
         use crate::notification_func;
 
@@ -525,7 +523,6 @@ impl endpoint_func for endpoint {
                         convert_to_mut_type_ref::<reply_t>(replyptr)
                             .push(sender, thread, canDonate);
                     } else {
-                        sel4_common::println!("receive ipc inactive");
                         set_thread_state(sender, ThreadState::ThreadStateInactive);
                     }
                 } else {

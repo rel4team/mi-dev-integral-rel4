@@ -339,6 +339,17 @@ impl Transfer for tcb_t {
                 self.tcbArch
                     .set_register(ArchReg::Badge, ntfn.get_ntfnMsgIdentifier() as usize);
                 ntfn.set_state(NtfnState::Idle as u64);
+				#[cfg(feature="KERNEL_MCS")]
+				{
+					maybeDonateSchedContext(self, ntfn);
+					if let Some(tcbsc)=convert_to_option_mut_type_ref::<sched_context_t>(self.tcbSchedContext){
+						if tcbsc.sc_sporadic(){
+							if self.tcbSchedContext == ntfn.get_ntfnSchedContext() as usize && !tcbsc.is_current(){
+								tcbsc.refill_unblock_check();
+							}
+						}
+					}
+				}
                 return true;
             }
         }

@@ -404,9 +404,20 @@ fn nextDomain() {
         if ksDomScheduleIdx >= ksDomScheduleLength {
             ksDomScheduleIdx = 0;
         }
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            ksReprogram = true;
+        }
         ksWorkUnitsCompleted = 0;
         ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
-        ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
+        #[cfg(feature = "KERNEL_MCS")]
+        {
+            ksDomainTime = usToTicks(ksDomSchedule[ksDomScheduleIdx].length * US_IN_MS);
+        }
+        #[cfg(not(feature = "KERNEL_MCS"))]
+        {
+            ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
+        }
         //FIXME ksWorkUnits not used;
         // ksWorkUnits
     }
