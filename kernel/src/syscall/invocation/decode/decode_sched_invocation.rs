@@ -107,11 +107,10 @@ pub fn decode_sched_control_invocation(
                 &convert_to_mut_type_ref::<cte_t>(unsafe { current_extra_caps.excaprefs[0] })
                     .capability;
             if unlikely(targetCap.get_tag() != cap_tag::cap_sched_context_cap) {
-                debug!("SchedControl_ConfigureFlags: budget out of range.");
+                debug!("SchedControl_ConfigureFlags: target cap not a scheduling context cap");
                 unsafe {
-                    current_syscall_error._type = seL4_RangeError;
-                    current_syscall_error.rangeErrorMin = MIN_BUDGET_US();
-                    current_syscall_error.rangeErrorMax = MAX_PERIOD_US();
+                    current_syscall_error._type = seL4_InvalidCapability;
+                    current_syscall_error.invalidCapNumber = 1;
                     return exception_t::EXCEPTION_SYSCALL_ERROR;
                 }
             }
