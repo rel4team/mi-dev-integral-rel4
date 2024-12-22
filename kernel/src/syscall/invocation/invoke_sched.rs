@@ -2,7 +2,7 @@ use sel4_common::{
     platform::time_def::ticks_t,
     structures::{exception_t, seL4_IPCBuffer},
     structures_gen::{call_stack, cap, cap_Splayed, cap_tag, notification_t},
-    utils::convert_to_mut_type_ref,
+    utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
 };
 use sel4_task::{
     checkBudget, commitTime, get_currenct_thread, ksCurSC, ksCurThread, possible_switch_to,
@@ -96,10 +96,10 @@ pub fn invokeSchedControl_ConfigureFlags(
     target.scBadge = badge;
     target.scSporadic = (flags & seL4_SchedContext_Sporadic) != 0;
 
-    if target.scTcb != 0 {
+    if let Some(tcb) = convert_to_option_mut_type_ref::<tcb_t>(target.scTcb) {
         /* remove from scheduler */
-        convert_to_mut_type_ref::<tcb_t>(target.scTcb).Release_Remove();
-        convert_to_mut_type_ref::<tcb_t>(target.scTcb).sched_dequeue();
+        tcb.Release_Remove();
+        tcb.sched_dequeue();
         /* bill the current consumed amount before adjusting the params */
         if target.is_current() {
             assert!(checkBudget());

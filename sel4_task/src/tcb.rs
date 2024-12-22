@@ -1069,7 +1069,7 @@ pub fn tcb_Release_Dequeue() -> *mut tcb_t {
 
     unsafe {
         assert!(ksReleaseHead != 0);
-        assert!(convert_to_mut_type_ref::<tcb_t>(ksReleaseHead).tcbSchedPrev != 0);
+        assert!(convert_to_mut_type_ref::<tcb_t>(ksReleaseHead).tcbSchedPrev == 0);
 
         let detached_head = ksReleaseHead as *mut tcb_t;
         ksReleaseHead = (*detached_head).tcbSchedNext;
