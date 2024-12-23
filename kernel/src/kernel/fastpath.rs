@@ -549,7 +549,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize, reply: usize) {
         let mut queue = ep.get_queue();
         queue.ep_append(current);
         ep.set_epQueue_head(queue.head as u64);
-        endpoint_ptr_mset_epQueue_tail_state(ep as *mut endpoint, queue.head, EPState_Recv);
+        endpoint_ptr_mset_epQueue_tail_state(ep as *mut endpoint, queue.tail, EPState_Recv);
     } else {
         current.tcbEPPrev = 0;
         current.tcbEPNext = 0;

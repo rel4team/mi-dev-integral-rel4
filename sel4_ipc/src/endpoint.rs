@@ -305,7 +305,6 @@ impl endpoint_func for endpoint {
         can_grant_reply: bool,
         canDonate: bool,
     ) {
-        // sel4_common::println!("send ipc {}",self.get_ep_state() as usize);
         match self.get_ep_state() {
             EPState::Idle | EPState::Send => {
                 if blocking {
@@ -452,7 +451,6 @@ impl endpoint_func for endpoint {
         use sel4_common::structures_gen::{cap_tag::cap_reply_cap, notification_t, seL4_Fault_tag};
 
         use crate::notification_func;
-
         let mut replyptr: usize = 0;
         if reply_cap.clone().unsplay().get_tag() == cap_reply_cap {
             replyptr = reply_cap.get_capReplyPtr() as usize;
@@ -472,7 +470,7 @@ impl endpoint_func for endpoint {
         match self.get_ep_state() {
             EPState::Idle | EPState::Recv => {
                 if is_blocking {
-                    set_thread_state(thread, ThreadState::ThreadStateBlockedOnReceive);
+					thread.tcbState.set_tsType(ThreadState::ThreadStateBlockedOnReceive as u64);
                     thread.tcbState.set_blockingObject(self.get_ptr() as u64);
                     // MCS
                     thread.tcbState.set_replyObject(replyptr as u64);

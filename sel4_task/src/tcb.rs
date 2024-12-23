@@ -1,6 +1,6 @@
 #[cfg(feature = "KERNEL_MCS")]
 use crate::ksCurSC;
-use crate::prio_t;
+use crate::{ksReadyQueues, prio_t};
 use crate::tcb_queue::tcb_queue_t;
 #[cfg(feature = "KERNEL_MCS")]
 use crate::{ksReleaseHead, sched_context::sched_context_t};
@@ -279,14 +279,15 @@ impl tcb_t {
             let idx = ready_queues_index(dom, prio);
             let queue = self.get_sched_queue(idx);
             if queue.tail == 0 {
-                queue.head = self_ptr as usize;
+                queue.tail = self_ptr as usize;
                 addToBitmap(self.get_cpu(), dom, prio);
             } else {
-                convert_to_mut_type_ref::<tcb_t>(queue.tail).tcbSchedNext = self_ptr as usize;
+                convert_to_mut_type_ref::<tcb_t>(queue.head).tcbSchedPrev = self_ptr as usize;
             }
-            self.tcbSchedPrev = queue.tail;
-            self.tcbSchedNext = 0;
-            queue.tail = self_ptr as usize;
+            self.tcbSchedPrev = 0;
+            self.tcbSchedNext = queue.head;
+            queue.head = self_ptr as usize;
+			unsafe { ksReadyQueues[idx] = *queue; }
             self.tcbState.set_tcbQueued(1);
         }
 
@@ -346,7 +347,7 @@ impl tcb_t {
             } else {
                 queue.tail = self.tcbSchedPrev;
             }
-            // unsafe { ksReadyQueues[idx] = queue; }
+            unsafe { ksReadyQueues[idx] = *queue; }
             self.tcbState.set_tcbQueued(0);
         }
     }
@@ -384,7 +385,7 @@ impl tcb_t {
             self.tcbSchedPrev = queue.tail;
             self.tcbSchedNext = 0;
             queue.tail = self_ptr as usize;
-            // unsafe { ksReadyQueues[idx] = queue; }
+            unsafe { ksReadyQueues[idx] = *queue; }
 
             self.tcbState.set_tcbQueued(1);
         }
