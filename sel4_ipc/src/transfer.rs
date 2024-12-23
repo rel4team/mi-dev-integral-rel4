@@ -402,8 +402,9 @@ impl Transfer for tcb_t {
             self.do_ipc_transfer(receiver, None, 0, grant);
             set_thread_state(receiver, ThreadState::ThreadStateRunning);
         } else {
+			let restart = self.do_fault_reply_transfer(receiver);
             receiver.tcbFault = seL4_Fault_NullFault::new().unsplay();
-            if self.do_fault_reply_transfer(receiver) {
+            if restart {
                 set_thread_state(receiver, ThreadState::ThreadStateRestart);
             } else {
                 set_thread_state(receiver, ThreadState::ThreadStateInactive);
