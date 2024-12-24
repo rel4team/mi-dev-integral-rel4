@@ -22,6 +22,8 @@ use sel4_cspace::interface::*;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
 #[cfg(feature = "KERNEL_MCS")]
 use sel4_task::{reply::reply_t, reply_remove_tcb, sched_context::sched_context_t};
+#[cfg(feature = "KERNEL_MCS")]
+use sel4_common::arch::n_timeoutMessage;
 use sel4_vspace::pptr_t;
 
 /// The trait for IPC transfer, please see doc.md for more details
@@ -323,7 +325,7 @@ impl Transfer for tcb_t {
                 self.copy_fault_mrs_for_reply(
                     receiver,
                     MessageID_TimeoutReply,
-                    core::cmp::min(length, n_exceptionMessage),
+                    core::cmp::min(length, n_timeoutMessage),
                 );
                 return label as usize == 0;
             }
@@ -372,7 +374,7 @@ impl Transfer for tcb_t {
     #[cfg(feature = "KERNEL_MCS")]
     fn do_reply(&mut self, reply: &mut reply_t, grant: bool) {
         use sel4_common::{ffi::current_fault, structures_gen::seL4_Fault_Timeout};
-        use sel4_task::{handleTimeout, sched_context::sched_context_t};
+        use sel4_task::handleTimeout;
 
         if reply.replyTCB == 0
             || convert_to_mut_type_ref::<tcb_t>(reply.replyTCB)

@@ -360,7 +360,6 @@ pub fn handleTimeout(tptr: &mut tcb_t) {
 #[no_mangle]
 pub fn endTimeslice(can_timeout_fault: bool) {
     use sel4_common::structures_gen::seL4_Fault_Timeout;
-    use sel4_task::get_current_sc;
 
     unsafe {
         let thread = get_currenct_thread();

@@ -116,6 +116,17 @@ pub fn handleUnknownSyscall(w: isize) -> exception_t {
 
 #[no_mangle]
 pub fn handleUserLevelFault(w_a: usize, w_b: usize) -> exception_t {
+	#[cfg(feature="KERNEL_MCS")]
+	{
+		updateTimestamp();
+		if likely(checkBudgetRestart()){
+			unsafe {
+				current_fault = seL4_Fault_UserException::new(w_a as u64, w_b as u64).unsplay();
+				handle_fault(get_currenct_thread());
+			}
+		}
+	}
+	#[cfg(not(feature="KERNEL_MCS"))]
     unsafe {
         current_fault = seL4_Fault_UserException::new(w_a as u64, w_b as u64).unsplay();
         handle_fault(get_currenct_thread());
@@ -127,10 +138,24 @@ pub fn handleUserLevelFault(w_a: usize, w_b: usize) -> exception_t {
 
 #[no_mangle]
 pub fn handleVMFaultEvent(vm_faultType: usize) -> exception_t {
-    let status = handle_vm_fault(vm_faultType);
-    if status != exception_t::EXCEPTION_NONE {
-        handle_fault(get_currenct_thread());
-    }
+	#[cfg(feature="KERNEL_MCS")]
+	{
+		updateTimestamp();
+		if likely(checkBudgetRestart()){
+			let status = handle_vm_fault(vm_faultType);
+			if status != exception_t::EXCEPTION_NONE {
+				handle_fault(get_currenct_thread());
+			}
+		}
+	}
+	#[cfg(not(feature="KERNEL_MCS"))]
+	{
+		let status = handle_vm_fault(vm_faultType);
+		if status != exception_t::EXCEPTION_NONE {
+			handle_fault(get_currenct_thread());
+		}
+	}
+    
     // sel4_common::println!("handle vm fault event");
     schedule();
     activateThread();
